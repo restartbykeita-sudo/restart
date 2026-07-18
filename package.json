@@ -1,9 +1,0 @@
-{
-  "name": "trail-scan-admin",
-  "version": "1.0.0",
-  "private": true,
-  "description": "Production admin for Trail Scan: Event, Start, unlimited CP and Finish.",
-  "engines": {
-    "node": ">=20"
-  }
-}
