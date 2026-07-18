@@ -1,0 +1,3 @@
+Trail Scan Web V3 CRUD
+เพิ่ม Create / Edit / Delete พร้อม Safe Delete
+Build date: 2026-07-18
