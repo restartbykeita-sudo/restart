@@ -1,0 +1,2 @@
+Trail Scan Web V5
+User approval + role-based pages + detailed dashboard + public BIB result lookup

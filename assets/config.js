@@ -1,0 +1,7 @@
+window.TRAIL_SCAN_CONFIG = Object.freeze({
+  APP_NAME: 'Trail Scan',
+  SUPABASE_URL: '',
+  SUPABASE_ANON_KEY: '',
+  DEFAULT_TIMEZONE: 'Asia/Bangkok',
+  SCANNER: { FPS: 18, DUPLICATE_LOCK_MS: 4000, RESULT_MS: 1200, BATCH_SIZE: 30 }
+});
