@@ -1,3 +1,0 @@
-Trail Scan Web V6 Complete
-No email confirmation + Admin approval + RBAC + detailed dashboard + public BIB results + QR/BIB PDF
-Build: 2026-07-20
