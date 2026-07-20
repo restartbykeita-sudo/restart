@@ -1,0 +1,3 @@
+Trail Scan Web V6.1 Sidebar Fix
+แก้ Sidebar มือถือเปิดแล้วปิดไม่ได้
+เพิ่ม Hamburger/X, ปุ่มปิด, แตะพื้นหลัง และปุ่ม Escape
