@@ -1,3 +1,0 @@
-Trail Scan Web V6.2 Manual Download Button
-เพิ่มปุ่มดาวน์โหลดคู่มือ PDF/Word ในหน้าเว็บ
-ใช้ชื่อไฟล์ภาษาอังกฤษเพื่อป้องกันลิงก์เสียบน Hosting
