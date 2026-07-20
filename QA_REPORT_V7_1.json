@@ -1,0 +1,76 @@
+{
+  "version": "7.1.0",
+  "js": {
+    "admin.js": {
+      "ok": true,
+      "error": ""
+    },
+    "core.js": {
+      "ok": true,
+      "error": ""
+    },
+    "idb.js": {
+      "ok": true,
+      "error": ""
+    },
+    "login.js": {
+      "ok": true,
+      "error": ""
+    },
+    "pending.js": {
+      "ok": true,
+      "error": ""
+    },
+    "public-results.js": {
+      "ok": true,
+      "error": ""
+    },
+    "scanner.js": {
+      "ok": true,
+      "error": ""
+    }
+  },
+  "duplicate_ids": {
+    "admin/index.html": [],
+    "index.html": [],
+    "login.html": [],
+    "manual/index.html": [],
+    "pending.html": [],
+    "results.html": [],
+    "scanner/index.html": []
+  },
+  "missing_local_refs": [],
+  "manual": {
+    "pdf_bytes": 1249737,
+    "docx_bytes": 541819,
+    "online_bytes": 95678,
+    "pdf_pages": 38,
+    "image_count": 7,
+    "a11y": {
+      "high": 0,
+      "medium": 0,
+      "low": 0
+    }
+  },
+  "checks": {
+    "all_js_syntax_ok": true,
+    "no_duplicate_html_ids": true,
+    "all_local_links_exist": true,
+    "no_v6_manual_reference": true,
+    "online_manual_present": true,
+    "pdf_present": true,
+    "docx_present": true,
+    "manual_is_38_pages": true,
+    "manual_a11y_clean": true,
+    "admin_has_online_pdf_word": true,
+    "login_has_online_pdf": true,
+    "pending_has_online_pdf": true,
+    "results_has_online_pdf": true,
+    "scanner_has_online_pdf": true,
+    "service_worker_v710": true,
+    "manual_online_cached": true,
+    "config_preserved": true,
+    "no_old_manual_files": true
+  },
+  "passed": true
+}

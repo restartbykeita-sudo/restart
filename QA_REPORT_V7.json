@@ -1,0 +1,56 @@
+{
+  "required_files": true,
+  "js_syntax": {
+    "admin.js": {
+      "ok": true,
+      "error": ""
+    },
+    "core.js": {
+      "ok": true,
+      "error": ""
+    },
+    "idb.js": {
+      "ok": true,
+      "error": ""
+    },
+    "login.js": {
+      "ok": true,
+      "error": ""
+    },
+    "pending.js": {
+      "ok": true,
+      "error": ""
+    },
+    "public-results.js": {
+      "ok": true,
+      "error": ""
+    },
+    "scanner.js": {
+      "ok": true,
+      "error": ""
+    }
+  },
+  "duplicate_ids": {
+    "admin/index.html": [],
+    "index.html": [],
+    "login.html": [],
+    "pending.html": [],
+    "results.html": [],
+    "scanner/index.html": []
+  },
+  "local_refs_missing": [],
+  "all_js_ok": true,
+  "no_duplicate_ids": true,
+  "all_local_refs_exist": true,
+  "features": {
+    "setup_page": true,
+    "readiness_page": true,
+    "audit_page": true,
+    "backup_page": true,
+    "template_wizard": true,
+    "setup_logic": true,
+    "readiness_logic": true,
+    "backup_logic": true
+  },
+  "all_features_present": true
+}

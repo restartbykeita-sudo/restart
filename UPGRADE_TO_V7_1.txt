@@ -1,0 +1,10 @@
+TRAIL SCAN V7.1 — อัปเกรดทั้งเว็บไซต์และคู่มือ
+
+1. สำรองเว็บเดิมทั้งโฟลเดอร์
+2. สำรอง assets/config.js
+3. หากยังเป็น V6 ให้รัน supabase/008_upgrade_v6_to_v7.sql
+4. อัปโหลดไฟล์ V7.1 ทั้งหมดทับเว็บเดิม
+5. นำ config.js ของ Project จริงกลับมาใช้เมื่อจำเป็น
+6. เปิด manual/index.html และทดสอบดาวน์โหลด PDF/Word
+7. Mac กด Command+Shift+R หรือ Windows กด Ctrl+Shift+R
+8. ทดสอบ Login, Admin, Scanner และ Results ก่อนใช้จริง
