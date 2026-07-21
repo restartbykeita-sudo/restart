@@ -1,0 +1,11 @@
+TRAIL SCAN V7.2 - แยกหน้าลำดับนักวิ่งออกจากทีมงาน
+
+อัปเกรดจาก V7/V7.1:
+1. สำรอง assets/config.js และเว็บไซต์เดิม
+2. Supabase > SQL Editor > รัน supabase/009_public_runner_portal.sql
+3. อัปโหลดเว็บไซต์ V7.2 ทับของเดิม
+4. ตรวจ assets/config.js ยังเป็น Project ของคุณ
+5. โหลดใหม่ด้วย Command+Shift+R หรือ Ctrl+Shift+R
+6. ส่งลิงก์ /runner-results/ ให้นักวิ่ง
+
+หน้าสาธารณะไม่มี Login, Admin, Scanner, เจ้าหน้าที่ หรืออุปกรณ์

@@ -1,0 +1,80 @@
+{
+  "required": {
+    "runner-results/index.html": true,
+    "runner-results/style.css": true,
+    "runner-results/app.js": true,
+    "supabase/009_public_runner_portal.sql": true,
+    "supabase/000_INSTALL_ALL_V7_2.sql": true,
+    "manual/Trail_Scan_V7_2_User_Manual.pdf": true,
+    "manual/Trail_Scan_V7_2_User_Manual.docx": true,
+    "UPGRADE_TO_V7_2.txt": true
+  },
+  "js": {
+    "assets/js/admin.js": {
+      "ok": true,
+      "error": ""
+    },
+    "assets/js/core.js": {
+      "ok": true,
+      "error": ""
+    },
+    "assets/js/idb.js": {
+      "ok": true,
+      "error": ""
+    },
+    "assets/js/login.js": {
+      "ok": true,
+      "error": ""
+    },
+    "assets/js/pending.js": {
+      "ok": true,
+      "error": ""
+    },
+    "assets/js/scanner.js": {
+      "ok": true,
+      "error": ""
+    },
+    "runner-results/app.js": {
+      "ok": true,
+      "error": ""
+    },
+    "sw.js": {
+      "ok": true,
+      "error": ""
+    }
+  },
+  "duplicates": {
+    "admin/index.html": [],
+    "index.html": [],
+    "login.html": [],
+    "manual/index.html": [],
+    "pending.html": [],
+    "results.html": [],
+    "runner-results/index.html": [],
+    "scanner/index.html": []
+  },
+  "missing_refs": [],
+  "separation": {
+    "no_forbidden_in_html": true,
+    "no_auth_api": true,
+    "only_public_rpc": true,
+    "old_results_redirects": true,
+    "admin_result_labeled_internal": true,
+    "sw_public_fallback": true,
+    "sql_public_guard": true,
+    "sql_minimal_no_private_columns": true,
+    "old_detailed_rpc_revoked": true
+  },
+  "manual": {
+    "pdf_pages": 36,
+    "pdf_nonempty": true,
+    "docx_nonempty": true,
+    "a11y_counts": {
+      "high": 0,
+      "medium": 0,
+      "low": 0
+    }
+  },
+  "stale": [],
+  "pass": true
+}

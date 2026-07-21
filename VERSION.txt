@@ -1,0 +1,2 @@
+Trail Scan Web V7.2.0
+Standalone Runner Result Portal

@@ -1,0 +1,19 @@
+TRAIL SCAN V7.2 - วิธีเริ่มใช้งาน
+
+ติดตั้งใหม่:
+1. รัน supabase/000_INSTALL_ALL_V7_2.sql
+2. ตั้งค่า assets/config.js
+3. อัปโหลดเว็บไซต์ทั้งหมดขึ้น Hosting
+
+อัปเกรดจาก V7/V7.1:
+1. รัน supabase/009_public_runner_portal.sql
+2. อัปโหลดเว็บไซต์ V7.2 ทับชุดเดิม
+3. โหลดหน้าใหม่แบบไม่ใช้ Cache
+
+หน้าสำหรับนักวิ่ง:
+/runner-results/
+
+คู่มือ:
+- Online: manual/index.html
+- PDF: manual/Trail_Scan_V7_2_User_Manual.pdf
+- Word: manual/Trail_Scan_V7_2_User_Manual.docx

@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#071d32">
+  <meta name="description" content="ตรวจลำดับและผลการแข่งขันของนักวิ่งด้วยเลข BIB">
+  <title>ลำดับนักวิ่ง | Race Results</title>
+  <link rel="stylesheet" href="style.css?v=7.2.0">
+</head>
+<body>
+  <header class="rr-header">
+    <div class="rr-brand">
+      <span class="rr-logo">R</span>
+      <div><strong>RACE RESULTS</strong><small>ลำดับและผลการแข่งขันสำหรับนักวิ่ง</small></div>
+    </div>
+    <span class="rr-public-badge">PUBLIC</span>
+  </header>
+
+  <main class="rr-main">
+    <section class="rr-hero">
+      <span class="rr-eyebrow">RUNNER RESULT PORTAL</span>
+      <h1>เช็กลำดับนักวิ่ง</h1>
+      <p>หน้าแสดงผลสำหรับนักวิ่งโดยเฉพาะ ไม่ต้องสมัคร ไม่ต้องเข้าสู่ระบบ และแสดงเฉพาะข้อมูลผลการแข่งขัน</p>
+      <div class="rr-event-box">
+        <label>เลือกงานแข่งขัน
+          <select id="eventSelect" required><option value="">กำลังโหลดงานแข่งขัน…</option></select>
+        </label>
+        <div id="eventMeta" class="rr-event-meta">เลือกงานแข่งขันเพื่อดูข้อมูล</div>
+      </div>
+    </section>
+
+    <nav class="rr-tabs" aria-label="เมนูผลการแข่งขัน">
+      <button type="button" class="active" data-tab="leaderboard">🏆 ตารางลำดับ</button>
+      <button type="button" data-tab="lookup">🔎 ค้นหาด้วย BIB</button>
+    </nav>
+
+    <section id="tab-leaderboard" class="rr-panel active">
+      <div class="rr-panel-head">
+        <div><h2>ตารางลำดับนักวิ่ง</h2><p>เรียงตามลำดับเข้าเส้น ระบบจะแสดงเฉพาะผลที่ผู้จัดเปิดเผย</p></div>
+        <button id="refreshLeaderboard" class="rr-btn rr-btn-secondary" type="button">↻ โหลดใหม่</button>
+      </div>
+      <div class="rr-filters">
+        <label>ประเภทการแข่งขัน
+          <select id="categorySelect"><option value="">ทุกประเภท</option></select>
+        </label>
+        <label>ค้นหาในตาราง
+          <input id="leaderSearch" placeholder="เลข BIB หรือชื่อนักวิ่ง" autocomplete="off">
+        </label>
+      </div>
+      <div id="leaderSummary" class="rr-summary"></div>
+      <div class="rr-table-card">
+        <div class="rr-table-wrap">
+          <table>
+            <thead><tr><th>ลำดับรวม</th><th>BIB</th><th>นักวิ่ง</th><th>ประเภท</th><th>รุ่น</th><th>เวลาเข้าเส้น</th><th>เวลาที่ใช้</th><th>ลำดับประเภท</th><th>สถานะ</th></tr></thead>
+            <tbody id="leaderRows"><tr><td colspan="9"><div class="rr-empty">เลือกงานแข่งขันเพื่อดูตารางลำดับ</div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <p class="rr-note">ผลแบบ LIVE อาจเปลี่ยนแปลงได้จนกว่าผู้จัดจะประกาศผลอย่างเป็นทางการ</p>
+    </section>
+
+    <section id="tab-lookup" class="rr-panel">
+      <div class="rr-panel-head"><div><h2>ค้นหาผลของฉัน</h2><p>กรอกเลข BIB ให้ตรงกับป้ายของนักวิ่ง</p></div></div>
+      <form id="lookupForm" class="rr-lookup-form">
+        <label>เลข BIB<input id="bibInput" required placeholder="เช่น T25-001" autocomplete="off"></label>
+        <button class="rr-btn rr-btn-primary" type="submit">ค้นหาผล</button>
+      </form>
+      <p id="lookupMessage" class="rr-message"></p>
+
+      <article id="runnerResult" class="rr-runner-result" hidden>
+        <div class="rr-profile">
+          <div><span id="runnerStatus" class="rr-status">—</span><h2 id="runnerName">—</h2><p><strong id="runnerBib">—</strong> · <span id="runnerCategory">—</span> · รุ่น <span id="runnerAge">—</span></p></div>
+          <div class="rr-rank-medal"><small>ลำดับรวม</small><strong id="runnerOverallRank">—</strong></div>
+        </div>
+        <div class="rr-stat-grid">
+          <div><small>เวลาเริ่ม</small><strong id="runnerStart">—</strong></div>
+          <div><small>เวลาเข้าเส้น</small><strong id="runnerFinish">—</strong></div>
+          <div><small>เวลาที่ใช้</small><strong id="runnerElapsed">—</strong></div>
+          <div><small>ลำดับประเภท</small><strong id="runnerCategoryRank">—</strong></div>
+          <div><small>ลำดับรุ่น</small><strong id="runnerAgeRank">—</strong></div>
+        </div>
+        <div class="rr-share-row"><button id="shareResult" type="button" class="rr-btn rr-btn-secondary">แชร์ผลของฉัน</button></div>
+        <div class="rr-table-card">
+          <div class="rr-table-title"><strong>ประวัติผ่านจุด</strong><span id="runnerEventName">—</span></div>
+          <div class="rr-table-wrap"><table><thead><tr><th>ลำดับ</th><th>จุด</th><th>ประเภทจุด</th><th>ระยะสะสม</th><th>เวลา</th></tr></thead><tbody id="checkpointRows"></tbody></table></div>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <footer class="rr-footer">
+    <strong>RACE RESULTS</strong>
+    <span>หน้านี้แสดงเฉพาะข้อมูลผลการแข่งขันที่เปิดเผยต่อสาธารณะ</span>
+  </footer>
+
+  <div id="loading" class="rr-loading" hidden><span></span></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/config.js?v=7.2.0"></script>
+  <script src="app.js?v=7.2.0"></script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+{
+  "js_syntax": {
+    "assets/js/core.js": {
+      "ok": true,
+      "error": ""
+    },
+    "assets/js/idb.js": {
+      "ok": true,
+      "error": ""
+    },
+    "assets/js/login.js": {
+      "ok": true,
+      "error": ""
+    },
+    "assets/js/admin.js": {
+      "ok": true,
+      "error": ""
+    },
+    "assets/js/scanner.js": {
+      "ok": true,
+      "error": ""
+    },
+    "assets/js/pending.js": {
+      "ok": true,
+      "error": ""
+    },
+    "runner-results/app.js": {
+      "ok": true,
+      "error": ""
+    }
+  },
+  "portal_no_team_words": true,
+  "sql_present": true,
+  "manual_docx": true
+}
