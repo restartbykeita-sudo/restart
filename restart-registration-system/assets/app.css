@@ -10,3 +10,10 @@ label{display:grid;gap:7px;font-size:13px;font-weight:650;color:#4b5060}input,se
 .hero{padding:28px;border-radius:26px;color:var(--hero-text,#fff);background:linear-gradient(135deg,var(--hero-primary,#6946ff),var(--hero-secondary,#e45e96));box-shadow:var(--shadow)}.hero img.logo{max-height:72px;max-width:180px;object-fit:contain}.hero img.banner{width:100%;max-height:320px;object-fit:cover;border-radius:18px;margin-top:16px}.stepper{display:flex;gap:8px;margin:18px 0;overflow:auto}.step{white-space:nowrap;padding:8px 12px;border-radius:999px;background:#eeeef4;color:#676b77}.step.active{background:var(--primary);color:white}.price{font-size:28px;font-weight:850}.bene{border:1px dashed #cfd3df;border-radius:14px;padding:14px;margin-top:10px}.paybox{border:1px solid var(--line);border-radius:16px;padding:16px}.copy{display:inline-flex;align-items:center;gap:6px}
 @media(max-width:980px){.rr-grid{grid-template-columns:1fr}.rr-side{position:static}.toggle-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.grid4{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:680px){.rr-wrap{padding:14px}.rr-top{padding:12px 14px}.grid2,.grid3,.grid4,.toggle-grid{grid-template-columns:1fr}.rr-card{padding:16px}.hero{padding:20px}.rr-top .hide-mobile{display:none}}
+
+.rr-main-logo{display:block;object-fit:contain;object-position:center;background:transparent}
+.rr-main-logo.header{width:58px;height:44px;flex:0 0 auto}
+.rr-main-logo.login{width:150px;max-width:45vw;height:auto;margin:0 auto 18px}
+.rr-main-logo.landing{width:min(280px,72vw);height:auto;margin:0 auto 18px;filter:drop-shadow(0 10px 24px rgba(0,0,0,.18))}
+.rr-brand.with-logo{gap:14px}
+@media(max-width:680px){.rr-main-logo.header{width:48px;height:38px}.rr-main-logo.landing{width:min(230px,72vw)}}
