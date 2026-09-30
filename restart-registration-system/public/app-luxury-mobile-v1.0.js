@@ -12,8 +12,27 @@ function applyUiTheme(){
   if(label)label.textContent=dark?'Light':'Dark';
 }
 function initThemeToggle(){
+  let b=document.getElementById('themeToggle');
+  if(!b){
+    const top=document.querySelector('.rr-top');
+    if(top){
+      let actions=top.querySelector('.rr-public-actions');
+      if(!actions){
+        const lang=document.getElementById('langbar');
+        actions=document.createElement('div');
+        actions.className='rr-public-actions';
+        if(lang&&lang.parentNode===top){top.insertBefore(actions,lang);actions.appendChild(lang)}
+        else top.appendChild(actions);
+      }
+      b=document.createElement('button');
+      b.id='themeToggle';b.className='theme-toggle';b.type='button';
+      b.setAttribute('aria-label','เปลี่ยนโหมดสี');
+      b.innerHTML='<span class="theme-icon" aria-hidden="true">☾</span><span class="theme-label">Dark</span>';
+      actions.insertBefore(b,actions.firstChild);
+    }
+  }
   applyUiTheme();
-  const b=document.getElementById('themeToggle');
+  b=document.getElementById('themeToggle');
   if(b)b.onclick=()=>{
     uiTheme=uiTheme==='dark'?'light':'dark';
     localStorage.setItem('restart_ui_theme',uiTheme);
