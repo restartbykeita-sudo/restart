@@ -33,3 +33,217 @@ label{display:grid;gap:7px;font-size:13px;font-weight:650;color:#4b5060}input,se
 }
 
 img.rr-main-logo{background:transparent}
+/* === Public Registration Luxury UI v1.0 === */
+body.public-registration{
+  --bg:#f3f1ee;
+  --surface:rgba(255,255,255,.90);
+  --surface-solid:#ffffff;
+  --surface-2:#faf8f5;
+  --text:#191817;
+  --muted:#77716b;
+  --line:rgba(55,45,38,.11);
+  --field:#fff;
+  --field-line:rgba(55,45,38,.16);
+  --focus:color-mix(in srgb,var(--primary) 24%,transparent);
+  --lux-shadow:0 24px 70px rgba(38,29,24,.10);
+  --lux-shadow-soft:0 12px 34px rgba(38,29,24,.07);
+  min-height:100vh;
+  background:
+    radial-gradient(circle at 10% -10%,color-mix(in srgb,var(--primary) 12%,transparent),transparent 34rem),
+    radial-gradient(circle at 100% 16%,rgba(233,109,150,.10),transparent 30rem),
+    linear-gradient(180deg,#faf9f7 0%,var(--bg) 42%,#efede9 100%);
+}
+html[data-ui-theme="dark"]{color-scheme:dark}
+html[data-ui-theme="dark"] body.public-registration{
+  --bg:#0b0c10;
+  --surface:rgba(20,21,27,.88);
+  --surface-solid:#15161c;
+  --surface-2:#1b1c23;
+  --text:#f5f2ed;
+  --muted:#aaa6a0;
+  --line:rgba(255,255,255,.10);
+  --field:#111218;
+  --field-line:rgba(255,255,255,.14);
+  --focus:color-mix(in srgb,var(--primary) 34%,transparent);
+  --lux-shadow:0 28px 78px rgba(0,0,0,.36);
+  --lux-shadow-soft:0 14px 36px rgba(0,0,0,.24);
+  background:
+    radial-gradient(circle at 12% -8%,color-mix(in srgb,var(--primary) 18%,transparent),transparent 32rem),
+    radial-gradient(circle at 100% 12%,rgba(233,109,150,.12),transparent 30rem),
+    linear-gradient(180deg,#101116 0%,#0b0c10 48%,#08090c 100%);
+}
+.public-registration .rr-shell{min-height:100dvh}
+.public-registration .rr-top{
+  background:color-mix(in srgb,var(--surface-solid) 82%,transparent);
+  border-bottom:1px solid var(--line);
+  backdrop-filter:blur(22px) saturate(1.25);
+  -webkit-backdrop-filter:blur(22px) saturate(1.25);
+  padding:11px 22px;
+  box-shadow:0 1px 0 rgba(255,255,255,.22);
+}
+html[data-ui-theme="dark"] .public-registration .rr-top{box-shadow:0 1px 0 rgba(255,255,255,.03)}
+.public-registration .rr-brand.with-logo{gap:12px;min-width:0}
+.public-registration .rr-brand h1{letter-spacing:.12em;font-size:16px;font-weight:850}
+.public-registration .rr-brand small{font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.public-registration .rr-main-logo.header{width:72px;max-width:18vw}
+.public-registration .rr-public-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;min-width:0}
+.public-registration .theme-toggle{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  min-height:38px;padding:8px 12px;border:1px solid var(--line);border-radius:999px;
+  background:var(--surface);color:var(--text);font-weight:750;font-size:12px;
+  box-shadow:var(--lux-shadow-soft);transition:.2s ease
+}
+.public-registration .theme-toggle:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--primary) 35%,var(--line))}
+.public-registration .theme-icon{font-size:16px;line-height:1}
+.public-registration .langbar{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding:2px}
+.public-registration .langbar::-webkit-scrollbar{display:none}
+.public-registration .langbar button{
+  flex:0 0 auto;border-color:var(--line);background:var(--surface);color:var(--muted);
+  min-height:36px;padding:7px 10px;box-shadow:none;font-size:11px;font-weight:800;letter-spacing:.04em
+}
+.public-registration .langbar button.active{
+  background:var(--text);color:var(--surface-solid);border-color:var(--text)
+}
+html[data-ui-theme="dark"] .public-registration .langbar button.active{background:#f4f1ec;color:#111218;border-color:#f4f1ec}
+.public-registration .rr-wrap{max-width:920px;padding:28px 22px 64px}
+.public-registration .hero{
+  position:relative;overflow:hidden;padding:34px;border-radius:30px;margin-bottom:22px;
+  box-shadow:0 28px 80px color-mix(in srgb,var(--hero-primary,#6946ff) 20%,rgba(0,0,0,.18));
+  border:1px solid rgba(255,255,255,.22);
+}
+.public-registration .hero::before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(circle at 88% 4%,rgba(255,255,255,.22),transparent 28%),
+    linear-gradient(180deg,rgba(255,255,255,.07),transparent 42%,rgba(0,0,0,.10));
+}
+.public-registration .hero>*{position:relative;z-index:1}
+.public-registration .hero h1{font-size:clamp(28px,5vw,46px);line-height:1.04;margin:14px 0 10px;letter-spacing:-.035em}
+.public-registration .hero p{max-width:700px;line-height:1.7;margin:0 0 12px;opacity:.92}
+.public-registration .hero img.logo{max-height:92px;max-width:220px;filter:drop-shadow(0 8px 20px rgba(0,0,0,.16))}
+.public-registration .hero img.banner{
+  max-height:none;aspect-ratio:16/7;object-fit:cover;border-radius:22px;margin-top:22px;
+  border:1px solid rgba(255,255,255,.24);box-shadow:0 20px 50px rgba(0,0,0,.20)
+}
+.public-registration #regForm{counter-reset:rrsection}
+.public-registration #regForm>.rr-card{
+  position:relative;padding:26px;margin-bottom:16px;border:1px solid var(--line);
+  background:var(--surface);border-radius:24px;box-shadow:var(--lux-shadow-soft);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease
+}
+.public-registration #regForm>.rr-card:not(:last-child):hover{
+  border-color:color-mix(in srgb,var(--primary) 22%,var(--line));
+  box-shadow:var(--lux-shadow)
+}
+.public-registration #regForm>.rr-card>h3{
+  display:flex;align-items:center;gap:11px;margin:0 0 20px;
+  font-size:18px;letter-spacing:-.01em;color:var(--text)
+}
+.public-registration #regForm>.rr-card>h3::before{
+  counter-increment:rrsection;content:counter(rrsection,decimal-leading-zero);
+  width:36px;height:36px;flex:0 0 36px;display:grid;place-items:center;border-radius:12px;
+  background:linear-gradient(135deg,var(--primary),color-mix(in srgb,var(--primary) 60%,#ef7aa7));
+  color:white;font-size:11px;font-weight:900;letter-spacing:.08em;
+  box-shadow:0 9px 22px color-mix(in srgb,var(--primary) 24%,transparent)
+}
+.public-registration label{gap:8px;color:var(--muted);font-size:12px;font-weight:760;letter-spacing:.015em}
+.public-registration input,
+.public-registration select,
+.public-registration textarea{
+  min-height:48px;border:1px solid var(--field-line);border-radius:14px;padding:12px 14px;
+  background:var(--field);color:var(--text);box-shadow:inset 0 1px 0 rgba(255,255,255,.18);
+  transition:border-color .18s ease,box-shadow .18s ease,background .18s ease
+}
+.public-registration textarea{min-height:104px;resize:vertical;line-height:1.5}
+.public-registration input::placeholder,.public-registration textarea::placeholder{color:color-mix(in srgb,var(--muted) 72%,transparent)}
+.public-registration input:focus,
+.public-registration select:focus,
+.public-registration textarea:focus{
+  border-color:color-mix(in srgb,var(--primary) 70%,white);
+  box-shadow:0 0 0 4px var(--focus);background:var(--surface-solid)
+}
+.public-registration input[readonly]{background:var(--surface-2);color:var(--muted)}
+.public-registration input[type="radio"],
+.public-registration input[type="checkbox"]{min-height:0;width:20px;height:20px;accent-color:var(--primary);box-shadow:none}
+.public-registration .price{
+  width:max-content;max-width:100%;font-size:clamp(30px,6vw,42px);font-weight:900;letter-spacing:-.045em;
+  color:var(--text);padding:8px 0 14px
+}
+.public-registration .paybox{
+  margin-top:10px;border:1px solid var(--line);background:var(--surface-2);border-radius:18px;padding:18px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.2)
+}
+.public-registration .paybox canvas,
+.public-registration .paybox img{border-radius:10px;background:#fff;padding:7px;max-width:100%}
+.public-registration .bene{
+  border:1px solid color-mix(in srgb,var(--primary) 25%,var(--line));
+  border-radius:18px;padding:18px;margin-top:14px;background:var(--surface-2)
+}
+.public-registration .btn{
+  min-height:44px;border-radius:14px;padding:11px 16px;font-weight:820;transition:.18s ease
+}
+.public-registration .btn:hover{transform:translateY(-1px)}
+.public-registration .btn.primary{
+  background:linear-gradient(135deg,var(--primary),color-mix(in srgb,var(--primary) 72%,#ef6e9f));
+  box-shadow:0 12px 28px color-mix(in srgb,var(--primary) 24%,transparent)
+}
+.public-registration .btn.soft{
+  background:color-mix(in srgb,var(--primary) 10%,var(--surface-solid));
+  color:var(--primary);border:1px solid color-mix(in srgb,var(--primary) 20%,var(--line))
+}
+.public-registration #regForm>.rr-card:last-child{
+  padding:12px;background:color-mix(in srgb,var(--surface-solid) 86%,transparent)
+}
+.public-registration #regForm>.rr-card:last-child .btn.primary{
+  width:100%!important;min-height:54px;padding:15px 18px!important;border-radius:16px;font-size:15px;letter-spacing:.02em
+}
+.public-registration .badge{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.public-registration .muted{color:var(--muted)}
+html[data-ui-theme="dark"] .swal2-popup{background:#17181f!important;color:#f5f2ed!important}
+html[data-ui-theme="dark"] .swal2-title,
+html[data-ui-theme="dark"] .swal2-html-container{color:#f5f2ed!important}
+html[data-ui-theme="dark"] .swal2-input,
+html[data-ui-theme="dark"] .swal2-select,
+html[data-ui-theme="dark"] .swal2-textarea{background:#111218!important;color:#f5f2ed!important;border-color:rgba(255,255,255,.14)!important}
+@media(max-width:680px){
+  .public-registration .rr-top{padding:9px 12px;gap:8px;flex-wrap:wrap}
+  .public-registration .rr-main-logo.header{width:60px;max-width:none}
+  .public-registration .rr-brand{gap:8px}
+  .public-registration .rr-brand h1{font-size:14px}
+  .public-registration .rr-brand small{font-size:9px}
+  .public-registration .rr-public-actions{gap:6px;max-width:62%;margin-left:auto}
+  .public-registration .theme-toggle{padding:7px 9px;min-height:34px}
+  .public-registration .theme-label{display:none}
+  .public-registration .langbar{max-width:calc(100vw - 122px)}
+  .public-registration .langbar button{min-height:32px;padding:6px 8px;font-size:10px}
+  .public-registration .rr-wrap{padding:14px 12px calc(92px + env(safe-area-inset-bottom))}
+  .public-registration .hero{padding:22px 18px;border-radius:22px;margin-bottom:14px}
+  .public-registration .hero h1{font-size:29px}
+  .public-registration .hero p{font-size:13px}
+  .public-registration .hero img.logo{max-height:68px;max-width:160px}
+  .public-registration .hero img.banner{border-radius:15px;margin-top:16px;aspect-ratio:16/9}
+  .public-registration #regForm>.rr-card{padding:18px 15px;border-radius:20px;margin-bottom:12px}
+  .public-registration #regForm>.rr-card>h3{font-size:16px;margin-bottom:16px}
+  .public-registration #regForm>.rr-card>h3::before{width:32px;height:32px;flex-basis:32px;border-radius:10px}
+  .public-registration input,
+  .public-registration select,
+  .public-registration textarea{font-size:16px;min-height:50px;border-radius:13px}
+  .public-registration .grid2,
+  .public-registration .grid3,
+  .public-registration .grid4{grid-template-columns:1fr;gap:12px}
+  .public-registration .row{gap:10px}
+  .public-registration .paybox{padding:14px;border-radius:16px}
+  .public-registration .bene{padding:14px}
+  .public-registration #regForm>.rr-card:last-child{
+    position:sticky;bottom:calc(10px + env(safe-area-inset-bottom));z-index:15;
+    border-color:color-mix(in srgb,var(--primary) 20%,var(--line));
+    box-shadow:0 18px 45px rgba(0,0,0,.20);
+    backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)
+  }
+}
+@media(max-width:420px){
+  .public-registration .rr-brand>div{display:none}
+  .public-registration .rr-public-actions{max-width:calc(100% - 70px);flex:1}
+  .public-registration .langbar{max-width:none;flex:1}
+}
