@@ -1,0 +1,1 @@
+ฐานข้อมูลระบบนี้ใช้ตาราง prefix restart_ ใน Supabase project เดิม เพื่อแยก namespace จากระบบอื่น\n
