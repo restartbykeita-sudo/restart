@@ -247,3 +247,17 @@ html[data-ui-theme="dark"] .swal2-textarea{background:#111218!important;color:#f
   .public-registration .rr-public-actions{max-width:calc(100% - 70px);flex:1}
   .public-registration .langbar{max-width:none;flex:1}
 }
+
+/* Public touch target reinforcement v1.1 */
+.public-registration input,
+.public-registration select,
+.public-registration textarea{min-height:52px;font-size:15px}
+.public-registration .btn{min-height:48px}
+.public-registration .theme-toggle{min-width:76px}
+@media(max-width:680px){
+  .public-registration input,
+  .public-registration select{min-height:54px;font-size:16px;padding:13px 14px}
+  .public-registration textarea{min-height:118px;font-size:16px}
+  .public-registration .btn{min-height:50px}
+  .public-registration #regForm>.rr-card:last-child .btn.primary{min-height:58px;font-size:16px}
+}
