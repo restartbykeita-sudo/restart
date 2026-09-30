@@ -11,15 +11,44 @@ label{display:grid;gap:7px;font-size:13px;font-weight:650;color:#4b5060}input,se
 @media(max-width:980px){.rr-grid{grid-template-columns:1fr}.rr-side{position:static}.toggle-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.grid4{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:680px){.rr-wrap{padding:14px}.rr-top{padding:12px 14px}.grid2,.grid3,.grid4,.toggle-grid{grid-template-columns:1fr}.rr-card{padding:16px}.hero{padding:20px}.rr-top .hide-mobile{display:none}}
 
-.rr-main-logo{display:block;object-fit:contain;object-position:center;background:transparent}
-.rr-main-logo.header{width:58px;height:44px;flex:0 0 auto}
-.rr-main-logo.login{width:150px;max-width:45vw;height:auto;margin:0 auto 18px}
-.rr-main-logo.landing{width:min(280px,72vw);height:auto;margin:0 auto 18px;filter:drop-shadow(0 10px 24px rgba(0,0,0,.18))}
+.rr-main-logo{
+  display:block;
+  width:auto;
+  height:auto;
+  max-width:100%;
+  max-height:none;
+  object-fit:contain;
+  object-position:center;
+  background:transparent;
+  overflow:visible;
+  flex-shrink:0
+}
+.rr-main-logo.header{
+  width:110px;
+  height:auto;
+  max-height:none;
+  object-fit:contain
+}
+.rr-main-logo.login{
+  width:190px;
+  height:auto;
+  max-width:70vw;
+  max-height:none;
+  margin:0 auto 18px;
+  object-fit:contain
+}
+.rr-main-logo.landing{
+  width:min(300px,78vw);
+  height:auto;
+  max-height:none;
+  margin:0 auto 18px;
+  object-fit:contain;
+  filter:drop-shadow(0 10px 24px rgba(0,0,0,.18))
+}
 .rr-brand.with-logo{gap:14px}
-@media(max-width:680px){.rr-main-logo.header{width:48px;height:38px}.rr-main-logo.landing{width:min(230px,72vw)}}
+@media(max-width:680px){
+  .rr-main-logo.header{width:82px;height:auto;max-height:none}
+  .rr-main-logo.landing{width:min(250px,78vw);height:auto;max-height:none}
+}
 
-span.rr-main-logo{background:transparent url("restart-main-logo.png?v=20261001-2") center/contain no-repeat}
-span.rr-main-logo.header{width:58px;height:44px}
-span.rr-main-logo.login{width:150px;max-width:45vw;aspect-ratio:420/318;margin:0 auto 18px}
-span.rr-main-logo.landing{width:min(280px,72vw);aspect-ratio:420/318;margin:0 auto 18px;filter:drop-shadow(0 10px 24px rgba(0,0,0,.18))}
 img.rr-main-logo{background:transparent}
