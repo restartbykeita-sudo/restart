@@ -1,0 +1,5 @@
+const db=supabase.createClient(RESTART_REG_CONFIG.SUPABASE_URL,RESTART_REG_CONFIG.SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
+const form=document.getElementById('loginForm');
+if(new URLSearchParams(location.search).get('denied')) document.getElementById('note').textContent='บัญชีนี้ยังไม่มีสิทธิ์ Admin สำหรับระบบรับสมัคร';
+(async()=>{const{data}=await db.auth.getSession();if(data.session){const{data:ok}=await db.rpc('restart_admin_session_status');if(ok)location.replace('index.html')}})();
+form.onsubmit=async e=>{e.preventDefault();Swal.fire({title:'กำลังเข้าสู่ระบบ…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});const{error}=await db.auth.signInWithPassword({email:email.value.trim(),password:password.value});if(error)return Swal.fire('เข้าสู่ระบบไม่สำเร็จ',error.message,'error');const{data:ok,error:ce}=await db.rpc('restart_admin_session_status');if(ce||!ok){await db.auth.signOut();return Swal.fire('ไม่มีสิทธิ์','บัญชีนี้ยังไม่ได้รับสิทธิ์ Admin สำหรับระบบรับสมัคร','error')}location.replace('index.html')};
