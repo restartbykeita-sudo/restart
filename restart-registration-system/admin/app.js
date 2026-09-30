@@ -8,14 +8,87 @@ function t(v,l='th'){return typeof v==='object'?(v?.[l]||v?.th||v?.en||''):v||''
 function money(v){return Number(v||0).toLocaleString('th-TH',{minimumFractionDigits:0,maximumFractionDigits:2})}
 function card(title,body,actions=''){return '<section class="rr-card"><div class="row space"><div><h2>'+title+'</h2></div><div class="row">'+actions+'</div></div>'+body+'</section>'}
 async function init(){await App.init();document.getElementById('logoutBtn').onclick=()=>App.logout();document.getElementById('newEventBtn').onclick=createEvent;document.getElementById('eventSelect').onchange=e=>selectEvent(e.target.value);document.getElementById('nav').onclick=e=>{const b=e.target.closest('button[data-tab]');if(!b)return;state.tab=b.dataset.tab;document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x===b));render()};await loadEvents();}
-async function loadEvents(){const{data,error}=await db.from('restart_events').select('*').order('created_at',{ascending:false});if(error){Swal.fire('ไม่มีสิทธิ์เข้าถึง',error.message,'error');return}state.events=data||[];const sel=document.getElementById('eventSelect');sel.innerHTML='<option value="">-- เลือก Event --</option>'+state.events.map(e=>'<option value="'+e.id+'">'+esc(e.name)+'</option>').join('');if(state.events[0]){sel.value=state.events[0].id;await selectEvent(state.events[0].id)}else render();}
+async function loadEvents(preferredId=null){const{data,error}=await db.from('restart_events').select('*').order('created_at',{ascending:false});if(error){Swal.fire('ไม่มีสิทธิ์เข้าถึง',error.message,'error');return}state.events=data||[];const sel=document.getElementById('eventSelect');sel.innerHTML='<option value="">-- เลือก Event --</option>'+state.events.map(e=>'<option value="'+e.id+'">'+esc(e.name)+'</option>').join('');const next=(preferredId&&state.events.find(e=>e.id===preferredId))||state.events[0]||null;state.event=next;if(next){sel.value=next.id;render()}else{sel.value='';document.getElementById('content').innerHTML='<section class="rr-card rr-empty">ยังไม่มี Event · กด “สร้าง Event ใหม่” เพื่อเริ่มต้น</section>'}}
 async function selectEvent(id){state.event=state.events.find(x=>x.id===id)||null;render()}
 async function createEvent(){const r=await Swal.fire({title:'สร้าง Event ใหม่',html:'<input id="e-name" class="swal2-input" placeholder="ชื่อ Event"><input id="e-slug" class="swal2-input" placeholder="slug เช่น restart-phuket-2027"><input id="e-date" type="date" class="swal2-input">',showCancelButton:true,confirmButtonText:'สร้าง',preConfirm:()=>({name:document.getElementById('e-name').value.trim(),slug:document.getElementById('e-slug').value.trim(),date:document.getElementById('e-date').value})});if(!r.isConfirmed)return;const x=r.value;if(!x.name||!x.slug)return Swal.fire('ข้อมูลไม่ครบ','','warning');const{error}=await db.from('restart_events').insert({name:x.name,slug:x.slug,event_date_start:x.date||null,status:'DRAFT'});if(error)return Swal.fire('สร้างไม่สำเร็จ',error.message,'error');await loadEvents();Swal.fire({icon:'success',title:'สร้าง Event แล้ว',timer:1200,showConfirmButton:false})}
 function needEvent(){if(!state.event){document.getElementById('content').innerHTML='<section class="rr-card rr-empty">สร้างหรือเลือก Event ก่อนเริ่มตั้งค่า</section>';return false}return true}
 function render(){if(!needEvent())return;({overview:renderOverview,features:renderFeatures,categories:renderCategories,packages:renderPackages,installments:renderInstallments,payments:renderPayments,form:renderForm,theme:renderTheme,registrations:renderRegistrations}[state.tab]||renderOverview)()}
-function renderOverview(){const e=state.event;document.getElementById('content').innerHTML=card('ตั้งค่า Event','<div class="grid2"><label>ชื่อ Event<input id="evName" value="'+esc(e.name)+'"></label><label>Slug<input id="evSlug" value="'+esc(e.slug)+'"></label><label>วันที่เริ่ม<input id="evStart" type="date" value="'+(e.event_date_start||'')+'"></label><label>วันที่สิ้นสุด<input id="evEnd" type="date" value="'+(e.event_date_end||'')+'"></label><label>สถานที่<input id="evLoc" value="'+esc(e.location_name||'')+'"></label><label>จำนวนรับสูงสุด<input id="evCap" type="number" value="'+(e.capacity??'')+'"></label><label>เปิดรับสมัคร<input id="evOpen" type="datetime-local" value="'+localDT(e.registration_opens_at)+'"></label><label>ปิดรับสมัคร<input id="evClose" type="datetime-local" value="'+localDT(e.registration_closes_at)+'"></label><label>สถานะ<select id="evStatus">'+['DRAFT','PUBLISHED','OPEN','CLOSED','ARCHIVED'].map(s=>'<option '+(e.status===s?'selected':'')+'>'+s+'</option>').join('')+'</select></label><label>ภาษาเริ่มต้น<select id="evLang">'+langs.map(l=>'<option '+(e.default_language===l?'selected':'')+'>'+l+'</option>').join('')+'</select></label></div><div style="margin-top:14px"><label>รายละเอียด<textarea id="evDesc" rows="4">'+esc(e.description||'')+'</textarea></label></div>','<a class="btn soft" target="_blank" href="../public/?event='+encodeURIComponent(e.slug)+'">Preview</a><button class="btn primary" onclick="saveOverview()">บันทึก</button>')}
+function renderOverview(){const e=state.event;document.getElementById('content').innerHTML=card('แก้ไข Event','<p class="muted">แก้ไขรายละเอียด Event ได้ทุกครั้ง แล้วกด “บันทึกการแก้ไข”</p><div class="grid2"><label>ชื่อ Event<input id="evName" value="'+esc(e.name)+'"></label><label>Slug<input id="evSlug" value="'+esc(e.slug)+'"></label><label>วันที่เริ่ม<input id="evStart" type="date" value="'+(e.event_date_start||'')+'"></label><label>วันที่สิ้นสุด<input id="evEnd" type="date" value="'+(e.event_date_end||'')+'"></label><label>สถานที่<input id="evLoc" value="'+esc(e.location_name||'')+'"></label><label>จำนวนรับสูงสุด<input id="evCap" type="number" value="'+(e.capacity??'')+'"></label><label>เปิดรับสมัคร<input id="evOpen" type="datetime-local" value="'+localDT(e.registration_opens_at)+'"></label><label>ปิดรับสมัคร<input id="evClose" type="datetime-local" value="'+localDT(e.registration_closes_at)+'"></label><label>สถานะ<select id="evStatus">'+['DRAFT','PUBLISHED','OPEN','CLOSED','ARCHIVED'].map(s=>'<option '+(e.status===s?'selected':'')+'>'+s+'</option>').join('')+'</select></label><label>ภาษาเริ่มต้น<select id="evLang">'+langs.map(l=>'<option '+(e.default_language===l?'selected':'')+'>'+l+'</option>').join('')+'</select></label></div><div style="margin-top:14px"><label>รายละเอียด<textarea id="evDesc" rows="4">'+esc(e.description||'')+'</textarea></label></div>','<a class="btn soft" target="_blank" href="../public/?event='+encodeURIComponent(e.slug)+'">Preview</a><button class="btn primary" onclick="saveOverview()">บันทึกการแก้ไข</button><button class="btn danger" onclick="deleteEvent()">ลบ Event</button>')}
 function localDT(v){if(!v)return'';const d=new Date(v);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16)}
-async function saveOverview(){const u={name:evName.value.trim(),slug:evSlug.value.trim(),event_date_start:evStart.value||null,event_date_end:evEnd.value||null,location_name:evLoc.value.trim()||null,capacity:evCap.value?Number(evCap.value):null,registration_opens_at:evOpen.value?new Date(evOpen.value).toISOString():null,registration_closes_at:evClose.value?new Date(evClose.value).toISOString():null,status:evStatus.value,default_language:evLang.value,description:evDesc.value.trim()||null};const{data,error}=await db.from('restart_events').update(u).eq('id',state.event.id).select().single();if(error)return Swal.fire('บันทึกไม่สำเร็จ',error.message,'error');state.event=data;state.events=state.events.map(x=>x.id===data.id?data:x);Swal.fire({icon:'success',title:'บันทึกแล้ว',timer:1000,showConfirmButton:false})}
+async function saveOverview(){
+  const name=evName.value.trim(),slug=evSlug.value.trim();
+  if(!name||!slug)return Swal.fire('ข้อมูลไม่ครบ','กรุณาระบุชื่อ Event และ Slug','warning');
+  if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))return Swal.fire('Slug ไม่ถูกต้อง','ใช้เฉพาะ a-z, 0-9 และขีดกลาง (-) เช่น restart-phuket-2027','warning');
+  if(evStart.value&&evEnd.value&&evEnd.value<evStart.value)return Swal.fire('วันที่ไม่ถูกต้อง','วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่ม','warning');
+  if(evOpen.value&&evClose.value&&new Date(evClose.value)<=new Date(evOpen.value))return Swal.fire('ช่วงรับสมัครไม่ถูกต้อง','เวลาปิดรับสมัครต้องอยู่หลังเวลาเปิดรับสมัคร','warning');
+  if(evCap.value&&Number(evCap.value)<1)return Swal.fire('จำนวนรับไม่ถูกต้อง','จำนวนรับสูงสุดต้องมากกว่า 0','warning');
+  const u={name,slug,event_date_start:evStart.value||null,event_date_end:evEnd.value||null,location_name:evLoc.value.trim()||null,capacity:evCap.value?Number(evCap.value):null,registration_opens_at:evOpen.value?new Date(evOpen.value).toISOString():null,registration_closes_at:evClose.value?new Date(evClose.value).toISOString():null,status:evStatus.value,default_language:evLang.value,description:evDesc.value.trim()||null};
+  Swal.fire({title:'กำลังบันทึกการแก้ไข…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
+  const{data,error}=await db.from('restart_events').update(u).eq('id',state.event.id).select().single();
+  if(error)return Swal.fire('บันทึกไม่สำเร็จ',error.message,'error');
+  state.event=data;state.events=state.events.map(x=>x.id===data.id?data:x);
+  const sel=document.getElementById('eventSelect'),opt=sel.querySelector('option[value="'+data.id+'"]');if(opt)opt.textContent=data.name;
+  Swal.fire({icon:'success',title:'บันทึกการแก้ไขแล้ว',timer:1100,showConfirmButton:false});
+  renderOverview();
+}
+
+async function eventDeleteSummary(eventId){
+  const queries=[
+    db.from('restart_registrations').select('id',{count:'exact',head:true}).eq('event_id',eventId),
+    db.from('restart_participants').select('id',{count:'exact',head:true}).eq('event_id',eventId),
+    db.from('restart_race_categories').select('id',{count:'exact',head:true}).eq('event_id',eventId),
+    db.from('restart_packages').select('id',{count:'exact',head:true}).eq('event_id',eventId),
+    db.from('restart_form_fields').select('id',{count:'exact',head:true}).eq('event_id',eventId)
+  ];
+  const [regs,participants,categories,packages,fields]=await Promise.all(queries);
+  const firstError=[regs,participants,categories,packages,fields].find(x=>x.error)?.error;
+  if(firstError)throw firstError;
+  return{registrations:regs.count||0,participants:participants.count||0,categories:categories.count||0,packages:packages.count||0,fields:fields.count||0};
+}
+async function collectEventSlipPaths(eventId){
+  const{data,error}=await db.from('restart_registrations').select('restart_payment_schedule(restart_payment_attempts(slip_path))').eq('event_id',eventId);
+  if(error)return[];
+  const out=[];(data||[]).forEach(r=>(r.restart_payment_schedule||[]).forEach(s=>(s.restart_payment_attempts||[]).forEach(a=>{if(a.slip_path)out.push(a.slip_path)})));
+  return[...new Set(out)];
+}
+async function cleanupEventStorage(eventId,slipPaths=[]){
+  const warnings=[];
+  try{
+    const bucket=db.storage.from('restart-event-media');
+    const{data,error}=await bucket.list(eventId,{limit:1000,sortBy:{column:'name',order:'asc'}});
+    if(error)warnings.push('Logo/Banner: '+error.message);
+    else{
+      const paths=(data||[]).filter(x=>x.name&&x.name!=='.emptyFolderPlaceholder').map(x=>eventId+'/'+x.name);
+      if(paths.length){const{error:rmError}=await bucket.remove(paths);if(rmError)warnings.push('Logo/Banner: '+rmError.message)}
+    }
+  }catch(e){warnings.push('Logo/Banner: '+(e.message||e))}
+  try{
+    if(slipPaths.length){const{error}=await db.storage.from('restart-slips').remove(slipPaths);if(error)warnings.push('สลิป: '+error.message)}
+  }catch(e){warnings.push('สลิป: '+(e.message||e))}
+  return warnings;
+}
+async function deleteEvent(){
+  const e=state.event;if(!e)return;
+  let summary;
+  try{
+    Swal.fire({title:'กำลังตรวจข้อมูล Event…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
+    summary=await eventDeleteSummary(e.id);
+  }catch(err){return Swal.fire('ตรวจข้อมูลไม่สำเร็จ',err.message||String(err),'error')}
+  const html='<div style="text-align:left;line-height:1.7"><b>การลบนี้ถาวรและกู้คืนไม่ได้</b><br>Event: <b>'+esc(e.name)+'</b><hr style="border:0;border-top:1px solid #eee"><div>ใบสมัคร: <b>'+summary.registrations+'</b></div><div>ผู้เข้าแข่งขัน: <b>'+summary.participants+'</b></div><div>รุ่นการแข่งขัน: <b>'+summary.categories+'</b></div><div>Package: <b>'+summary.packages+'</b></div><div>Custom Field: <b>'+summary.fields+'</b></div><br><span class="muted">ข้อมูลที่ผูกกับ Event เช่น แผนผ่อน ช่องทางชำระเงิน ผู้รับผลประโยชน์ และรายการชำระเงิน จะถูกลบตามด้วย</span><br><br>พิมพ์ชื่อ Event เพื่อยืนยัน:</div>';
+  const r=await Swal.fire({title:'ลบ Event?',html,input:'text',inputPlaceholder:e.name,icon:'warning',showCancelButton:true,confirmButtonText:'ลบ Event ถาวร',cancelButtonText:'ยกเลิก',confirmButtonColor:'#d92d20',reverseButtons:true,preConfirm:v=>{if(String(v||'').trim()!==e.name)return Swal.showValidationMessage('กรุณาพิมพ์ชื่อ Event ให้ตรง: '+e.name);return v}});
+  if(!r.isConfirmed)return;
+  Swal.fire({title:'กำลังลบ Event…',html:'กำลังลบข้อมูลที่เกี่ยวข้อง กรุณาอย่าปิดหน้านี้',allowOutsideClick:false,allowEscapeKey:false,didOpen:()=>Swal.showLoading()});
+  const slipPaths=await collectEventSlipPaths(e.id);
+  const{data,error}=await db.from('restart_events').delete().eq('id',e.id).select('id');
+  if(error)return Swal.fire('ลบ Event ไม่สำเร็จ',error.message,'error');
+  if(!data?.length)return Swal.fire('ลบ Event ไม่สำเร็จ','ระบบไม่พบ Event หรือบัญชีนี้ไม่มีสิทธิ์ลบ','error');
+  const storageWarnings=await cleanupEventStorage(e.id,slipPaths);
+  state.event=null;
+  await loadEvents();
+  if(storageWarnings.length)return Swal.fire({icon:'warning',title:'ลบ Event แล้ว',html:'ข้อมูล Event ถูกลบเรียบร้อย แต่มีไฟล์บางรายการใน Storage ที่ลบไม่สำเร็จ:<br><small>'+storageWarnings.map(esc).join('<br>')+'</small>'});
+  Swal.fire({icon:'success',title:'ลบ Event เรียบร้อย',text:e.name,timer:1500,showConfirmButton:false});
+}
+
 function renderFeatures(){const f=state.event.feature_flags||{};document.getElementById('content').innerHTML=card('เปิด / ปิดฟังก์ชัน','<p class="muted">ทุก Event ตั้งค่าแยกกันได้</p><div class="toggle-grid">'+Object.entries(featureLabels).map(([k,l])=>'<label class="toggle"><span>'+l+'</span><input type="checkbox" data-feature="'+k+'" '+(f[k]?'checked':'')+'></label>').join('')+'</div>','<button class="btn soft" onclick="setAllFeatures(true)">เปิดทั้งหมด</button><button class="btn soft" onclick="setAllFeatures(false)">ปิดทั้งหมด</button><button class="btn primary" onclick="saveFeatures()">บันทึก</button>')}
 function setAllFeatures(v){document.querySelectorAll('[data-feature]').forEach(x=>x.checked=v)}
 async function saveFeatures(){const f={...state.event.feature_flags};document.querySelectorAll('[data-feature]').forEach(x=>f[x.dataset.feature]=x.checked);const{data,error}=await db.from('restart_events').update({feature_flags:f}).eq('id',state.event.id).select().single();if(error)return Swal.fire('บันทึกไม่สำเร็จ',error.message,'error');state.event=data;Swal.fire({icon:'success',title:'บันทึกฟังก์ชันแล้ว',timer:1000,showConfirmButton:false})}
