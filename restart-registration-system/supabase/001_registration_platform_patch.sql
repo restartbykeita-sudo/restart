@@ -45,3 +45,31 @@ end $$;
 -- 3) validate payment schedule total
 -- 4) validate beneficiary total = 100% when enabled
 -- 5) reject duplicate beneficiary ID and runner/beneficiary same ID
+
+
+-- Dedicated registration admin authorization (decoupled from RRIH/Trail Scan)
+create table if not exists public.restart_admin_users (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  role text not null default 'ADMIN' check (role in ('ADMIN','VIEWER')),
+  active boolean not null default true,
+  created_by uuid references auth.users(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.restart_admin_users enable row level security;
+
+create or replace function private.restart_is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, auth
+as $$
+  select exists (
+    select 1 from public.restart_admin_users a
+    where a.user_id = auth.uid() and a.active = true and a.role = 'ADMIN'
+  );
+$$;
+
+revoke all on public.restart_admin_users from anon, authenticated;
