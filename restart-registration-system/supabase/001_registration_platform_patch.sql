@@ -73,3 +73,35 @@ as $$
 $$;
 
 revoke all on public.restart_admin_users from anon, authenticated;
+
+
+-- Per-event base-field controls and per-category payment overrides
+alter table public.restart_events
+  add column if not exists field_settings jsonb not null default
+  '{
+    "title":{"enabled":true,"required":true},
+    "first_name":{"enabled":true,"required":true},
+    "last_name":{"enabled":true,"required":true},
+    "birth_date":{"enabled":true,"required":true},
+    "age":{"enabled":true,"required":false},
+    "gender":{"enabled":true,"required":false},
+    "id_document":{"enabled":true,"required":true},
+    "phone":{"enabled":true,"required":true},
+    "blood_group":{"enabled":true,"required":false},
+    "shirt_size":{"enabled":true,"required":false},
+    "address":{"enabled":true,"required":true},
+    "emergency_phone":{"enabled":true,"required":true},
+    "emergency_relation":{"enabled":true,"required":true}
+  }'::jsonb;
+
+alter table public.restart_participants
+  alter column first_name drop not null,
+  alter column last_name drop not null,
+  alter column id_document drop not null,
+  alter column id_normalized drop not null;
+
+alter table public.restart_race_categories
+  add column if not exists full_payment_enabled boolean;
+
+-- Production restart_create_registration(jsonb) also validates field_settings
+-- and both full_payment_enabled / installment_enabled category overrides.
