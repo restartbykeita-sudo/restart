@@ -23,32 +23,13 @@ label{display:grid;gap:7px;font-size:13px;font-weight:650;color:#4b5060}input,se
   overflow:visible;
   flex-shrink:0
 }
-.rr-main-logo.header{
-  width:110px;
-  height:auto;
-  max-height:none;
-  object-fit:contain
-}
-.rr-main-logo.login{
-  width:190px;
-  height:auto;
-  max-width:70vw;
-  max-height:none;
-  margin:0 auto 18px;
-  object-fit:contain
-}
-.rr-main-logo.landing{
-  width:min(300px,78vw);
-  height:auto;
-  max-height:none;
-  margin:0 auto 18px;
-  object-fit:contain;
-  filter:drop-shadow(0 10px 24px rgba(0,0,0,.18))
-}
+.rr-main-logo.header{width:100px;height:auto;max-height:none;object-fit:contain}
+.rr-main-logo.login{width:160px;height:auto;max-width:70vw;max-height:none;margin:0 auto 18px;object-fit:contain}
+.rr-main-logo.landing{width:min(220px,72vw);height:auto;max-height:none;margin:0 auto 18px;object-fit:contain;filter:drop-shadow(0 10px 24px rgba(0,0,0,.18))}
 .rr-brand.with-logo{gap:14px}
 @media(max-width:680px){
-  .rr-main-logo.header{width:82px;height:auto;max-height:none}
-  .rr-main-logo.landing{width:min(250px,78vw);height:auto;max-height:none}
+  .rr-main-logo.header{width:88px;height:auto;max-height:none}
+  .rr-main-logo.landing{width:min(200px,72vw);height:auto;max-height:none}
 }
 
 img.rr-main-logo{background:transparent}
