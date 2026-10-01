@@ -261,3 +261,73 @@ html[data-ui-theme="dark"] .swal2-textarea{background:#111218!important;color:#f
   .public-registration .btn{min-height:50px}
   .public-registration #regForm>.rr-card:last-child .btn.primary{min-height:58px;font-size:16px}
 }
+/* Payment method identity cards v1.0 */
+.public-registration .payment-method-card{
+  margin-top:16px!important;
+  padding:20px!important;
+  border-radius:20px!important;
+  border:1px solid var(--line)!important;
+  background:
+    linear-gradient(180deg,color-mix(in srgb,var(--surface-solid) 96%,transparent),color-mix(in srgb,var(--surface-2) 94%,transparent))!important;
+  box-shadow:0 14px 34px rgba(20,20,24,.08)!important;
+}
+.public-registration .payment-card-head{
+  display:flex;align-items:center;gap:10px;margin-bottom:16px;
+  color:var(--text);font-size:18px
+}
+.public-registration .payment-badge{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-height:26px;padding:5px 9px;border-radius:999px;font-size:10px;font-weight:900;letter-spacing:.08em
+}
+.public-registration .promptpay-badge{
+  background:linear-gradient(135deg,#4b3fa0,#7a48b7);color:#fff
+}
+.public-registration .bank-badge{
+  background:linear-gradient(135deg,#1f2937,#475569);color:#fff
+}
+.public-registration .payment-info-grid{
+  display:grid;gap:0;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--surface-solid)
+}
+.public-registration .payment-info-row{
+  display:grid;grid-template-columns:minmax(128px,.85fr) minmax(0,1.4fr);
+  gap:14px;align-items:center;padding:13px 15px;border-bottom:1px solid var(--line)
+}
+.public-registration .payment-info-row:last-child{border-bottom:0}
+.public-registration .payment-info-row>span{
+  color:var(--muted);font-size:12px;font-weight:760
+}
+.public-registration .payment-info-row>b{
+  color:var(--text);font-size:15px;font-weight:850;overflow-wrap:anywhere
+}
+.public-registration .payment-mono{
+  font-variant-numeric:tabular-nums;letter-spacing:.035em
+}
+.public-registration .payment-copy-row{
+  display:flex;justify-content:flex-end;margin-top:12px
+}
+.public-registration .payment-qr-wrap{
+  display:flex;justify-content:center;margin-top:18px;padding-top:18px;border-top:1px solid var(--line)
+}
+.public-registration .payment-qr{
+  width:234px;min-height:234px;padding:7px;border-radius:18px;background:#fff;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 12px 30px rgba(0,0,0,.10)
+}
+.public-registration .payment-qr img,
+.public-registration .payment-qr canvas{
+  display:block!important;max-width:220px!important;width:220px!important;height:220px!important;padding:0!important;border-radius:8px!important
+}
+html[data-ui-theme="dark"] .public-registration .payment-method-card{
+  box-shadow:0 16px 38px rgba(0,0,0,.26)!important
+}
+@media(max-width:680px){
+  .public-registration .payment-method-card{padding:16px!important;border-radius:18px!important}
+  .public-registration .payment-card-head{font-size:17px}
+  .public-registration .payment-info-row{
+    grid-template-columns:1fr;gap:4px;padding:12px 13px
+  }
+  .public-registration .payment-info-row>span{font-size:11px}
+  .public-registration .payment-info-row>b{font-size:16px}
+  .public-registration .payment-copy-row{justify-content:stretch}
+  .public-registration .payment-copy-row .btn{width:100%}
+  .public-registration .payment-qr{width:min(234px,100%);min-height:auto;aspect-ratio:1/1}
+}
