@@ -2,7 +2,7 @@ const db=App.db;
 const state={events:[],event:null,tab:'overview'};
 const langs=['th','en','zh','ja','ru'];
 const baseFieldLabels={title:'คำนำหน้า',first_name:'ชื่อ',last_name:'นามสกุล',birth_date:'วันเกิด',age:'อายุ',gender:'เพศ',id_document:'บัตรประชาชน / Passport',phone:'เบอร์โทรศัพท์',blood_group:'กรุ๊ปเลือด',shirt_size:'ขนาดเสื้อ',address:'ที่อยู่',emergency_phone:'เบอร์โทรฉุกเฉิน',emergency_relation:'ความสัมพันธ์ผู้ติดต่อฉุกเฉิน'};const reservedBaseKeys=new Set(['title','prefix','first_name','last_name','birth_date','age','gender','id_document','phone','blood_group','shirt_size','address','emergency_phone','emergency_relation']);
-const featureLabels={event_preview:'หน้าพรีวิว Event',showcase_media:'เสื้อ / เหรียญ / ถ้วย',basic_info:'ข้อมูลพื้นฐาน',insurance:'ข้อมูลประกัน',beneficiaries_multiple:'ผู้รับผลประโยชน์หลายคน',beneficiary_total_100:'บังคับรวม 100%',competition_categories:'รุ่นการแข่งขัน',auto_category:'คำนวณรุ่นอัตโนมัติ',self_select_category:'ผู้สมัครเลือกรุ่นเอง',category_pricing:'ราคาแยกตามรุ่น',distances:'ระยะการแข่งขัน',packages:'Package',followers:'ผู้ติดตาม',shirts:'ไซส์เสื้อ',early_bird:'Early Bird',promotions:'Promotion',discount_codes:'Discount Code',full_payment:'จ่ายเต็ม',installments:'ผ่อนชำระ',promptpay:'PromptPay',bank_transfer:'บัญชีธนาคาร',payment_qr:'QR ชำระเงิน',slip_upload:'อัปโหลดสลิป',admin_slip_review:'Admin ตรวจสลิป',pdpa:'PDPA / Consent',multilingual:'หลายภาษา',logo:'Logo',banner:'Banner',media:'รูปภาพเพิ่มเติม',sponsor_logos:'Sponsor Logo',capacity:'จำกัดจำนวน',waitlist:'Waitlist',pair_registration:'สมัครคู่',team_registration:'สมัครทีม',edit_after_submit:'แก้หลังสมัคร',cancellation:'ยกเลิกใบสมัคร',transfer_registration:'โอนสิทธิ์',export:'Export',notifications:'แจ้งเตือน'};
+const featureLabels={event_preview:'หน้าพรีวิว Event',showcase_media:'เสื้อ / เหรียญ / ถ้วย',route_animation:'GPX Route Animation',basic_info:'ข้อมูลพื้นฐาน',insurance:'ข้อมูลประกัน',beneficiaries_multiple:'ผู้รับผลประโยชน์หลายคน',beneficiary_total_100:'บังคับรวม 100%',competition_categories:'รุ่นการแข่งขัน',auto_category:'คำนวณรุ่นอัตโนมัติ',self_select_category:'ผู้สมัครเลือกรุ่นเอง',category_pricing:'ราคาแยกตามรุ่น',distances:'ระยะการแข่งขัน',packages:'Package',followers:'ผู้ติดตาม',shirts:'ไซส์เสื้อ',early_bird:'Early Bird',promotions:'Promotion',discount_codes:'Discount Code',full_payment:'จ่ายเต็ม',installments:'ผ่อนชำระ',promptpay:'PromptPay',bank_transfer:'บัญชีธนาคาร',payment_qr:'QR ชำระเงิน',slip_upload:'อัปโหลดสลิป',admin_slip_review:'Admin ตรวจสลิป',pdpa:'PDPA / Consent',multilingual:'หลายภาษา',logo:'Logo',banner:'Banner',media:'รูปภาพเพิ่มเติม',sponsor_logos:'Sponsor Logo',capacity:'จำกัดจำนวน',waitlist:'Waitlist',pair_registration:'สมัครคู่',team_registration:'สมัครทีม',edit_after_submit:'แก้หลังสมัคร',cancellation:'ยกเลิกใบสมัคร',transfer_registration:'โอนสิทธิ์',export:'Export',notifications:'แจ้งเตือน'};
 const eventStatusOptions=[
   {value:'DRAFT',label:'แบบร่าง · ไม่แสดงหน้า Event'},
   {value:'PUBLISHED',label:'เร็ว ๆ นี้'},
@@ -19,7 +19,7 @@ async function loadEvents(preferredId=null){const{data,error}=await db.from('res
 async function selectEvent(id){state.event=state.events.find(x=>x.id===id)||null;render()}
 async function createEvent(){const r=await Swal.fire({title:'สร้าง Event ใหม่',html:'<input id="e-name" class="swal2-input" placeholder="ชื่อ Event"><input id="e-slug" class="swal2-input" placeholder="slug เช่น restart-phuket-2027"><input id="e-date" type="date" class="swal2-input">',showCancelButton:true,confirmButtonText:'สร้าง',preConfirm:()=>({name:document.getElementById('e-name').value.trim(),slug:document.getElementById('e-slug').value.trim(),date:document.getElementById('e-date').value})});if(!r.isConfirmed)return;const x=r.value;if(!x.name||!x.slug)return Swal.fire('ข้อมูลไม่ครบ','','warning');const{error}=await db.from('restart_events').insert({name:x.name,slug:x.slug,event_date_start:x.date||null,status:'DRAFT'});if(error)return Swal.fire('สร้างไม่สำเร็จ',error.message,'error');await loadEvents();Swal.fire({icon:'success',title:'สร้าง Event แล้ว',timer:1200,showConfirmButton:false})}
 function needEvent(){if(!state.event){document.getElementById('content').innerHTML='<section class="rr-card rr-empty">สร้างหรือเลือก Event ก่อนเริ่มตั้งค่า</section>';return false}return true}
-function render(){if(!needEvent())return;({overview:renderOverview,features:renderFeatures,categories:renderCategories,packages:renderPackages,installments:renderInstallments,payments:renderPayments,telegram:renderTelegram,showcase:renderShowcase,form:renderForm,theme:renderTheme,registrations:renderRegistrations}[state.tab]||renderOverview)()}
+function render(){if(!needEvent())return;({overview:renderOverview,features:renderFeatures,categories:renderCategories,packages:renderPackages,installments:renderInstallments,payments:renderPayments,telegram:renderTelegram,showcase:renderShowcase,routes:renderRoutes,form:renderForm,theme:renderTheme,registrations:renderRegistrations}[state.tab]||renderOverview)()}
 function renderOverview(){const e=state.event;document.getElementById('content').innerHTML=card('แก้ไข Event','<p class="muted">แก้ไขรายละเอียด Event ได้ทุกครั้ง แล้วกด “บันทึกการแก้ไข”</p><div class="grid2"><label>ชื่อ Event<input id="evName" value="'+esc(e.name)+'"></label><label>Slug<input id="evSlug" value="'+esc(e.slug)+'"></label><label>วันที่เริ่ม<input id="evStart" type="date" value="'+(e.event_date_start||'')+'"></label><label>วันที่สิ้นสุด<input id="evEnd" type="date" value="'+(e.event_date_end||'')+'"></label><label>สถานที่<input id="evLoc" value="'+esc(e.location_name||'')+'"></label><label>จำนวนรับสูงสุด<input id="evCap" type="number" value="'+(e.capacity??'')+'"></label><label>เปิดรับสมัคร<input id="evOpen" type="datetime-local" value="'+localDT(e.registration_opens_at)+'"></label><label>ปิดรับสมัคร<input id="evClose" type="datetime-local" value="'+localDT(e.registration_closes_at)+'"></label><label>สถานะที่แสดงบน Event Card<select id="evStatus">'+eventStatusOptions.map(o=>'<option value="'+o.value+'" '+(e.status===o.value?'selected':'')+'>'+o.label+'</option>').join('')+'</select><small class="muted">หน้า Event จะดึงสถานะนี้จากหลังบ้านโดยตรง</small></label><label>ภาษาเริ่มต้น<select id="evLang">'+langs.map(l=>'<option '+(e.default_language===l?'selected':'')+'>'+l+'</option>').join('')+'</select></label></div><div style="margin-top:14px"><label>รายละเอียด<textarea id="evDesc" rows="4">'+esc(e.description||'')+'</textarea></label></div>','<a class="btn soft" target="_blank" href="../public/?event='+encodeURIComponent(e.slug)+'">Preview</a><button class="btn primary" onclick="saveOverview()">บันทึกการแก้ไข</button><button class="btn danger" onclick="deleteEvent()">ลบ Event</button>')}
 function localDT(v){if(!v)return'';const d=new Date(v);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16)}
 async function saveOverview(){
@@ -376,6 +376,134 @@ async function deleteShowcaseMedia(id,url){
   }catch(e){}
   renderShowcase();
 }
+
+function routeTypeText(v){return v==='CP_WATER'?'น้ำ + CP':v==='WATER'?'จุดให้น้ำ':v==='INFO'?'จุดข้อมูล':'CP'}
+async function uploadRouteGpx(file){
+  if(!file)throw new Error('กรุณาเลือกไฟล์ GPX');
+  if(!/\.gpx$/i.test(file.name))throw new Error('รองรับเฉพาะไฟล์ .gpx');
+  const safe=(file.name||'route.gpx').replace(/[^a-zA-Z0-9._-]+/g,'-');
+  const path=state.event.id+'/routes/'+Date.now()+'-'+safe;
+  const{error}=await db.storage.from('restart-route-files').upload(path,file,{contentType:'application/gpx+xml',upsert:false});
+  if(error)throw error;
+  return{path,url:db.storage.from('restart-route-files').getPublicUrl(path).data.publicUrl};
+}
+async function uploadRoutePointImage(file){
+  if(!file)return null;
+  const ext=(file.name.split('.').pop()||'jpg').toLowerCase();
+  const path=state.event.id+'/route-points/'+Date.now()+'-'+Math.random().toString(36).slice(2,7)+'.'+ext;
+  const{error}=await db.storage.from('restart-event-media').upload(path,file,{contentType:file.type||'image/jpeg',upsert:false});
+  if(error)throw error;
+  return{path,url:db.storage.from('restart-event-media').getPublicUrl(path).data.publicUrl};
+}
+function routePointRows(route){
+  const pts=(route.restart_route_points||[]).sort((a,b)=>Number(a.distance_km)-Number(b.distance_km));
+  if(!pts.length)return'<div class="rr-empty" style="margin-top:12px">ยังไม่มี CP / Water · Start และ Finish จะอ่านจาก GPX อัตโนมัติ</div>';
+  return '<div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>จุด</th><th>กม.</th><th>ชื่อ</th><th>รูป</th><th></th></tr></thead><tbody>'+
+    pts.map(p=>'<tr><td><span class="badge">'+routeTypeText(p.point_type)+'</span></td><td>'+Number(p.distance_km).toLocaleString('th-TH',{maximumFractionDigits:3})+'</td><td>'+esc(t(p.name)||p.code||'—')+'</td><td>'+(p.image_url?'<img src="'+esc(p.image_url)+'" alt="" style="width:54px;height:42px;object-fit:cover;border-radius:8px">':'—')+'</td><td><div class="row"><button class="btn sm soft" onclick="routePointDialog(\''+route.id+'\',\''+p.id+'\')">แก้ไข</button><button class="btn sm danger" onclick="deleteRoutePoint(\''+p.id+'\')">ลบ</button></div></td></tr>').join('')+
+  '</tbody></table></div>';
+}
+async function renderRoutes(){
+  document.getElementById('content').innerHTML=card('GPX Route Animation','<div class="rr-empty">กำลังโหลดเส้นทาง…</div>');
+  const{data,error}=await db.from('restart_event_routes').select('*,restart_race_categories(name),restart_route_points(*)').eq('event_id',state.event.id).order('sort_order');
+  if(error)return document.getElementById('content').innerHTML=card('GPX Route Animation','<div class="badge danger">'+esc(error.message)+'</div>');
+  const rows=data||[];
+  const body='<p class="muted">อัปโหลด GPX แล้วระบบจะสร้าง Start / Finish, ระยะทาง, Elevation และ Animation ให้อัตโนมัติ · CP/Water ระบุตำแหน่งด้วยกิโลเมตรตามเส้นทางและใส่รูปประกอบได้</p>'+
+    (rows.length?rows.map(r=>'<div class="rr-card" style="box-shadow:none;margin-top:14px">'+
+      '<div class="row space"><div><div class="row"><strong>'+esc(t(r.name)||'เส้นทางการแข่งขัน')+'</strong>'+(r.restart_race_categories?'<span class="badge">'+esc(t(r.restart_race_categories.name))+'</span>':'')+'<span class="badge '+(r.is_active?'ok':'')+'">'+(r.is_active?'เปิด':'ปิด')+'</span></div><div class="muted" style="margin-top:5px">Animation '+r.animation_duration_seconds+' วินาที · หมุด กม. '+(r.show_km_markers?'เปิด':'ปิด')+'</div></div>'+
+      '<div class="row"><a class="btn sm soft" target="_blank" href="../public/?event='+encodeURIComponent(state.event.slug)+'#routeSection">Preview</a><button class="btn sm primary" onclick="routePointDialog(\''+r.id+'\')">+ CP / Water</button><button class="btn sm soft" onclick="routeDialog(\''+r.id+'\')">แก้ไข GPX</button><button class="btn sm danger" onclick="deleteRoute(\''+r.id+'\')">ลบ</button></div></div>'+
+      routePointRows(r)+'</div>').join(''):'<div class="rr-empty">ยังไม่มีเส้นทาง GPX สำหรับ Event นี้</div>');
+  document.getElementById('content').innerHTML=card('GPX Route Animation',body,'<a class="btn soft" target="_blank" href="https://restart-rest-art.oresearcho.chatgpt.site/">ดูระบบ Animation เดิม</a><button class="btn primary" onclick="routeDialog()">+ อัปโหลด GPX</button>');
+}
+async function routeDialog(id=null){
+  let current=null;
+  if(id){const{data,error}=await db.from('restart_event_routes').select('*').eq('id',id).single();if(error)return Swal.fire('โหลดเส้นทางไม่ได้',error.message,'error');current=data}
+  const{data:cats,error:catErr}=await db.from('restart_race_categories').select('id,name,distance_km').eq('event_id',state.event.id).order('sort_order');
+  if(catErr)return Swal.fire('โหลดรุ่นไม่ได้',catErr.message,'error');
+  const opts='<option value="">ไม่ผูกกับรุ่น</option>'+(cats||[]).map(c=>'<option value="'+c.id+'" '+(current?.category_id===c.id?'selected':'')+'>'+esc(t(c.name))+(c.distance_km!=null?' · '+c.distance_km+' km':'')+'</option>').join('');
+  const r=await Swal.fire({
+    title:id?'แก้ไข GPX Route':'อัปโหลด GPX Route',width:780,
+    html:'<div class="grid2" style="text-align:left">'+
+      '<label>ชื่อเส้นทาง<input id="rtName" class="swal2-input" style="margin:0" value="'+esc(t(current?.name)||'เส้นทางการแข่งขัน')+'"></label>'+
+      '<label>ผูกกับรุ่น<select id="rtCat" class="swal2-select" style="margin:0;width:100%">'+opts+'</select></label>'+
+      '<label>ความยาว Animation (วินาที)<input id="rtDuration" type="number" min="10" max="600" class="swal2-input" style="margin:0" value="'+(current?.animation_duration_seconds||48)+'"></label>'+
+      '<label>ไฟล์ GPX<input id="rtFile" type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml" class="swal2-file" style="margin:0;width:100%"><small class="muted">'+(current?'ไม่เลือกไฟล์ = ใช้ GPX เดิม':'ต้องเลือกไฟล์ .gpx')+'</small></label>'+
+      '<label style="display:flex;align-items:center;gap:8px"><input id="rtKm" type="checkbox" style="width:auto" '+(current?.show_km_markers===false?'':'checked')+'> แสดงหมุดทุก 1 กม.</label>'+
+      '<label style="display:flex;align-items:center;gap:8px"><input id="rtActive" type="checkbox" style="width:auto" '+(current?.is_active===false?'':'checked')+'> เปิดแสดงเส้นทางนี้</label>'+
+    '</div>',
+    showCancelButton:true,confirmButtonText:id?'บันทึก':'อัปโหลด',
+    preConfirm:()=>({
+      name:rtName.value.trim(),category_id:rtCat.value||null,duration:Number(rtDuration.value)||48,
+      show_km_markers:rtKm.checked,is_active:rtActive.checked,file:rtFile.files[0]||null
+    })
+  });
+  if(!r.isConfirmed)return;
+  if(!r.value.name)return Swal.fire('ข้อมูลไม่ครบ','กรุณาระบุชื่อเส้นทาง','warning');
+  if(!current&&!r.value.file)return Swal.fire('ยังไม่ได้เลือก GPX','กรุณาเลือกไฟล์ .gpx','warning');
+  try{
+    Swal.fire({title:'กำลังบันทึก GPX…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
+    let fileInfo=null;if(r.value.file)fileInfo=await uploadRouteGpx(r.value.file);
+    const row={
+      event_id:state.event.id,category_id:r.value.category_id,name:{th:r.value.name,en:r.value.name},
+      animation_duration_seconds:r.value.duration,show_km_markers:r.value.show_km_markers,is_active:r.value.is_active,
+      updated_at:new Date().toISOString()
+    };
+    if(fileInfo){row.gpx_url=fileInfo.url;row.gpx_storage_path=fileInfo.path}
+    let error;
+    if(current)({error}=await db.from('restart_event_routes').update(row).eq('id',current.id));
+    else({error}=await db.from('restart_event_routes').insert(row));
+    if(error)throw error;
+    if(current&&fileInfo&&current.gpx_storage_path)await db.storage.from('restart-route-files').remove([current.gpx_storage_path]).catch(()=>{});
+    Swal.fire({icon:'success',title:'บันทึก GPX แล้ว',timer:1100,showConfirmButton:false});renderRoutes();
+  }catch(e){Swal.fire('บันทึก GPX ไม่สำเร็จ',e.message||String(e),'error')}
+}
+async function routePointDialog(routeId,id=null){
+  let p=null;
+  if(id){const{data,error}=await db.from('restart_route_points').select('*').eq('id',id).single();if(error)return Swal.fire('โหลดจุดไม่ได้',error.message,'error');p=data}
+  const r=await Swal.fire({
+    title:id?'แก้ไขจุดบนเส้นทาง':'เพิ่ม CP / Water',width:760,
+    html:'<div class="grid2" style="text-align:left">'+
+      '<label>ประเภท<select id="rpType" class="swal2-select" style="margin:0;width:100%"><option value="CP">Checkpoint</option><option value="CP_WATER">น้ำ + Checkpoint</option><option value="WATER">จุดให้น้ำ</option><option value="INFO">จุดข้อมูล</option></select></label>'+
+      '<label>รหัส เช่น CP1<input id="rpCode" class="swal2-input" style="margin:0" value="'+esc(p?.code||'')+'"></label>'+
+      '<label>ตำแหน่ง กม.<input id="rpKm" type="number" step=".01" min="0" class="swal2-input" style="margin:0" value="'+(p?.distance_km??'')+'"></label>'+
+      '<label>ชื่อจุด<input id="rpName" class="swal2-input" style="margin:0" value="'+esc(t(p?.name)||'')+'"></label>'+
+      '<label style="grid-column:1/-1">รายละเอียด<textarea id="rpDesc" class="swal2-textarea" style="margin:0;width:100%">'+esc(t(p?.description)||'')+'</textarea></label>'+
+      '<label style="grid-column:1/-1">รูปประกอบ<input id="rpImage" type="file" accept="image/*" class="swal2-file" style="margin:0;width:100%">'+(p?.image_url?'<small class="muted">มีรูปเดิมแล้ว · ไม่เลือกไฟล์ = ใช้รูปเดิม</small>':'')+'</label>'+
+    '</div>',
+    didOpen:()=>{rpType.value=p?.point_type||'CP'},
+    showCancelButton:true,confirmButtonText:'บันทึก',
+    preConfirm:()=>({type:rpType.value,code:rpCode.value.trim(),km:Number(rpKm.value),name:rpName.value.trim(),desc:rpDesc.value.trim(),file:rpImage.files[0]||null})
+  });
+  if(!r.isConfirmed)return;
+  if(!Number.isFinite(r.value.km)||r.value.km<0)return Swal.fire('กิโลเมตรไม่ถูกต้อง','','warning');
+  try{
+    Swal.fire({title:'กำลังบันทึกจุด…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
+    let image=null;if(r.value.file)image=await uploadRoutePointImage(r.value.file);
+    const row={route_id:routeId,point_type:r.value.type,code:r.value.code||null,name:{th:r.value.name,en:r.value.name},description:{th:r.value.desc,en:r.value.desc},distance_km:r.value.km,sort_order:Math.round(r.value.km*1000),is_active:true,updated_at:new Date().toISOString()};
+    if(image){row.image_url=image.url;row.image_storage_path=image.path}
+    const{error}=p?await db.from('restart_route_points').update(row).eq('id',p.id):await db.from('restart_route_points').insert(row);
+    if(error)throw error;
+    if(p&&image&&p.image_storage_path)await db.storage.from('restart-event-media').remove([p.image_storage_path]).catch(()=>{});
+    Swal.fire({icon:'success',title:'บันทึกจุดแล้ว',timer:900,showConfirmButton:false});renderRoutes();
+  }catch(e){Swal.fire('บันทึกจุดไม่สำเร็จ',e.message||String(e),'error')}
+}
+async function deleteRoutePoint(id){
+  const{data:p,error}=await db.from('restart_route_points').select('image_storage_path').eq('id',id).single();
+  if(error)return Swal.fire('ลบไม่ได้',error.message,'error');
+  const r=await Swal.fire({title:'ลบจุดนี้?',icon:'warning',showCancelButton:true,confirmButtonText:'ลบ'});if(!r.isConfirmed)return;
+  const{error:del}=await db.from('restart_route_points').delete().eq('id',id);if(del)return Swal.fire('ลบไม่ได้',del.message,'error');
+  if(p?.image_storage_path)await db.storage.from('restart-event-media').remove([p.image_storage_path]).catch(()=>{});
+  renderRoutes();
+}
+async function deleteRoute(id){
+  const{data:rte,error}=await db.from('restart_event_routes').select('gpx_storage_path,restart_route_points(image_storage_path)').eq('id',id).single();
+  if(error)return Swal.fire('ลบไม่ได้',error.message,'error');
+  const r=await Swal.fire({title:'ลบ GPX Route?',text:'CP / Water ที่ผูกกับเส้นทางนี้จะถูกลบด้วย',icon:'warning',showCancelButton:true,confirmButtonText:'ลบ'});
+  if(!r.isConfirmed)return;
+  const{error:del}=await db.from('restart_event_routes').delete().eq('id',id);if(del)return Swal.fire('ลบไม่ได้',del.message,'error');
+  if(rte?.gpx_storage_path)await db.storage.from('restart-route-files').remove([rte.gpx_storage_path]).catch(()=>{});
+  const imgs=(rte?.restart_route_points||[]).map(x=>x.image_storage_path).filter(Boolean);if(imgs.length)await db.storage.from('restart-event-media').remove(imgs).catch(()=>{});
+  renderRoutes();
+}
 async function renderForm(){document.getElementById('content').innerHTML=card('Form Builder','<div id="baseFieldBox"></div><div id="formBox" style="margin-top:16px">กำลังโหลด…</div>','<button class="btn soft" onclick="sectionDialog()">+ Section</button><button class="btn primary" onclick="fieldDialog()">+ Field</button>');renderBaseFieldSettings();const[{data:ss},{data:ff}]=await Promise.all([db.from('restart_form_sections').select('*').eq('event_id',state.event.id).order('sort_order'),db.from('restart_form_fields').select('*').eq('event_id',state.event.id).order('sort_order')]);formBox.innerHTML=(ss||[]).map(s=>'<div class="paybox" style="margin-top:10px"><div class="row space"><strong>'+esc(t(s.label))+'</strong><span class="badge">'+esc(s.section_key)+'</span></div>'+(ff||[]).filter(f=>f.section_id===s.id&&!reservedBaseKeys.has(String(f.field_key||'').toLowerCase())).map(f=>'<div class="row space" style="padding:10px 0;border-top:1px solid #eee"><span>'+esc(t(f.label))+' <small class="muted">('+esc(f.field_type)+')</small></span><span><span class="badge '+(f.is_required?'warn':'')+'">'+(f.is_required?'จำเป็น':'ไม่บังคับ')+'</span> <span class="badge '+(f.is_active?'ok':'')+'">'+(f.is_active?'เปิด':'ปิด')+'</span> <button class="btn sm soft" onclick="editField(\''+f.id+'\')">แก้ไข</button> <button class="btn sm soft" onclick="toggleRow(\'restart_form_fields\',\''+f.id+'\',\'is_active\','+(!f.is_active)+',renderForm)">'+(f.is_active?'ปิด':'เปิด')+'</button> <button class="btn sm danger" onclick="delRow(\'restart_form_fields\',\''+f.id+'\',renderForm)">ลบ</button></span></div>').join('')+'</div>').join('')||'<div class="rr-empty">ยังไม่มี Custom Field</div>'}
 function renderBaseFieldSettings(){const fs=state.event.field_settings||{};baseFieldBox.innerHTML='<div class="paybox"><div class="row space"><div><strong>ข้อมูลพื้นฐานของผู้สมัคร</strong><div class="muted">เปิด/ปิดและกำหนดบังคับกรอกได้รายช่อง</div></div><button class="btn primary sm" onclick="saveBaseFields()">บันทึกข้อมูลพื้นฐาน</button></div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>ช่องข้อมูล</th><th>แสดง</th><th>บังคับกรอก</th></tr></thead><tbody>'+Object.entries(baseFieldLabels).map(([k,l])=>{const s=fs[k]||{enabled:true,required:false};return '<tr><td>'+l+'</td><td><input type="checkbox" data-base-enabled="'+k+'" '+(s.enabled!==false?'checked':'')+'></td><td><input type="checkbox" data-base-required="'+k+'" '+(s.required?'checked':'')+'></td></tr>'}).join('')+'</tbody></table></div></div>'}
 async function saveBaseFields(){const fs={...state.event.field_settings};Object.keys(baseFieldLabels).forEach(k=>{const enabled=document.querySelector('[data-base-enabled="'+k+'"]').checked;const required=document.querySelector('[data-base-required="'+k+'"]').checked;fs[k]={enabled,required:enabled&&required}});const{data,error}=await db.from('restart_events').update({field_settings:fs}).eq('id',state.event.id).select().single();if(error)return Swal.fire('บันทึกไม่สำเร็จ',error.message,'error');state.event=data;state.events=state.events.map(x=>x.id===data.id?data:x);renderBaseFieldSettings();Swal.fire({icon:'success',title:'บันทึกข้อมูลพื้นฐานแล้ว',timer:1000,showConfirmButton:false})}
@@ -485,5 +613,5 @@ async function renderRegistrations(){document.getElementById('content').innerHTM
 async function openSlip(path){const{data,error}=await db.storage.from('restart-slips').createSignedUrl(path,120);if(error)return Swal.fire('เปิดสลิปไม่ได้',error.message,'error');window.open(data.signedUrl,'_blank')}
 async function reviewPay(id,ok){let note='';if(!ok){const r=await Swal.fire({title:'เหตุผลที่ปฏิเสธ',input:'text',showCancelButton:true});if(!r.isConfirmed)return;note=r.value||''}const{error}=await db.rpc('restart_admin_review_payment',{p_attempt_id:id,p_approve:ok,p_note:note||null});if(error)return Swal.fire('ทำรายการไม่สำเร็จ',error.message,'error');Swal.fire({icon:'success',title:ok?'อนุมัติแล้ว':'ปฏิเสธแล้ว',timer:1000,showConfirmButton:false});renderRegistrations()}
 async function delRow(table,id,cb){const r=await Swal.fire({title:'ยืนยันการลบ?',icon:'warning',showCancelButton:true,confirmButtonText:'ลบ'});if(!r.isConfirmed)return;const{error}=await db.from(table).delete().eq('id',id);if(error)return Swal.fire('ลบไม่ได้',error.message,'error');cb()}
-Object.assign(window,{saveOverview,setAllFeatures,saveFeatures,renderCategories,categoryDialog,renderPackages,packageDialog,renderInstallments,installmentDialog,delPlan,renderPayments,paymentDialog,renderShowcase,saveShowcase,deleteShowcaseMedia,renderForm,sectionDialog,fieldDialog,saveBaseFields,toggleRow,editCategory,editPackage,editPayment,editField,saveTheme,renderRegistrations,openSlip,reviewPay,delRow});
+Object.assign(window,{saveOverview,setAllFeatures,saveFeatures,renderCategories,categoryDialog,renderPackages,packageDialog,renderInstallments,installmentDialog,delPlan,renderPayments,paymentDialog,renderShowcase,saveShowcase,deleteShowcaseMedia,renderRoutes,routeDialog,routePointDialog,deleteRoutePoint,deleteRoute,renderForm,sectionDialog,fieldDialog,saveBaseFields,toggleRow,editCategory,editPackage,editPayment,editField,saveTheme,renderRegistrations,openSlip,reviewPay,delRow});
 init().catch(e=>Swal.fire('เกิดข้อผิดพลาด',e.message,'error'));
