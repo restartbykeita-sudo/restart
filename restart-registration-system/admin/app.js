@@ -12,7 +12,7 @@ async function loadEvents(preferredId=null){const{data,error}=await db.from('res
 async function selectEvent(id){state.event=state.events.find(x=>x.id===id)||null;render()}
 async function createEvent(){const r=await Swal.fire({title:'สร้าง Event ใหม่',html:'<input id="e-name" class="swal2-input" placeholder="ชื่อ Event"><input id="e-slug" class="swal2-input" placeholder="slug เช่น restart-phuket-2027"><input id="e-date" type="date" class="swal2-input">',showCancelButton:true,confirmButtonText:'สร้าง',preConfirm:()=>({name:document.getElementById('e-name').value.trim(),slug:document.getElementById('e-slug').value.trim(),date:document.getElementById('e-date').value})});if(!r.isConfirmed)return;const x=r.value;if(!x.name||!x.slug)return Swal.fire('ข้อมูลไม่ครบ','','warning');const{error}=await db.from('restart_events').insert({name:x.name,slug:x.slug,event_date_start:x.date||null,status:'DRAFT'});if(error)return Swal.fire('สร้างไม่สำเร็จ',error.message,'error');await loadEvents();Swal.fire({icon:'success',title:'สร้าง Event แล้ว',timer:1200,showConfirmButton:false})}
 function needEvent(){if(!state.event){document.getElementById('content').innerHTML='<section class="rr-card rr-empty">สร้างหรือเลือก Event ก่อนเริ่มตั้งค่า</section>';return false}return true}
-function render(){if(!needEvent())return;({overview:renderOverview,features:renderFeatures,categories:renderCategories,packages:renderPackages,installments:renderInstallments,payments:renderPayments,form:renderForm,theme:renderTheme,registrations:renderRegistrations}[state.tab]||renderOverview)()}
+function render(){if(!needEvent())return;({overview:renderOverview,features:renderFeatures,categories:renderCategories,packages:renderPackages,installments:renderInstallments,payments:renderPayments,telegram:renderTelegram,form:renderForm,theme:renderTheme,registrations:renderRegistrations}[state.tab]||renderOverview)()}
 function renderOverview(){const e=state.event;document.getElementById('content').innerHTML=card('แก้ไข Event','<p class="muted">แก้ไขรายละเอียด Event ได้ทุกครั้ง แล้วกด “บันทึกการแก้ไข”</p><div class="grid2"><label>ชื่อ Event<input id="evName" value="'+esc(e.name)+'"></label><label>Slug<input id="evSlug" value="'+esc(e.slug)+'"></label><label>วันที่เริ่ม<input id="evStart" type="date" value="'+(e.event_date_start||'')+'"></label><label>วันที่สิ้นสุด<input id="evEnd" type="date" value="'+(e.event_date_end||'')+'"></label><label>สถานที่<input id="evLoc" value="'+esc(e.location_name||'')+'"></label><label>จำนวนรับสูงสุด<input id="evCap" type="number" value="'+(e.capacity??'')+'"></label><label>เปิดรับสมัคร<input id="evOpen" type="datetime-local" value="'+localDT(e.registration_opens_at)+'"></label><label>ปิดรับสมัคร<input id="evClose" type="datetime-local" value="'+localDT(e.registration_closes_at)+'"></label><label>สถานะ<select id="evStatus">'+['DRAFT','PUBLISHED','OPEN','CLOSED','ARCHIVED'].map(s=>'<option '+(e.status===s?'selected':'')+'>'+s+'</option>').join('')+'</select></label><label>ภาษาเริ่มต้น<select id="evLang">'+langs.map(l=>'<option '+(e.default_language===l?'selected':'')+'>'+l+'</option>').join('')+'</select></label></div><div style="margin-top:14px"><label>รายละเอียด<textarea id="evDesc" rows="4">'+esc(e.description||'')+'</textarea></label></div>','<a class="btn soft" target="_blank" href="../public/?event='+encodeURIComponent(e.slug)+'">Preview</a><button class="btn primary" onclick="saveOverview()">บันทึกการแก้ไข</button><button class="btn danger" onclick="deleteEvent()">ลบ Event</button>')}
 function localDT(v){if(!v)return'';const d=new Date(v);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16)}
 async function saveOverview(){
@@ -147,6 +147,87 @@ async function paymentDialog(){
   if(error)return Swal.fire('เพิ่มไม่สำเร็จ',error.message,'error');
   Swal.fire({icon:'success',title:'เพิ่มช่องทางชำระเงินแล้ว',timer:900,showConfirmButton:false});
   renderPayments();
+}
+
+async function telegramApi(action,payload={}){
+  const{data:{session},error:sessionError}=await db.auth.getSession();
+  if(sessionError||!session?.access_token)throw new Error('Session หมดอายุ กรุณาเข้าสู่ระบบใหม่');
+  const res=await fetch(App.cfg.SUPABASE_URL+'/functions/v1/restart-registration-api?action='+encodeURIComponent(action),{
+    method:'POST',
+    headers:{
+      'content-type':'application/json',
+      'apikey':App.cfg.SUPABASE_PUBLISHABLE_KEY,
+      'authorization':'Bearer '+session.access_token
+    },
+    body:JSON.stringify(payload)
+  });
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok)throw new Error(data.error||('HTTP '+res.status));
+  return data;
+}
+async function renderTelegram(){
+  document.getElementById('content').innerHTML=card('Telegram แจ้งเตือน','<div class="rr-empty">กำลังโหลดการตั้งค่า Telegram…</div>');
+  let x;
+  try{x=await telegramApi('telegram-settings',{event_id:state.event.id})}
+  catch(e){return document.getElementById('content').innerHTML=card('Telegram แจ้งเตือน','<div class="badge danger">'+esc(e.message||String(e))+'</div>')}
+  const tokenStatus=x.has_bot_token
+    ?'<span class="badge ok">ตั้งค่า Bot Token แล้ว</span>'
+    :'<span class="badge warn">ยังไม่ได้ตั้ง Bot Token</span>';
+  const notifyStatus=x.notifications_enabled
+    ?'<span class="badge ok">Notifications เปิดอยู่</span>'
+    :'<span class="badge warn">Notifications ปิดอยู่</span>';
+  document.getElementById('content').innerHTML=card(
+    'Telegram แจ้งเตือน',
+    '<div class="row" style="margin-bottom:16px">'+tokenStatus+notifyStatus+'</div>'+
+    '<div class="rr-card" style="box-shadow:none;background:var(--soft);margin-bottom:16px">'+
+      '<h3 style="margin-top:0">แจ้ง Admin เมื่อมีผู้สมัครใหม่</h3>'+
+      '<p class="muted">หลังระบบบันทึกใบสมัครสำเร็จ จะส่งชื่อ Event, รหัสสมัคร, ชื่อผู้สมัคร, รุ่น, Package, ยอดชำระ และสถานะสลิปไป Telegram โดยอัตโนมัติ</p>'+
+      '<label style="display:flex;align-items:center;gap:10px"><input id="tgEnabled" type="checkbox" style="width:auto" '+(x.enabled?'checked':'')+'> เปิดใช้งาน Telegram สำหรับ Event นี้</label>'+
+    '</div>'+
+    '<div class="grid2">'+
+      '<label>Bot Token'+
+        '<input id="tgToken" type="password" autocomplete="new-password" placeholder="'+(x.has_bot_token?'ตั้งค่าแล้ว · เว้นว่างเพื่อใช้ Token เดิม':'เช่น 123456789:AA...')+'">'+
+        '<small class="muted">Token จะถูกส่งไปเก็บฝั่ง Server และจะไม่ถูกดึงกลับมาแสดงบนหน้าเว็บ</small>'+
+      '</label>'+
+      '<label>Chat ID'+
+        '<input id="tgChatId" value="'+esc(x.chat_id||'')+'" placeholder="-100xxxxxxxxxx หรือ @channelname">'+
+        '<small class="muted">รองรับ Chat ID ของผู้ใช้/กลุ่ม และ @username ของ Channel</small>'+
+      '</label>'+
+    '</div>'+
+    '<div class="rr-card" style="box-shadow:none;margin-top:16px">'+
+      '<h3 style="margin-top:0">ตัวอย่างข้อความ</h3>'+
+      '<pre style="white-space:pre-wrap;margin:0;font-family:inherit;line-height:1.65">🔔 มีผู้สมัครใหม่\n🏁 Event: '+esc(state.event.name)+'\n🎟 รหัสสมัคร: RST-...\n👤 ผู้สมัคร: ชื่อ นามสกุล\n🏷 รุ่น / Package\n💰 ยอดรวม / ยอดงวดแรก\n📎 สลิป: แนบแล้ว · รอตรวจสอบ</pre>'+
+    '</div>',
+    '<button class="btn soft" onclick="testTelegram()">ทดสอบส่งข้อความ</button><button class="btn primary" onclick="saveTelegramSettings()">บันทึก Telegram</button>'
+  );
+}
+async function saveTelegramSettings(silent=false){
+  const payload={
+    event_id:state.event.id,
+    enabled:document.getElementById('tgEnabled').checked,
+    bot_token:document.getElementById('tgToken').value.trim(),
+    chat_id:document.getElementById('tgChatId').value.trim()
+  };
+  if(!silent)Swal.fire({title:'กำลังบันทึก Telegram…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
+  try{
+    const data=await telegramApi('telegram-settings-save',payload);
+    state.event.feature_flags={...(state.event.feature_flags||{}),notifications:!!data.enabled};
+    state.events=state.events.map(e=>e.id===state.event.id?{...e,feature_flags:state.event.feature_flags}:e);
+    if(!silent)Swal.fire({icon:'success',title:'บันทึก Telegram แล้ว',timer:1100,showConfirmButton:false});
+    return true;
+  }catch(e){
+    Swal.fire('บันทึก Telegram ไม่สำเร็จ',e.message||String(e),'error');
+    return false;
+  }
+}
+async function testTelegram(){
+  const ok=await saveTelegramSettings(true);if(!ok)return;
+  Swal.fire({title:'กำลังทดสอบ Telegram…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
+  try{
+    await telegramApi('telegram-test',{event_id:state.event.id});
+    Swal.fire({icon:'success',title:'ส่งข้อความทดสอบแล้ว',text:'ตรวจ Telegram ที่ตั้งค่าไว้ได้เลย'});
+    renderTelegram();
+  }catch(e){Swal.fire('ทดสอบไม่สำเร็จ',e.message||String(e),'error')}
 }
 async function renderForm(){document.getElementById('content').innerHTML=card('Form Builder','<div id="baseFieldBox"></div><div id="formBox" style="margin-top:16px">กำลังโหลด…</div>','<button class="btn soft" onclick="sectionDialog()">+ Section</button><button class="btn primary" onclick="fieldDialog()">+ Field</button>');renderBaseFieldSettings();const[{data:ss},{data:ff}]=await Promise.all([db.from('restart_form_sections').select('*').eq('event_id',state.event.id).order('sort_order'),db.from('restart_form_fields').select('*').eq('event_id',state.event.id).order('sort_order')]);formBox.innerHTML=(ss||[]).map(s=>'<div class="paybox" style="margin-top:10px"><div class="row space"><strong>'+esc(t(s.label))+'</strong><span class="badge">'+esc(s.section_key)+'</span></div>'+(ff||[]).filter(f=>f.section_id===s.id&&!reservedBaseKeys.has(String(f.field_key||'').toLowerCase())).map(f=>'<div class="row space" style="padding:10px 0;border-top:1px solid #eee"><span>'+esc(t(f.label))+' <small class="muted">('+esc(f.field_type)+')</small></span><span><span class="badge '+(f.is_required?'warn':'')+'">'+(f.is_required?'จำเป็น':'ไม่บังคับ')+'</span> <span class="badge '+(f.is_active?'ok':'')+'">'+(f.is_active?'เปิด':'ปิด')+'</span> <button class="btn sm soft" onclick="editField(\''+f.id+'\')">แก้ไข</button> <button class="btn sm soft" onclick="toggleRow(\'restart_form_fields\',\''+f.id+'\',\'is_active\','+(!f.is_active)+',renderForm)">'+(f.is_active?'ปิด':'เปิด')+'</button> <button class="btn sm danger" onclick="delRow(\'restart_form_fields\',\''+f.id+'\',renderForm)">ลบ</button></span></div>').join('')+'</div>').join('')||'<div class="rr-empty">ยังไม่มี Custom Field</div>'}
 function renderBaseFieldSettings(){const fs=state.event.field_settings||{};baseFieldBox.innerHTML='<div class="paybox"><div class="row space"><div><strong>ข้อมูลพื้นฐานของผู้สมัคร</strong><div class="muted">เปิด/ปิดและกำหนดบังคับกรอกได้รายช่อง</div></div><button class="btn primary sm" onclick="saveBaseFields()">บันทึกข้อมูลพื้นฐาน</button></div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>ช่องข้อมูล</th><th>แสดง</th><th>บังคับกรอก</th></tr></thead><tbody>'+Object.entries(baseFieldLabels).map(([k,l])=>{const s=fs[k]||{enabled:true,required:false};return '<tr><td>'+l+'</td><td><input type="checkbox" data-base-enabled="'+k+'" '+(s.enabled!==false?'checked':'')+'></td><td><input type="checkbox" data-base-required="'+k+'" '+(s.required?'checked':'')+'></td></tr>'}).join('')+'</tbody></table></div></div>'}
