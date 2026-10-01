@@ -439,7 +439,6 @@ function routeCategoryNames(route){
   (route.restart_route_categories||[]).forEach(x=>{
     const c=x.restart_race_categories;if(c?.name)names.push(t(c.name));
   });
-  if(!names.length&&route.restart_race_categories?.name)names.push(t(route.restart_race_categories.name));
   return [...new Set(names.filter(Boolean))];
 }
 function routePointRows(route){
@@ -452,7 +451,7 @@ function routePointRows(route){
 async function renderRoutes(){
   document.getElementById('content').innerHTML=card('GPX Route Animation','<div class="rr-empty">กำลังโหลดเส้นทาง…</div>');
   const{data,error}=await db.from('restart_event_routes')
-    .select('*,restart_race_categories(name,distance_km),restart_route_categories(category_id,restart_race_categories(name,distance_km)),restart_route_points(*)')
+    .select('*,restart_route_categories(category_id,restart_race_categories!restart_route_categories_category_id_fkey(name,distance_km)),restart_route_points(*)')
     .eq('event_id',state.event.id).order('sort_order');
   if(error)return document.getElementById('content').innerHTML=card('GPX Route Animation','<div class="badge danger">'+esc(error.message)+'</div>');
   const rows=data||[];
@@ -480,7 +479,6 @@ async function routeDialog(id=null){
     const{data,error}=await db.from('restart_event_routes').select('*,restart_route_categories(category_id)').eq('id',id).single();
     if(error)return Swal.fire('โหลดเส้นทางไม่ได้',error.message,'error');
     current=data;linked=(data.restart_route_categories||[]).map(x=>x.category_id);
-    if(current.category_id&&!linked.includes(current.category_id))linked.push(current.category_id);
   }
   const{data:cats,error:catErr}=await db.from('restart_race_categories').select('id,name,distance_km').eq('event_id',state.event.id).order('sort_order');
   if(catErr)return Swal.fire('โหลดรุ่นไม่ได้',catErr.message,'error');
@@ -512,7 +510,6 @@ async function routeDialog(id=null){
     if(r.value.file){stats=await analyzeRouteGpx(r.value.file);fileInfo=await uploadRouteGpx(r.value.file)}
     const row={
       event_id:state.event.id,
-      category_id:r.value.category_ids[0]||null,
       name:{th:r.value.name,en:r.value.name},
       animation_duration_seconds:r.value.duration,
       show_km_markers:r.value.show_km_markers,
