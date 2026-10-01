@@ -59,7 +59,7 @@ async function init(){
     db.from('restart_installment_steps').select('*'),
     db.from('restart_event_showcase').select('*').eq('event_id',eid).maybeSingle(),
     db.from('restart_event_media').select('*').eq('event_id',eid).eq('is_active',true).order('sort_order'),
-    db.from('restart_event_routes').select('*,restart_route_categories(category_id,restart_race_categories(name,distance_km)),restart_route_points(*)').eq('event_id',eid).eq('is_active',true).order('sort_order')
+    db.from('restart_event_routes').select('*,restart_route_categories(category_id,restart_race_categories!restart_route_categories_category_id_fkey(name,distance_km)),restart_route_points(*)').eq('event_id',eid).eq('is_active',true).order('sort_order')
   ]);
   const firstError=results.find(x=>x.error&&x.status!==406)?.error;
   if(firstError)console.warn(firstError);
