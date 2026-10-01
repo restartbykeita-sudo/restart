@@ -154,11 +154,11 @@ async function listEvents(){
 }
 function previewCopy(){
   const x={
-    th:{back:'กลับหน้ารวม Event',register:'สมัครการแข่งขัน',coming:'เร็ว ๆ นี้',closed:'ปิดรับสมัครแล้ว',overview:'เกี่ยวกับการแข่งขัน',raceInfo:'ระยะและรุ่นการแข่งขัน',distance:'ระยะ',category:'รุ่น',start:'เวลา Start',cutoff:'Cutoff',duration:'เวลาคาดหมาย',elevation:'Elevation Gain',price:'ค่าสมัคร',age:'อายุ',open:'เปิดรับสมัครแล้ว',kit:'Race Collection',shirt:'เสื้อแข่งขัน',medal:'เหรียญ Finisher',trophy:'ถ้วยรางวัล',map:'แผนที่เส้นทาง',gallery:'บรรยากาศงาน',highlights:'Highlights',inclusions:'สิ่งที่นักวิ่งได้รับ',awards:'รางวัลและถ้วย',course:'รายละเอียดเส้นทาง',rules:'กติกาสำคัญ',venue:'สถานที่และการเดินทาง',packages:'Package',registration:'ช่วงรับสมัคร',categories:'รุ่นการแข่งขัน',from:'เริ่มต้น',contact:'ติดต่อผู้จัด',days:'วันแข่งขัน'},
-    en:{back:'All Events',register:'Register Now',coming:'Coming Soon',closed:'Registration Closed',overview:'About the Event',raceInfo:'Distances & Categories',distance:'Distance',category:'Category',start:'Start Time',cutoff:'Cutoff',duration:'Expected Time',elevation:'Elevation Gain',price:'Entry Fee',age:'Age',open:'Registration Open',kit:'Race Collection',shirt:'Race Shirt',medal:'Finisher Medal',trophy:'Trophy',map:'Course Map',gallery:'Event Gallery',highlights:'Highlights',inclusions:'Runner Entitlements',awards:'Awards & Trophies',course:'Course Details',rules:'Important Rules',venue:'Venue & Travel',packages:'Packages',registration:'Registration Period',categories:'Categories',from:'From',contact:'Contact',days:'Race Day'},
-    zh:{back:'返回活动列表',register:'立即报名',coming:'即将开放',closed:'报名已关闭',overview:'赛事介绍',raceInfo:'距离与组别',distance:'距离',category:'组别',start:'起跑时间',cutoff:'关门时间',duration:'预计用时',elevation:'累计爬升',price:'报名费',age:'年龄',open:'开放报名',kit:'赛事纪念品',shirt:'赛事服',medal:'完赛奖牌',trophy:'奖杯',map:'路线图',gallery:'赛事图库',highlights:'亮点',inclusions:'参赛权益',awards:'奖项与奖杯',course:'路线说明',rules:'重要规则',venue:'地点与交通',packages:'套餐',registration:'报名时间',categories:'竞赛组别',from:'起价',contact:'联系方式',days:'比赛日'},
-    ja:{back:'イベント一覧',register:'申し込む',coming:'近日公開',closed:'受付終了',overview:'イベント概要',raceInfo:'距離・カテゴリー',distance:'距離',category:'カテゴリー',start:'スタート',cutoff:'制限時間',duration:'目安時間',elevation:'獲得標高',price:'参加費',age:'年齢',open:'受付中',kit:'Race Collection',shirt:'大会シャツ',medal:'フィニッシャーメダル',trophy:'トロフィー',map:'コースマップ',gallery:'ギャラリー',highlights:'ハイライト',inclusions:'参加特典',awards:'表彰・トロフィー',course:'コース詳細',rules:'重要ルール',venue:'会場・アクセス',packages:'パッケージ',registration:'受付期間',categories:'カテゴリー',from:'〜',contact:'お問い合わせ',days:'開催日'},
-    ru:{back:'Все события',register:'Зарегистрироваться',coming:'Скоро',closed:'Регистрация закрыта',overview:'О событии',raceInfo:'Дистанции и категории',distance:'Дистанция',category:'Категория',start:'Старт',cutoff:'Cutoff',duration:'Ожидаемое время',elevation:'Набор высоты',price:'Взнос',age:'Возраст',open:'Регистрация открыта',kit:'Race Collection',shirt:'Футболка',medal:'Медаль финишера',trophy:'Кубок',map:'Карта трассы',gallery:'Галерея',highlights:'Highlights',inclusions:'Что входит',awards:'Награды',course:'Описание трассы',rules:'Правила',venue:'Место и проезд',packages:'Пакеты',registration:'Период регистрации',categories:'Категории',from:'От',contact:'Контакты',days:'День забега'}
+    th:{back:'กลับหน้ารวม Event',register:'สมัครการแข่งขัน',coming:'เร็ว ๆ นี้',closed:'ปิดรับสมัครแล้ว',overview:'เกี่ยวกับการแข่งขัน',raceInfo:'ระยะและรุ่นการแข่งขัน',distance:'ระยะ',category:'รุ่น',start:'เวลา Start',cutoff:'Cutoff',duration:'เวลาคาดหมาย',elevation:'Elevation Gain',price:'ค่าสมัคร',age:'อายุ',open:'เปิดรับสมัครแล้ว',kit:'Race Collection',shirt:'เสื้อแข่งขัน',medal:'เหรียญ Finisher',trophy:'ถ้วยรางวัล',map:'แผนที่เส้นทาง',gallery:'บรรยากาศงาน',highlights:'Highlights',inclusions:'สิ่งที่นักวิ่งได้รับ',awards:'รางวัลและถ้วย',course:'รายละเอียดเส้นทาง',rules:'กติกาสำคัญ',venue:'สถานที่และการเดินทาง',packages:'Package',registration:'ช่วงรับสมัคร',categories:'รุ่นการแข่งขัน',from:'เริ่มต้น',contact:'ติดต่อผู้จัด',days:'วันแข่งขัน',gender:'เพศ',capacity:'จำนวนรับ',early:'Early Bird'},
+    en:{back:'All Events',register:'Register Now',coming:'Coming Soon',closed:'Registration Closed',overview:'About the Event',raceInfo:'Distances & Categories',distance:'Distance',category:'Category',start:'Start Time',cutoff:'Cutoff',duration:'Expected Time',elevation:'Elevation Gain',price:'Entry Fee',age:'Age',open:'Registration Open',kit:'Race Collection',shirt:'Race Shirt',medal:'Finisher Medal',trophy:'Trophy',map:'Course Map',gallery:'Event Gallery',highlights:'Highlights',inclusions:'Runner Entitlements',awards:'Awards & Trophies',course:'Course Details',rules:'Important Rules',venue:'Venue & Travel',packages:'Packages',registration:'Registration Period',categories:'Categories',from:'From',contact:'Contact',days:'Race Day',gender:'Gender',capacity:'Capacity',early:'Early Bird'},
+    zh:{back:'返回活动列表',register:'立即报名',coming:'即将开放',closed:'报名已关闭',overview:'赛事介绍',raceInfo:'距离与组别',distance:'距离',category:'组别',start:'起跑时间',cutoff:'关门时间',duration:'预计用时',elevation:'累计爬升',price:'报名费',age:'年龄',open:'开放报名',kit:'赛事纪念品',shirt:'赛事服',medal:'完赛奖牌',trophy:'奖杯',map:'路线图',gallery:'赛事图库',highlights:'亮点',inclusions:'参赛权益',awards:'奖项与奖杯',course:'路线说明',rules:'重要规则',venue:'地点与交通',packages:'套餐',registration:'报名时间',categories:'竞赛组别',from:'起价',contact:'联系方式',days:'比赛日',gender:'性别',capacity:'名额',early:'Early Bird'},
+    ja:{back:'イベント一覧',register:'申し込む',coming:'近日公開',closed:'受付終了',overview:'イベント概要',raceInfo:'距離・カテゴリー',distance:'距離',category:'カテゴリー',start:'スタート',cutoff:'制限時間',duration:'目安時間',elevation:'獲得標高',price:'参加費',age:'年齢',open:'受付中',kit:'Race Collection',shirt:'大会シャツ',medal:'フィニッシャーメダル',trophy:'トロフィー',map:'コースマップ',gallery:'ギャラリー',highlights:'ハイライト',inclusions:'参加特典',awards:'表彰・トロフィー',course:'コース詳細',rules:'重要ルール',venue:'会場・アクセス',packages:'パッケージ',registration:'受付期間',categories:'カテゴリー',from:'〜',contact:'お問い合わせ',days:'開催日',gender:'性別',capacity:'定員',early:'Early Bird'},
+    ru:{back:'Все события',register:'Зарегистрироваться',coming:'Скоро',closed:'Регистрация закрыта',overview:'О событии',raceInfo:'Дистанции и категории',distance:'Дистанция',category:'Категория',start:'Старт',cutoff:'Cutoff',duration:'Ожидаемое время',elevation:'Набор высоты',price:'Взнос',age:'Возраст',open:'Регистрация открыта',kit:'Race Collection',shirt:'Футболка',medal:'Медаль финишера',trophy:'Кубок',map:'Карта трассы',gallery:'Галерея',highlights:'Highlights',inclusions:'Что входит',awards:'Награды',course:'Описание трассы',rules:'Правила',venue:'Место и проезд',packages:'Пакеты',registration:'Период регистрации',categories:'Категории',from:'От',contact:'Контакты',days:'День забега',gender:'Пол',capacity:'Лимит',early:'Early Bird'}
   };return x[lang]||x.en
 }
 function fmtPreviewDate(v){
@@ -183,6 +183,16 @@ function previewMediaCard(url,label,wide=false){
   if(!url)return'';
   return '<article class="preview-media-card '+(wide?'is-wide':'')+'"><img src="'+esc(url)+'" alt="'+esc(label)+'"><div class="preview-media-caption">'+esc(label)+'</div></article>';
 }
+function previewGenderLabel(v){
+  if(v==='MALE')return lang==='th'?'ชาย':lang==='zh'?'男':lang==='ja'?'男性':lang==='ru'?'Мужчины':'Male';
+  if(v==='FEMALE')return lang==='th'?'หญิง':lang==='zh'?'女':lang==='ja'?'女性':lang==='ru'?'Женщины':'Female';
+  return lang==='th'?'ไม่จำกัด':lang==='zh'?'不限':lang==='ja'?'制限なし':lang==='ru'?'Без ограничений':'Any';
+}
+function previewEarlyBird(c){
+  const f=E.feature_flags||{};
+  if(!f.early_bird||c.early_bird_price_thb==null)return'';
+  return '฿'+money(c.early_bird_price_thb);
+}
 function raceCategoryCard(c,p){
   const age=(c.min_age!=null||c.max_age!=null)?((c.min_age??'—')+'–'+(c.max_age??'∞')):'—';
   return '<article class="preview-race-card">'+
@@ -194,7 +204,10 @@ function raceCategoryCard(c,p){
       '<div><span>'+esc(p.duration)+'</span><b>'+esc(fmtDuration(c.expected_duration_minutes))+'</b></div>'+
       '<div><span>'+esc(p.price)+'</span><b>฿'+money(currentCatPrice(c))+'</b></div>'+
       '<div><span>'+esc(p.age)+'</span><b>'+esc(age)+'</b></div>'+
+      '<div><span>'+esc(p.gender)+'</span><b>'+esc(previewGenderLabel(c.gender_rule))+'</b></div>'+
+      '<div><span>'+esc(p.capacity)+'</span><b>'+(c.capacity!=null?esc(c.capacity):'—')+'</b></div>'+
       '<div><span>'+esc(p.elevation)+'</span><b>'+(c.elevation_gain_m!=null?esc(c.elevation_gain_m)+' m':'—')+'</b></div>'+
+      (previewEarlyBird(c)?'<div><span>'+esc(p.early)+'</span><b>'+esc(previewEarlyBird(c))+'</b></div>':'')+
     '</div>'+
   '</article>';
 }
@@ -242,6 +255,7 @@ function renderEventPreview(){
           '<div><span>'+esc(p.categories)+'</span><b>'+C.length+'</b></div>'+
           '<div><span>'+esc(p.distance)+'</span><b>'+(distances.length?distances.join(' / ')+' KM':'—')+'</b></div>'+
           '<div><span>'+esc(p.price)+'</span><b>'+(prices.length?(minPrice===maxPrice?'฿'+money(minPrice):'฿'+money(minPrice)+' – ฿'+money(maxPrice)):'—')+'</b></div>'+
+          (E.capacity!=null?'<div><span>'+esc(p.capacity)+'</span><b>'+esc(E.capacity)+'</b></div>':'')+
         '</div>'+
         '<div class="preview-hero-actions">'+
           (canRegister?'<a class="preview-register-btn" href="?event='+encodeURIComponent(E.slug)+'&register=1">'+esc(p.register)+' <span>↗</span></a>':'<span class="preview-register-btn is-disabled">'+esc(status)+'</span>')+
