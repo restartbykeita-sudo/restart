@@ -377,7 +377,46 @@ async function deleteShowcaseMedia(id,url){
   renderShowcase();
 }
 
-function routeTypeText(v){return v==='CP_WATER'?'น้ำ + CP':v==='WATER'?'จุดให้น้ำ':v==='INFO'?'จุดข้อมูล':'CP'}
+function routeTypeText(v){
+  const x={CP:'Checkpoint',CP_WATER:'น้ำ + CP',WATER:'จุดให้น้ำ',INFO:'จุดข้อมูล',FOOD:'อาหาร',MEDICAL:'แพทย์ / ปฐมพยาบาล',VIEWPOINT:'จุดชมวิว',CUSTOM:'จุดพิเศษ'};
+  return x[v]||v||'CP';
+}
+function routeFmtMinutes(v){
+  if(v==null||v==='')return'—';
+  const n=Number(v)||0,h=Math.floor(n/60),m=n%60;
+  return (h?h+' ชม. ':'')+(m?m+' นาที':(!h?'0 นาที':''));
+}
+function routeHaversine(a,b){
+  const R=6371000,rad=x=>x*Math.PI/180,dLat=rad(b.lat-a.lat),dLon=rad(b.lon-a.lon);
+  const q=Math.sin(dLat/2)**2+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLon/2)**2;
+  return 2*R*Math.atan2(Math.sqrt(q),Math.sqrt(1-q));
+}
+async function analyzeRouteGpx(file){
+  const xml=new DOMParser().parseFromString(await file.text(),'application/xml');
+  if(xml.querySelector('parsererror'))throw new Error('ไฟล์ GPX ไม่ถูกต้อง');
+  let nodes=[...xml.getElementsByTagNameNS('*','trkpt')];
+  if(!nodes.length)nodes=[...xml.getElementsByTagNameNS('*','rtept')];
+  if(nodes.length<2)throw new Error('GPX ต้องมีพิกัดอย่างน้อย 2 จุด');
+  const pts=nodes.map(n=>{
+    const eleNode=n.getElementsByTagNameNS('*','ele')[0];
+    return{lat:Number(n.getAttribute('lat')),lon:Number(n.getAttribute('lon')),ele:eleNode?Number(eleNode.textContent):0}
+  }).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon)&&Number.isFinite(p.ele));
+  if(pts.length<2)throw new Error('ไม่พบพิกัดที่ใช้งานได้ใน GPX');
+  let distance=0,asc=0,desc=0;
+  for(let i=1;i<pts.length;i++){
+    distance+=routeHaversine(pts[i-1],pts[i]);
+    const d=pts[i].ele-pts[i-1].ele;if(d>0)asc+=d;else desc-=d;
+  }
+  const es=pts.map(x=>x.ele);
+  return{
+    distance_km:Number((distance/1000).toFixed(3)),
+    total_ascent_m:Number(asc.toFixed(1)),
+    total_descent_m:Number(desc.toFixed(1)),
+    min_elevation_m:Number(Math.min(...es).toFixed(1)),
+    max_elevation_m:Number(Math.max(...es).toFixed(1)),
+    point_count:pts.length
+  };
+}
 async function uploadRouteGpx(file){
   if(!file)throw new Error('กรุณาเลือกไฟล์ GPX');
   if(!/\.gpx$/i.test(file.name))throw new Error('รองรับเฉพาะไฟล์ .gpx');
@@ -395,36 +434,62 @@ async function uploadRoutePointImage(file){
   if(error)throw error;
   return{path,url:db.storage.from('restart-event-media').getPublicUrl(path).data.publicUrl};
 }
+function routeCategoryNames(route){
+  const names=[];
+  (route.restart_route_categories||[]).forEach(x=>{
+    const c=x.restart_race_categories;if(c?.name)names.push(t(c.name));
+  });
+  if(!names.length&&route.restart_race_categories?.name)names.push(t(route.restart_race_categories.name));
+  return [...new Set(names.filter(Boolean))];
+}
 function routePointRows(route){
   const pts=(route.restart_route_points||[]).sort((a,b)=>Number(a.distance_km)-Number(b.distance_km));
   if(!pts.length)return'<div class="rr-empty" style="margin-top:12px">ยังไม่มี CP / Water · Start และ Finish จะอ่านจาก GPX อัตโนมัติ</div>';
-  return '<div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>จุด</th><th>กม.</th><th>ชื่อ</th><th>รูป</th><th></th></tr></thead><tbody>'+
-    pts.map(p=>'<tr><td><span class="badge">'+routeTypeText(p.point_type)+'</span></td><td>'+Number(p.distance_km).toLocaleString('th-TH',{maximumFractionDigits:3})+'</td><td>'+esc(t(p.name)||p.code||'—')+'</td><td>'+(p.image_url?'<img src="'+esc(p.image_url)+'" alt="" style="width:54px;height:42px;object-fit:cover;border-radius:8px">':'—')+'</td><td><div class="row"><button class="btn sm soft" onclick="routePointDialog(\''+route.id+'\',\''+p.id+'\')">แก้ไข</button><button class="btn sm danger" onclick="deleteRoutePoint(\''+p.id+'\')">ลบ</button></div></td></tr>').join('')+
+  return '<div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>จุด</th><th>กม.</th><th>ชื่อ</th><th>Cutoff</th><th>รูป</th><th></th></tr></thead><tbody>'+
+    pts.map(p=>'<tr><td><span class="badge">'+routeTypeText(p.point_type)+'</span></td><td>'+Number(p.distance_km).toLocaleString('th-TH',{maximumFractionDigits:3})+'</td><td>'+esc(t(p.name)||p.code||'—')+'</td><td>'+esc(routeFmtMinutes(p.cutoff_minutes))+'</td><td>'+(p.image_url?'<img src="'+esc(p.image_url)+'" alt="" style="width:60px;height:44px;object-fit:cover;border-radius:9px">':'—')+'</td><td><div class="row"><button class="btn sm soft" onclick="routePointDialog(\''+route.id+'\',\''+p.id+'\')">แก้ไข</button><button class="btn sm danger" onclick="deleteRoutePoint(\''+p.id+'\')">ลบ</button></div></td></tr>').join('')+
   '</tbody></table></div>';
 }
 async function renderRoutes(){
   document.getElementById('content').innerHTML=card('GPX Route Animation','<div class="rr-empty">กำลังโหลดเส้นทาง…</div>');
-  const{data,error}=await db.from('restart_event_routes').select('*,restart_race_categories(name),restart_route_points(*)').eq('event_id',state.event.id).order('sort_order');
+  const{data,error}=await db.from('restart_event_routes')
+    .select('*,restart_race_categories(name,distance_km),restart_route_categories(category_id,restart_race_categories(name,distance_km)),restart_route_points(*)')
+    .eq('event_id',state.event.id).order('sort_order');
   if(error)return document.getElementById('content').innerHTML=card('GPX Route Animation','<div class="badge danger">'+esc(error.message)+'</div>');
   const rows=data||[];
-  const body='<p class="muted">อัปโหลด GPX แล้วระบบจะสร้าง Start / Finish, ระยะทาง, Elevation และ Animation ให้อัตโนมัติ · CP/Water ระบุตำแหน่งด้วยกิโลเมตรตามเส้นทางและใส่รูปประกอบได้</p>'+
-    (rows.length?rows.map(r=>'<div class="rr-card" style="box-shadow:none;margin-top:14px">'+
-      '<div class="row space"><div><div class="row"><strong>'+esc(t(r.name)||'เส้นทางการแข่งขัน')+'</strong>'+(r.restart_race_categories?'<span class="badge">'+esc(t(r.restart_race_categories.name))+'</span>':'')+'<span class="badge '+(r.is_active?'ok':'')+'">'+(r.is_active?'เปิด':'ปิด')+'</span></div><div class="muted" style="margin-top:5px">Animation '+r.animation_duration_seconds+' วินาที · หมุด กม. '+(r.show_km_markers?'เปิด':'ปิด')+'</div></div>'+
-      '<div class="row"><a class="btn sm soft" target="_blank" href="../public/?event='+encodeURIComponent(state.event.slug)+'#routeSection">Preview</a><button class="btn sm primary" onclick="routePointDialog(\''+r.id+'\')">+ CP / Water</button><button class="btn sm soft" onclick="routeDialog(\''+r.id+'\')">แก้ไข GPX</button><button class="btn sm danger" onclick="deleteRoute(\''+r.id+'\')">ลบ</button></div></div>'+
-      routePointRows(r)+'</div>').join(''):'<div class="rr-empty">ยังไม่มีเส้นทาง GPX สำหรับ Event นี้</div>');
+  const body='<p class="muted">อัปโหลด GPX แล้วระบบจะสร้าง Start / Finish, ระยะทาง, Elevation และ Animation ให้อัตโนมัติ · Route เดียวผูกได้หลายรุ่น · CP/Water ระบุตำแหน่งด้วยกิโลเมตรจริงบน GPX และใส่รูป/Cutoff ได้</p>'+
+    (rows.length?rows.map(r=>{
+      const cats=routeCategoryNames(r);
+      const stats=[
+        r.distance_km!=null?Number(r.distance_km).toFixed(2)+' km':null,
+        r.total_ascent_m!=null?'↑ '+Math.round(r.total_ascent_m)+' m':null,
+        r.point_count?'GPX '+Number(r.point_count).toLocaleString()+' จุด':null
+      ].filter(Boolean).join(' · ');
+      return '<div class="rr-card" style="box-shadow:none;margin-top:14px">'+
+        '<div class="row space"><div><div class="row"><strong>'+esc(t(r.name)||'เส้นทางการแข่งขัน')+'</strong>'+
+        cats.map(x=>'<span class="badge">'+esc(x)+'</span>').join('')+
+        '<span class="badge '+(r.is_active?'ok':'')+'">'+(r.is_active?'เปิด':'ปิด')+'</span></div>'+
+        '<div class="muted" style="margin-top:5px">'+esc(stats||'ยังไม่มีสถิติ GPX')+' · Animation '+r.animation_duration_seconds+' วินาที · หมุด กม. '+(r.show_km_markers?'เปิด':'ปิด')+'</div></div>'+
+        '<div class="row"><a class="btn sm soft" target="_blank" href="../public/?event='+encodeURIComponent(state.event.slug)+'#routeSection">Preview</a><button class="btn sm primary" onclick="routePointDialog(\''+r.id+'\')">+ จุดบนเส้นทาง</button><button class="btn sm soft" onclick="routeDialog(\''+r.id+'\')">แก้ไข GPX</button><button class="btn sm danger" onclick="deleteRoute(\''+r.id+'\')">ลบ</button></div></div>'+
+        routePointRows(r)+'</div>';
+    }).join(''):'<div class="rr-empty">ยังไม่มีเส้นทาง GPX สำหรับ Event นี้</div>');
   document.getElementById('content').innerHTML=card('GPX Route Animation',body,'<a class="btn soft" target="_blank" href="https://restart-rest-art.oresearcho.chatgpt.site/">ดูระบบ Animation เดิม</a><button class="btn primary" onclick="routeDialog()">+ อัปโหลด GPX</button>');
 }
 async function routeDialog(id=null){
-  let current=null;
-  if(id){const{data,error}=await db.from('restart_event_routes').select('*').eq('id',id).single();if(error)return Swal.fire('โหลดเส้นทางไม่ได้',error.message,'error');current=data}
+  let current=null,linked=[];
+  if(id){
+    const{data,error}=await db.from('restart_event_routes').select('*,restart_route_categories(category_id)').eq('id',id).single();
+    if(error)return Swal.fire('โหลดเส้นทางไม่ได้',error.message,'error');
+    current=data;linked=(data.restart_route_categories||[]).map(x=>x.category_id);
+    if(current.category_id&&!linked.includes(current.category_id))linked.push(current.category_id);
+  }
   const{data:cats,error:catErr}=await db.from('restart_race_categories').select('id,name,distance_km').eq('event_id',state.event.id).order('sort_order');
   if(catErr)return Swal.fire('โหลดรุ่นไม่ได้',catErr.message,'error');
-  const opts='<option value="">ไม่ผูกกับรุ่น</option>'+(cats||[]).map(c=>'<option value="'+c.id+'" '+(current?.category_id===c.id?'selected':'')+'>'+esc(t(c.name))+(c.distance_km!=null?' · '+c.distance_km+' km':'')+'</option>').join('');
+  const opts=(cats||[]).map(c=>'<option value="'+c.id+'" '+(linked.includes(c.id)?'selected':'')+'>'+esc(t(c.name))+(c.distance_km!=null?' · '+c.distance_km+' km':'')+'</option>').join('');
   const r=await Swal.fire({
-    title:id?'แก้ไข GPX Route':'อัปโหลด GPX Route',width:780,
+    title:id?'แก้ไข GPX Route':'อัปโหลด GPX Route',width:820,
     html:'<div class="grid2" style="text-align:left">'+
       '<label>ชื่อเส้นทาง<input id="rtName" class="swal2-input" style="margin:0" value="'+esc(t(current?.name)||'เส้นทางการแข่งขัน')+'"></label>'+
-      '<label>ผูกกับรุ่น<select id="rtCat" class="swal2-select" style="margin:0;width:100%">'+opts+'</select></label>'+
+      '<label>ผูกกับรุ่น (เลือกได้หลายรุ่น)<select id="rtCats" multiple size="5" class="swal2-select" style="margin:0;width:100%">'+opts+'</select><small class="muted">กด Ctrl/Cmd เพื่อเลือกหลายรุ่นบนคอมพิวเตอร์</small></label>'+
       '<label>ความยาว Animation (วินาที)<input id="rtDuration" type="number" min="10" max="600" class="swal2-input" style="margin:0" value="'+(current?.animation_duration_seconds||48)+'"></label>'+
       '<label>ไฟล์ GPX<input id="rtFile" type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml" class="swal2-file" style="margin:0;width:100%"><small class="muted">'+(current?'ไม่เลือกไฟล์ = ใช้ GPX เดิม':'ต้องเลือกไฟล์ .gpx')+'</small></label>'+
       '<label style="display:flex;align-items:center;gap:8px"><input id="rtKm" type="checkbox" style="width:auto" '+(current?.show_km_markers===false?'':'checked')+'> แสดงหมุดทุก 1 กม.</label>'+
@@ -432,7 +497,9 @@ async function routeDialog(id=null){
     '</div>',
     showCancelButton:true,confirmButtonText:id?'บันทึก':'อัปโหลด',
     preConfirm:()=>({
-      name:rtName.value.trim(),category_id:rtCat.value||null,duration:Number(rtDuration.value)||48,
+      name:rtName.value.trim(),
+      category_ids:[...rtCats.selectedOptions].map(o=>o.value),
+      duration:Number(rtDuration.value)||48,
       show_km_markers:rtKm.checked,is_active:rtActive.checked,file:rtFile.files[0]||null
     })
   });
@@ -440,45 +507,76 @@ async function routeDialog(id=null){
   if(!r.value.name)return Swal.fire('ข้อมูลไม่ครบ','กรุณาระบุชื่อเส้นทาง','warning');
   if(!current&&!r.value.file)return Swal.fire('ยังไม่ได้เลือก GPX','กรุณาเลือกไฟล์ .gpx','warning');
   try{
-    Swal.fire({title:'กำลังบันทึก GPX…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
-    let fileInfo=null;if(r.value.file)fileInfo=await uploadRouteGpx(r.value.file);
+    Swal.fire({title:'กำลังตรวจและบันทึก GPX…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
+    let fileInfo=null,stats=null;
+    if(r.value.file){stats=await analyzeRouteGpx(r.value.file);fileInfo=await uploadRouteGpx(r.value.file)}
     const row={
-      event_id:state.event.id,category_id:r.value.category_id,name:{th:r.value.name,en:r.value.name},
-      animation_duration_seconds:r.value.duration,show_km_markers:r.value.show_km_markers,is_active:r.value.is_active,
+      event_id:state.event.id,
+      category_id:r.value.category_ids[0]||null,
+      name:{th:r.value.name,en:r.value.name},
+      animation_duration_seconds:r.value.duration,
+      show_km_markers:r.value.show_km_markers,
+      is_active:r.value.is_active,
       updated_at:new Date().toISOString()
     };
     if(fileInfo){row.gpx_url=fileInfo.url;row.gpx_storage_path=fileInfo.path}
-    let error;
-    if(current)({error}=await db.from('restart_event_routes').update(row).eq('id',current.id));
-    else({error}=await db.from('restart_event_routes').insert(row));
+    if(stats)Object.assign(row,stats);
+    let saved,error;
+    if(current)({data:saved,error}=await db.from('restart_event_routes').update(row).eq('id',current.id).select().single());
+    else({data:saved,error}=await db.from('restart_event_routes').insert(row).select().single());
     if(error)throw error;
+    const{error:clearErr}=await db.from('restart_route_categories').delete().eq('route_id',saved.id);if(clearErr)throw clearErr;
+    if(r.value.category_ids.length){
+      const{error:linkErr}=await db.from('restart_route_categories').insert(r.value.category_ids.map(category_id=>({route_id:saved.id,category_id})));
+      if(linkErr)throw linkErr;
+    }
     if(current&&fileInfo&&current.gpx_storage_path)await db.storage.from('restart-route-files').remove([current.gpx_storage_path]).catch(()=>{});
-    Swal.fire({icon:'success',title:'บันทึก GPX แล้ว',timer:1100,showConfirmButton:false});renderRoutes();
+    Swal.fire({icon:'success',title:'บันทึก GPX แล้ว',text:stats?'ระยะ '+stats.distance_km.toFixed(2)+' km · '+stats.point_count.toLocaleString()+' จุด':'',timer:1500,showConfirmButton:false});
+    renderRoutes();
   }catch(e){Swal.fire('บันทึก GPX ไม่สำเร็จ',e.message||String(e),'error')}
 }
 async function routePointDialog(routeId,id=null){
+  const{data:route,error:routeError}=await db.from('restart_event_routes').select('id,distance_km').eq('id',routeId).single();
+  if(routeError)return Swal.fire('โหลดเส้นทางไม่ได้',routeError.message,'error');
   let p=null;
   if(id){const{data,error}=await db.from('restart_route_points').select('*').eq('id',id).single();if(error)return Swal.fire('โหลดจุดไม่ได้',error.message,'error');p=data}
+  const types=[
+    ['CP','Checkpoint'],['CP_WATER','น้ำ + Checkpoint'],['WATER','จุดให้น้ำ'],['FOOD','อาหาร'],
+    ['MEDICAL','แพทย์ / ปฐมพยาบาล'],['VIEWPOINT','จุดชมวิว'],['INFO','จุดข้อมูล'],['CUSTOM','จุดพิเศษ']
+  ];
   const r=await Swal.fire({
-    title:id?'แก้ไขจุดบนเส้นทาง':'เพิ่ม CP / Water',width:760,
+    title:id?'แก้ไขจุดบนเส้นทาง':'เพิ่มจุดบนเส้นทาง',width:800,
     html:'<div class="grid2" style="text-align:left">'+
-      '<label>ประเภท<select id="rpType" class="swal2-select" style="margin:0;width:100%"><option value="CP">Checkpoint</option><option value="CP_WATER">น้ำ + Checkpoint</option><option value="WATER">จุดให้น้ำ</option><option value="INFO">จุดข้อมูล</option></select></label>'+
-      '<label>รหัส เช่น CP1<input id="rpCode" class="swal2-input" style="margin:0" value="'+esc(p?.code||'')+'"></label>'+
-      '<label>ตำแหน่ง กม.<input id="rpKm" type="number" step=".01" min="0" class="swal2-input" style="margin:0" value="'+(p?.distance_km??'')+'"></label>'+
+      '<label>ประเภท<select id="rpType" class="swal2-select" style="margin:0;width:100%">'+types.map(x=>'<option value="'+x[0]+'">'+x[1]+'</option>').join('')+'</select></label>'+
+      '<label>รหัส เช่น CP1 / MED1<input id="rpCode" class="swal2-input" style="margin:0" value="'+esc(p?.code||'')+'"></label>'+
+      '<label>ตำแหน่ง กม.<input id="rpKm" type="number" step=".01" min="0" '+(route.distance_km!=null?'max="'+route.distance_km+'"':'')+' class="swal2-input" style="margin:0" value="'+(p?.distance_km??'')+'"><small class="muted">'+(route.distance_km!=null?'เส้นทางยาว '+Number(route.distance_km).toFixed(2)+' km':'')+'</small></label>'+
+      '<label>Cutoff จากเวลา Start (นาที)<input id="rpCutoff" type="number" min="0" step="1" class="swal2-input" style="margin:0" value="'+(p?.cutoff_minutes??'')+'" placeholder="เช่น 180 = 3 ชั่วโมง"></label>'+
       '<label>ชื่อจุด<input id="rpName" class="swal2-input" style="margin:0" value="'+esc(t(p?.name)||'')+'"></label>'+
+      '<label>หยุด Animation เมื่อถึงจุด (วินาที)<input id="rpPause" type="number" min="0" max="30" step=".5" class="swal2-input" style="margin:0" value="'+(p?.pause_seconds??1.5)+'"></label>'+
       '<label style="grid-column:1/-1">รายละเอียด<textarea id="rpDesc" class="swal2-textarea" style="margin:0;width:100%">'+esc(t(p?.description)||'')+'</textarea></label>'+
       '<label style="grid-column:1/-1">รูปประกอบ<input id="rpImage" type="file" accept="image/*" class="swal2-file" style="margin:0;width:100%">'+(p?.image_url?'<small class="muted">มีรูปเดิมแล้ว · ไม่เลือกไฟล์ = ใช้รูปเดิม</small>':'')+'</label>'+
+      '<label style="display:flex;align-items:center;gap:8px"><input id="rpPopup" type="checkbox" style="width:auto" '+(p?.popup_enabled===false?'':'checked')+'> แสดง Popup เมื่อ Animation ถึงจุดนี้</label>'+
     '</div>',
     didOpen:()=>{rpType.value=p?.point_type||'CP'},
     showCancelButton:true,confirmButtonText:'บันทึก',
-    preConfirm:()=>({type:rpType.value,code:rpCode.value.trim(),km:Number(rpKm.value),name:rpName.value.trim(),desc:rpDesc.value.trim(),file:rpImage.files[0]||null})
+    preConfirm:()=>({
+      type:rpType.value,code:rpCode.value.trim(),km:Number(rpKm.value),name:rpName.value.trim(),
+      desc:rpDesc.value.trim(),cutoff:rpCutoff.value===''?null:Number(rpCutoff.value),
+      pause:Number(rpPause.value)||0,popup:rpPopup.checked,file:rpImage.files[0]||null
+    })
   });
   if(!r.isConfirmed)return;
   if(!Number.isFinite(r.value.km)||r.value.km<0)return Swal.fire('กิโลเมตรไม่ถูกต้อง','','warning');
+  if(route.distance_km!=null&&r.value.km>Number(route.distance_km)+.01)return Swal.fire('ตำแหน่งเกินระยะ GPX','เส้นทางนี้ยาว '+Number(route.distance_km).toFixed(2)+' km','warning');
   try{
     Swal.fire({title:'กำลังบันทึกจุด…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
     let image=null;if(r.value.file)image=await uploadRoutePointImage(r.value.file);
-    const row={route_id:routeId,point_type:r.value.type,code:r.value.code||null,name:{th:r.value.name,en:r.value.name},description:{th:r.value.desc,en:r.value.desc},distance_km:r.value.km,sort_order:Math.round(r.value.km*1000),is_active:true,updated_at:new Date().toISOString()};
+    const row={
+      route_id:routeId,point_type:r.value.type,code:r.value.code||null,
+      name:{th:r.value.name,en:r.value.name},description:{th:r.value.desc,en:r.value.desc},
+      distance_km:r.value.km,cutoff_minutes:r.value.cutoff,pause_seconds:r.value.pause,
+      popup_enabled:r.value.popup,sort_order:Math.round(r.value.km*1000),is_active:true,updated_at:new Date().toISOString()
+    };
     if(image){row.image_url=image.url;row.image_storage_path=image.path}
     const{error}=p?await db.from('restart_route_points').update(row).eq('id',p.id):await db.from('restart_route_points').insert(row);
     if(error)throw error;
@@ -497,7 +595,7 @@ async function deleteRoutePoint(id){
 async function deleteRoute(id){
   const{data:rte,error}=await db.from('restart_event_routes').select('gpx_storage_path,restart_route_points(image_storage_path)').eq('id',id).single();
   if(error)return Swal.fire('ลบไม่ได้',error.message,'error');
-  const r=await Swal.fire({title:'ลบ GPX Route?',text:'CP / Water ที่ผูกกับเส้นทางนี้จะถูกลบด้วย',icon:'warning',showCancelButton:true,confirmButtonText:'ลบ'});
+  const r=await Swal.fire({title:'ลบ GPX Route?',text:'CP / Water / รูปประกอบ และการผูกรุ่นของเส้นทางนี้จะถูกลบด้วย',icon:'warning',showCancelButton:true,confirmButtonText:'ลบ'});
   if(!r.isConfirmed)return;
   const{error:del}=await db.from('restart_event_routes').delete().eq('id',id);if(del)return Swal.fire('ลบไม่ได้',del.message,'error');
   if(rte?.gpx_storage_path)await db.storage.from('restart-route-files').remove([rte.gpx_storage_path]).catch(()=>{});
