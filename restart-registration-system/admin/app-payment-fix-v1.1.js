@@ -2,7 +2,7 @@ const db=App.db;
 const state={events:[],event:null,tab:'overview'};
 const langs=['th','en','zh','ja','ru'];
 const baseFieldLabels={title:'คำนำหน้า',first_name:'ชื่อ',last_name:'นามสกุล',birth_date:'วันเกิด',age:'อายุ',gender:'เพศ',id_document:'บัตรประชาชน / Passport',phone:'เบอร์โทรศัพท์',blood_group:'กรุ๊ปเลือด',shirt_size:'ขนาดเสื้อ',address:'ที่อยู่',emergency_phone:'เบอร์โทรฉุกเฉิน',emergency_relation:'ความสัมพันธ์ผู้ติดต่อฉุกเฉิน'};const reservedBaseKeys=new Set(['title','prefix','first_name','last_name','birth_date','age','gender','id_document','phone','blood_group','shirt_size','address','emergency_phone','emergency_relation']);
-const featureLabels={basic_info:'ข้อมูลพื้นฐาน',insurance:'ข้อมูลประกัน',beneficiaries_multiple:'ผู้รับผลประโยชน์หลายคน',beneficiary_total_100:'บังคับรวม 100%',competition_categories:'รุ่นการแข่งขัน',auto_category:'คำนวณรุ่นอัตโนมัติ',self_select_category:'ผู้สมัครเลือกรุ่นเอง',category_pricing:'ราคาแยกตามรุ่น',distances:'ระยะการแข่งขัน',packages:'Package',followers:'ผู้ติดตาม',shirts:'ไซส์เสื้อ',early_bird:'Early Bird',promotions:'Promotion',discount_codes:'Discount Code',full_payment:'จ่ายเต็ม',installments:'ผ่อนชำระ',promptpay:'PromptPay',bank_transfer:'บัญชีธนาคาร',payment_qr:'QR ชำระเงิน',slip_upload:'อัปโหลดสลิป',admin_slip_review:'Admin ตรวจสลิป',pdpa:'PDPA / Consent',multilingual:'หลายภาษา',logo:'Logo',banner:'Banner',media:'รูปภาพเพิ่มเติม',sponsor_logos:'Sponsor Logo',capacity:'จำกัดจำนวน',waitlist:'Waitlist',pair_registration:'สมัครคู่',team_registration:'สมัครทีม',edit_after_submit:'แก้หลังสมัคร',cancellation:'ยกเลิกใบสมัคร',transfer_registration:'โอนสิทธิ์',export:'Export',notifications:'แจ้งเตือน'};
+const featureLabels={event_preview:'หน้าพรีวิว Event',showcase_media:'เสื้อ / เหรียญ / ถ้วย',basic_info:'ข้อมูลพื้นฐาน',insurance:'ข้อมูลประกัน',beneficiaries_multiple:'ผู้รับผลประโยชน์หลายคน',beneficiary_total_100:'บังคับรวม 100%',competition_categories:'รุ่นการแข่งขัน',auto_category:'คำนวณรุ่นอัตโนมัติ',self_select_category:'ผู้สมัครเลือกรุ่นเอง',category_pricing:'ราคาแยกตามรุ่น',distances:'ระยะการแข่งขัน',packages:'Package',followers:'ผู้ติดตาม',shirts:'ไซส์เสื้อ',early_bird:'Early Bird',promotions:'Promotion',discount_codes:'Discount Code',full_payment:'จ่ายเต็ม',installments:'ผ่อนชำระ',promptpay:'PromptPay',bank_transfer:'บัญชีธนาคาร',payment_qr:'QR ชำระเงิน',slip_upload:'อัปโหลดสลิป',admin_slip_review:'Admin ตรวจสลิป',pdpa:'PDPA / Consent',multilingual:'หลายภาษา',logo:'Logo',banner:'Banner',media:'รูปภาพเพิ่มเติม',sponsor_logos:'Sponsor Logo',capacity:'จำกัดจำนวน',waitlist:'Waitlist',pair_registration:'สมัครคู่',team_registration:'สมัครทีม',edit_after_submit:'แก้หลังสมัคร',cancellation:'ยกเลิกใบสมัคร',transfer_registration:'โอนสิทธิ์',export:'Export',notifications:'แจ้งเตือน'};
 const eventStatusOptions=[
   {value:'DRAFT',label:'แบบร่าง · ไม่แสดงหน้า Event'},
   {value:'PUBLISHED',label:'เร็ว ๆ นี้'},
@@ -19,7 +19,7 @@ async function loadEvents(preferredId=null){const{data,error}=await db.from('res
 async function selectEvent(id){state.event=state.events.find(x=>x.id===id)||null;render()}
 async function createEvent(){const r=await Swal.fire({title:'สร้าง Event ใหม่',html:'<input id="e-name" class="swal2-input" placeholder="ชื่อ Event"><input id="e-slug" class="swal2-input" placeholder="slug เช่น restart-phuket-2027"><input id="e-date" type="date" class="swal2-input">',showCancelButton:true,confirmButtonText:'สร้าง',preConfirm:()=>({name:document.getElementById('e-name').value.trim(),slug:document.getElementById('e-slug').value.trim(),date:document.getElementById('e-date').value})});if(!r.isConfirmed)return;const x=r.value;if(!x.name||!x.slug)return Swal.fire('ข้อมูลไม่ครบ','','warning');const{error}=await db.from('restart_events').insert({name:x.name,slug:x.slug,event_date_start:x.date||null,status:'DRAFT'});if(error)return Swal.fire('สร้างไม่สำเร็จ',error.message,'error');await loadEvents();Swal.fire({icon:'success',title:'สร้าง Event แล้ว',timer:1200,showConfirmButton:false})}
 function needEvent(){if(!state.event){document.getElementById('content').innerHTML='<section class="rr-card rr-empty">สร้างหรือเลือก Event ก่อนเริ่มตั้งค่า</section>';return false}return true}
-function render(){if(!needEvent())return;({overview:renderOverview,features:renderFeatures,categories:renderCategories,packages:renderPackages,installments:renderInstallments,payments:renderPayments,telegram:renderTelegram,form:renderForm,theme:renderTheme,registrations:renderRegistrations}[state.tab]||renderOverview)()}
+function render(){if(!needEvent())return;({overview:renderOverview,features:renderFeatures,categories:renderCategories,packages:renderPackages,installments:renderInstallments,payments:renderPayments,telegram:renderTelegram,showcase:renderShowcase,form:renderForm,theme:renderTheme,registrations:renderRegistrations}[state.tab]||renderOverview)()}
 function renderOverview(){const e=state.event;document.getElementById('content').innerHTML=card('แก้ไข Event','<p class="muted">แก้ไขรายละเอียด Event ได้ทุกครั้ง แล้วกด “บันทึกการแก้ไข”</p><div class="grid2"><label>ชื่อ Event<input id="evName" value="'+esc(e.name)+'"></label><label>Slug<input id="evSlug" value="'+esc(e.slug)+'"></label><label>วันที่เริ่ม<input id="evStart" type="date" value="'+(e.event_date_start||'')+'"></label><label>วันที่สิ้นสุด<input id="evEnd" type="date" value="'+(e.event_date_end||'')+'"></label><label>สถานที่<input id="evLoc" value="'+esc(e.location_name||'')+'"></label><label>จำนวนรับสูงสุด<input id="evCap" type="number" value="'+(e.capacity??'')+'"></label><label>เปิดรับสมัคร<input id="evOpen" type="datetime-local" value="'+localDT(e.registration_opens_at)+'"></label><label>ปิดรับสมัคร<input id="evClose" type="datetime-local" value="'+localDT(e.registration_closes_at)+'"></label><label>สถานะที่แสดงบน Event Card<select id="evStatus">'+eventStatusOptions.map(o=>'<option value="'+o.value+'" '+(e.status===o.value?'selected':'')+'>'+o.label+'</option>').join('')+'</select><small class="muted">หน้า Event จะดึงสถานะนี้จากหลังบ้านโดยตรง</small></label><label>ภาษาเริ่มต้น<select id="evLang">'+langs.map(l=>'<option '+(e.default_language===l?'selected':'')+'>'+l+'</option>').join('')+'</select></label></div><div style="margin-top:14px"><label>รายละเอียด<textarea id="evDesc" rows="4">'+esc(e.description||'')+'</textarea></label></div>','<a class="btn soft" target="_blank" href="../public/?event='+encodeURIComponent(e.slug)+'">Preview</a><button class="btn primary" onclick="saveOverview()">บันทึกการแก้ไข</button><button class="btn danger" onclick="deleteEvent()">ลบ Event</button>')}
 function localDT(v){if(!v)return'';const d=new Date(v);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16)}
 async function saveOverview(){
@@ -99,8 +99,54 @@ async function deleteEvent(){
 function renderFeatures(){const f=state.event.feature_flags||{};document.getElementById('content').innerHTML=card('เปิด / ปิดฟังก์ชัน','<p class="muted">ทุก Event ตั้งค่าแยกกันได้</p><div class="toggle-grid">'+Object.entries(featureLabels).map(([k,l])=>'<label class="toggle"><span>'+l+'</span><input type="checkbox" data-feature="'+k+'" '+(f[k]?'checked':'')+'></label>').join('')+'</div>','<button class="btn soft" onclick="setAllFeatures(true)">เปิดทั้งหมด</button><button class="btn soft" onclick="setAllFeatures(false)">ปิดทั้งหมด</button><button class="btn primary" onclick="saveFeatures()">บันทึก</button>')}
 function setAllFeatures(v){document.querySelectorAll('[data-feature]').forEach(x=>x.checked=v)}
 async function saveFeatures(){const f={...state.event.feature_flags};document.querySelectorAll('[data-feature]').forEach(x=>f[x.dataset.feature]=x.checked);const{data,error}=await db.from('restart_events').update({feature_flags:f}).eq('id',state.event.id).select().single();if(error)return Swal.fire('บันทึกไม่สำเร็จ',error.message,'error');state.event=data;Swal.fire({icon:'success',title:'บันทึกฟังก์ชันแล้ว',timer:1000,showConfirmButton:false})}
-async function renderCategories(){document.getElementById('content').innerHTML=card('รุ่นการแข่งขัน & ราคา','<div id="catBox">กำลังโหลด…</div>','<button class="btn primary" onclick="categoryDialog()">+ เพิ่มรุ่น</button>');const{data,error}=await db.from('restart_race_categories').select('*').eq('event_id',state.event.id).order('sort_order');if(error)return catBox.innerHTML=esc(error.message);catBox.innerHTML=data?.length?'<div class="table-wrap"><table><thead><tr><th>รหัส</th><th>รุ่น</th><th>ระยะ</th><th>เพศ</th><th>อายุ</th><th>ราคา</th><th>จ่ายเต็ม</th><th>ผ่อน</th><th>สถานะ</th><th></th></tr></thead><tbody>'+data.map(x=>'<tr><td>'+esc(x.code)+'</td><td>'+esc(t(x.name))+'</td><td>'+(x.distance_km??'—')+' km</td><td>'+esc(x.gender_rule)+'</td><td>'+(x.min_age??'—')+'-'+(x.max_age??'—')+'</td><td>฿'+money(x.base_price_thb)+'</td><td>'+(x.installment_enabled===false?'ปิด':x.installment_enabled===true?'เปิด':'ตาม Event')+'</td><td><span class="badge '+(x.is_active?'ok':'')+'">'+(x.is_active?'เปิด':'ปิด')+'</span></td><td><div class="row"><button class="btn sm soft" onclick="editCategory(\''+x.id+'\')">แก้ไข</button><button class="btn sm soft" onclick="toggleRow(\'restart_race_categories\',\''+x.id+'\',\'is_active\','+(!x.is_active)+',renderCategories)">'+(x.is_active?'ปิด':'เปิด')+'</button><button class="btn sm danger" onclick="delRow(\'restart_race_categories\',\''+x.id+'\',renderCategories)">ลบ</button></div></td></tr>').join('')+'</tbody></table></div>':'<div class="rr-empty">ยังไม่มีรุ่นการแข่งขัน</div>'}
-async function categoryDialog(){const r=await Swal.fire({title:'เพิ่มรุ่นการแข่งขัน',width:700,html:'<div class="grid2" style="text-align:left"><label>รหัส<input id="cCode" class="swal2-input" style="margin:0"></label><label>ชื่อรุ่น<input id="cName" class="swal2-input" style="margin:0"></label><label>ระยะ km<input id="cDist" type="number" step=".1" class="swal2-input" style="margin:0"></label><label>เพศ<select id="cGender" class="swal2-select" style="margin:0;width:100%"><option>ANY</option><option>MALE</option><option>FEMALE</option></select></label><label>อายุต่ำสุด<input id="cMin" type="number" class="swal2-input" style="margin:0"></label><label>อายุสูงสุด<input id="cMax" type="number" class="swal2-input" style="margin:0"></label><label>ราคา<input id="cPrice" type="number" class="swal2-input" style="margin:0"></label><label>Early Bird<input id="cEarly" type="number" class="swal2-input" style="margin:0"></label></div>',showCancelButton:true,preConfirm:()=>({code:cCode.value.trim(),name:cName.value.trim(),distance:Number(cDist.value)||null,gender:cGender.value,min:cMin.value?Number(cMin.value):null,max:cMax.value?Number(cMax.value):null,price:Number(cPrice.value)||0,early:cEarly.value?Number(cEarly.value):null})});if(!r.isConfirmed)return;const x=r.value;const{error}=await db.from('restart_race_categories').insert({event_id:state.event.id,code:x.code,name:{th:x.name,en:x.name},distance_km:x.distance,gender_rule:x.gender,min_age:x.min,max_age:x.max,base_price_thb:x.price,early_bird_price_thb:x.early});if(error)return Swal.fire('เพิ่มไม่สำเร็จ',error.message,'error');renderCategories()}
+async function renderCategories(){
+  document.getElementById('content').innerHTML=card('รุ่นการแข่งขัน & ราคา','<p class="muted">ข้อมูลระยะ ราคา เวลา Start และ Cutoff จะถูกนำไปแสดงในหน้า Preview Event อัตโนมัติ</p><div id="catBox">กำลังโหลด…</div>','<button class="btn primary" onclick="categoryDialog()">+ เพิ่มรุ่น</button>');
+  const{data,error}=await db.from('restart_race_categories').select('*').eq('event_id',state.event.id).order('sort_order');
+  if(error)return catBox.innerHTML=esc(error.message);
+  catBox.innerHTML=data?.length
+    ?'<div class="table-wrap"><table><thead><tr><th>รหัส</th><th>รุ่น</th><th>ระยะ</th><th>Start</th><th>Cutoff</th><th>เวลาคาดหมาย</th><th>ราคา</th><th>สถานะ</th><th></th></tr></thead><tbody>'+
+      data.map(x=>'<tr><td>'+esc(x.code)+'</td><td>'+esc(t(x.name))+'</td><td>'+(x.distance_km??'—')+' km</td><td>'+(x.start_time?esc(String(x.start_time).slice(0,5)):'—')+'</td><td>'+(x.cutoff_minutes?formatMinutes(x.cutoff_minutes):'—')+'</td><td>'+(x.expected_duration_minutes?formatMinutes(x.expected_duration_minutes):'—')+'</td><td>฿'+money(x.base_price_thb)+'</td><td><span class="badge '+(x.is_active?'ok':'')+'">'+(x.is_active?'เปิด':'ปิด')+'</span></td><td><div class="row"><button class="btn sm soft" onclick="editCategory(\''+x.id+'\')">แก้ไข</button><button class="btn sm soft" onclick="toggleRow(\'restart_race_categories\',\''+x.id+'\',\'is_active\','+(!x.is_active)+',renderCategories)">'+(x.is_active?'ปิด':'เปิด')+'</button><button class="btn sm danger" onclick="delRow(\'restart_race_categories\',\''+x.id+'\',renderCategories)">ลบ</button></div></td></tr>').join('')+
+      '</tbody></table></div>'
+    :'<div class="rr-empty">ยังไม่มีรุ่นการแข่งขัน</div>';
+}
+function formatMinutes(v){const n=Number(v||0);if(!n)return'—';const h=Math.floor(n/60),m=n%60;return h?(h+' ชม.'+(m?' '+m+' นาที':'')):(m+' นาที')}
+async function categoryDialog(){
+  const r=await Swal.fire({
+    title:'เพิ่มรุ่นการแข่งขัน',width:820,
+    html:'<div class="grid2" style="text-align:left">'+
+      '<label>รหัส<input id="cCode" class="swal2-input" style="margin:0"></label>'+
+      '<label>ชื่อรุ่น<input id="cName" class="swal2-input" style="margin:0"></label>'+
+      '<label>ระยะ km<input id="cDist" type="number" step=".1" class="swal2-input" style="margin:0"></label>'+
+      '<label>เพศ<select id="cGender" class="swal2-select" style="margin:0;width:100%"><option>ANY</option><option>MALE</option><option>FEMALE</option></select></label>'+
+      '<label>อายุต่ำสุด<input id="cMin" type="number" class="swal2-input" style="margin:0"></label>'+
+      '<label>อายุสูงสุด<input id="cMax" type="number" class="swal2-input" style="margin:0"></label>'+
+      '<label>ราคา<input id="cPrice" type="number" class="swal2-input" style="margin:0"></label>'+
+      '<label>Early Bird<input id="cEarly" type="number" class="swal2-input" style="margin:0"></label>'+
+      '<label>เวลา Start<input id="cStart" type="time" class="swal2-input" style="margin:0"></label>'+
+      '<label>Cutoff (นาที)<input id="cCutoff" type="number" min="1" class="swal2-input" style="margin:0"></label>'+
+      '<label>เวลาคาดหมาย (นาที)<input id="cDuration" type="number" min="1" class="swal2-input" style="margin:0"></label>'+
+      '<label>Elevation Gain (เมตร)<input id="cElev" type="number" min="0" class="swal2-input" style="margin:0"></label>'+
+    '</div>',
+    showCancelButton:true,confirmButtonText:'เพิ่ม',
+    preConfirm:()=>({
+      code:cCode.value.trim(),name:cName.value.trim(),distance:cDist.value?Number(cDist.value):null,
+      gender:cGender.value,min:cMin.value?Number(cMin.value):null,max:cMax.value?Number(cMax.value):null,
+      price:Number(cPrice.value)||0,early:cEarly.value?Number(cEarly.value):null,
+      start:cStart.value||null,cutoff:cCutoff.value?Number(cCutoff.value):null,
+      duration:cDuration.value?Number(cDuration.value):null,elev:cElev.value?Number(cElev.value):null
+    })
+  });
+  if(!r.isConfirmed)return;
+  const x=r.value;
+  if(!x.code||!x.name)return Swal.fire('ข้อมูลไม่ครบ','กรุณาระบุรหัสและชื่อรุ่น','warning');
+  const{error}=await db.from('restart_race_categories').insert({
+    event_id:state.event.id,code:x.code,name:{th:x.name,en:x.name},distance_km:x.distance,
+    gender_rule:x.gender,min_age:x.min,max_age:x.max,base_price_thb:x.price,early_bird_price_thb:x.early,
+    start_time:x.start,cutoff_minutes:x.cutoff,expected_duration_minutes:x.duration,elevation_gain_m:x.elev
+  });
+  if(error)return Swal.fire('เพิ่มไม่สำเร็จ',error.message,'error');
+  renderCategories();
+}
 async function renderPackages(){document.getElementById('content').innerHTML=card('Package','<div id="pkgBox">กำลังโหลด…</div>','<button class="btn primary" onclick="packageDialog()">+ เพิ่ม Package</button>');const{data,error}=await db.from('restart_packages').select('*,restart_race_categories(name)').eq('event_id',state.event.id).order('sort_order');if(error)return pkgBox.innerHTML=esc(error.message);pkgBox.innerHTML=data?.length?'<div class="table-wrap"><table><thead><tr><th>รหัส</th><th>Package</th><th>รุ่น</th><th>ราคา</th><th>ผู้แข่งขัน</th><th>ผู้ติดตาม</th><th>สถานะ</th><th></th></tr></thead><tbody>'+data.map(x=>'<tr><td>'+esc(x.code)+'</td><td>'+esc(t(x.name))+'</td><td>'+esc(t(x.restart_race_categories?.name)||'ทุกรุ่น')+'</td><td>'+esc(x.price_mode)+' ฿'+money(x.price_value_thb)+'</td><td>'+x.runner_count+'</td><td>'+x.follower_count+'</td><td><span class="badge '+(x.is_active?'ok':'')+'">'+(x.is_active?'เปิด':'ปิด')+'</span></td><td><div class="row"><button class="btn sm soft" onclick="editPackage(\''+x.id+'\')">แก้ไข</button><button class="btn sm soft" onclick="toggleRow(\'restart_packages\',\''+x.id+'\',\'is_active\','+(!x.is_active)+',renderPackages)">'+(x.is_active?'ปิด':'เปิด')+'</button><button class="btn sm danger" onclick="delRow(\'restart_packages\',\''+x.id+'\',renderPackages)">ลบ</button></div></td></tr>').join('')+'</tbody></table></div>':'<div class="rr-empty">ยังไม่มี Package</div>'}
 async function packageDialog(){const{data:cats}=await db.from('restart_race_categories').select('id,name').eq('event_id',state.event.id).eq('is_active',true);const opts='<option value="">ทุก รุ่น</option>'+(cats||[]).map(x=>'<option value="'+x.id+'">'+esc(t(x.name))+'</option>').join('');const r=await Swal.fire({title:'เพิ่ม Package',width:700,html:'<div class="grid2" style="text-align:left"><label>รหัส<input id="pCode" class="swal2-input" style="margin:0"></label><label>ชื่อ<input id="pName" class="swal2-input" style="margin:0"></label><label>ผูกกับรุ่น<select id="pCat" class="swal2-select" style="margin:0;width:100%">'+opts+'</select></label><label>รูปแบบราคา<select id="pMode" class="swal2-select" style="margin:0;width:100%"><option value="ADD">บวกเพิ่มจากราคารุ่น</option><option value="REPLACE">ใช้ราคานี้แทน</option></select></label><label>ราคา<input id="pPrice" type="number" class="swal2-input" style="margin:0"></label><label>จำนวนผู้แข่งขัน<input id="pRun" type="number" value="1" class="swal2-input" style="margin:0"></label><label>จำนวนผู้ติดตาม<input id="pFollow" type="number" value="0" class="swal2-input" style="margin:0"></label></div>',showCancelButton:true,preConfirm:()=>({code:pCode.value.trim(),name:pName.value.trim(),cat:pCat.value||null,mode:pMode.value,price:Number(pPrice.value)||0,runners:Number(pRun.value)||1,followers:Number(pFollow.value)||0})});if(!r.isConfirmed)return;const x=r.value;const{error}=await db.from('restart_packages').insert({event_id:state.event.id,category_id:x.cat,code:x.code,name:{th:x.name,en:x.name},price_mode:x.mode,price_value_thb:x.price,runner_count:x.runners,follower_count:x.followers});if(error)return Swal.fire('เพิ่มไม่สำเร็จ',error.message,'error');renderPackages()}
 async function renderInstallments(){document.getElementById('content').innerHTML=card('การผ่อนชำระ','<p class="muted">กำหนดแผนได้ตาม Event / รุ่น / Package และกำหนดแต่ละงวดได้เอง</p><div id="insBox">กำลังโหลด…</div>','<button class="btn primary" onclick="installmentDialog()">+ เพิ่มแผนผ่อน</button>');const{data,error}=await db.from('restart_installment_plans').select('*,restart_installment_steps(*)').eq('event_id',state.event.id).order('priority',{ascending:false});if(error)return insBox.innerHTML=esc(error.message);insBox.innerHTML=data?.length?data.map(p=>'<div class="paybox" style="margin-top:10px"><div class="row space"><strong>'+esc(t(p.name))+'</strong><button class="btn sm danger" onclick="delPlan(\''+p.id+'\')">ลบ</button></div><div class="muted">จำนวน '+p.installment_count+' งวด · งวดแรก '+money(p.first_payment_thb||0)+' บาท</div><div style="margin-top:8px">'+(p.restart_installment_steps||[]).sort((a,b)=>a.installment_no-b.installment_no).map(s=>'<span class="badge" style="margin:3px">งวด '+s.installment_no+': '+(s.amount_mode==='FIXED'?money(s.amount_value):'AUTO')+'</span>').join('')+'</div></div>').join(''):'<div class="rr-empty">ยังไม่มีแผนผ่อน</div>'}
@@ -236,13 +282,148 @@ async function testTelegram(){
     renderTelegram();
   }catch(e){Swal.fire('ทดสอบไม่สำเร็จ',e.message||String(e),'error')}
 }
+function lineArray(v){return String(v||'').split(/\n+/).map(x=>x.trim()).filter(Boolean)}
+function localizedText(v){return typeof v==='object'?(v?.th||v?.en||''):String(v||'')}
+function mediaCard(m){
+  return '<div class="paybox" style="margin:0"><img src="'+esc(m.url)+'" alt="" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px"><div class="row space" style="margin-top:8px"><b>'+esc(m.media_type)+'</b><button class="btn sm danger" onclick="deleteShowcaseMedia(\''+m.id+'\',\''+esc(m.url)+'\')">ลบ</button></div></div>';
+}
+async function renderShowcase(){
+  document.getElementById('content').innerHTML=card('พรีวิว Event','<div class="rr-empty">กำลังโหลด…</div>');
+  const [showRes,mediaRes]=await Promise.all([
+    db.from('restart_event_showcase').select('*').eq('event_id',state.event.id).maybeSingle(),
+    db.from('restart_event_media').select('*').eq('event_id',state.event.id).eq('is_active',true).order('sort_order')
+  ]);
+  if(showRes.error)return document.getElementById('content').innerHTML=card('พรีวิว Event','<div class="badge danger">'+esc(showRes.error.message)+'</div>');
+  if(mediaRes.error)return document.getElementById('content').innerHTML=card('พรีวิว Event','<div class="badge danger">'+esc(mediaRes.error.message)+'</div>');
+  const x=showRes.data||{}, media=mediaRes.data||[];
+  const gallery=media.filter(m=>['SHIRT','MEDAL','TROPHY','COURSE_MAP','AWARD','GALLERY','BACKGROUND'].includes(m.media_type));
+  document.getElementById('content').innerHTML=card(
+    'พรีวิว Event',
+    '<p class="muted">หน้านี้คือข้อมูลที่ผู้สมัครจะเห็นหลังจากกด Event Card ก่อนเข้าสู่ฟอร์มสมัครจริง</p>'+
+    '<div class="grid2">'+
+      '<label>Tagline<input id="scTagline" value="'+esc(localizedText(x.tagline))+'" placeholder="เช่น Run with heart. Finish with purpose."></label>'+
+      '<label>รายละเอียดสถานที่<input id="scVenue" value="'+esc(localizedText(x.venue_details))+'" placeholder="จุดปล่อยตัว / ที่จอดรถ / การเดินทาง"></label>'+
+      '<label style="grid-column:1/-1">ภาพรวม Event<textarea id="scOverview" rows="5">'+esc(localizedText(x.overview))+'</textarea></label>'+
+      '<label>Highlight · 1 บรรทัดต่อ 1 ข้อ<textarea id="scHighlights" rows="7">'+esc(Array.isArray(x.highlights)?x.highlights.join('\n'):'')+'</textarea></label>'+
+      '<label>สิ่งที่นักวิ่งได้รับ · 1 บรรทัดต่อ 1 ข้อ<textarea id="scInclusions" rows="7">'+esc(Array.isArray(x.inclusions)?x.inclusions.join('\n'):'')+'</textarea></label>'+
+      '<label>ข้อมูลรางวัล / ถ้วย<textarea id="scAwards" rows="5">'+esc(localizedText(x.awards_text))+'</textarea></label>'+
+      '<label>ข้อมูลเส้นทาง<textarea id="scCourse" rows="5">'+esc(localizedText(x.course_notes))+'</textarea></label>'+
+      '<label>กติกาสำคัญ · 1 บรรทัดต่อ 1 ข้อ<textarea id="scRules" rows="7">'+esc(Array.isArray(x.rules)?x.rules.join('\n'):'')+'</textarea></label>'+
+      '<label>ข้อมูลติดต่อ<textarea id="scContact" rows="7">'+esc(localizedText(x.contact_details))+'</textarea></label>'+
+    '</div>'+
+    '<hr style="border:0;border-top:1px solid var(--line);margin:22px 0">'+
+    '<h3>รูปสำหรับหน้า Preview</h3>'+
+    '<div class="grid3">'+
+      '<label>ภาพพื้นหลัง Hero<input id="scBackground" type="file" accept="image/*"></label>'+
+      '<label>เสื้อแข่งขัน<input id="scShirt" type="file" accept="image/*"></label>'+
+      '<label>เหรียญ<input id="scMedal" type="file" accept="image/*"></label>'+
+      '<label>ถ้วยรางวัล<input id="scTrophy" type="file" accept="image/*"></label>'+
+      '<label>แผนที่เส้นทาง<input id="scMap" type="file" accept="image/*"></label>'+
+      '<label>รูป Gallery เพิ่มเติม<input id="scGallery" type="file" accept="image/*" multiple></label>'+
+    '</div>'+
+    '<div class="grid3" style="margin-top:16px">'+(gallery.length?gallery.map(mediaCard).join(''):'<div class="rr-empty" style="grid-column:1/-1">ยังไม่มีรูป Preview</div>')+'</div>',
+    '<a class="btn soft" target="_blank" href="../public/?event='+encodeURIComponent(state.event.slug)+'">เปิด Preview</a><button class="btn primary" onclick="saveShowcase()">บันทึก Preview</button>'
+  );
+}
+async function saveShowcase(){
+  try{
+    Swal.fire({title:'กำลังบันทึกหน้า Preview…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
+    const {data:{user}}=await db.auth.getUser();
+    const row={
+      event_id:state.event.id,
+      tagline:{th:scTagline.value.trim(),en:scTagline.value.trim()},
+      overview:{th:scOverview.value.trim(),en:scOverview.value.trim()},
+      highlights:lineArray(scHighlights.value),
+      inclusions:lineArray(scInclusions.value),
+      rules:lineArray(scRules.value),
+      awards_text:{th:scAwards.value.trim(),en:scAwards.value.trim()},
+      course_notes:{th:scCourse.value.trim(),en:scCourse.value.trim()},
+      venue_details:{th:scVenue.value.trim(),en:scVenue.value.trim()},
+      contact_details:{th:scContact.value.trim(),en:scContact.value.trim()},
+      updated_by:user?.id||null,updated_at:new Date().toISOString()
+    };
+    const{error}=await db.from('restart_event_showcase').upsert(row,{onConflict:'event_id'});
+    if(error)throw error;
+    const singles=[
+      ['BACKGROUND',scBackground.files[0]],['SHIRT',scShirt.files[0]],['MEDAL',scMedal.files[0]],
+      ['TROPHY',scTrophy.files[0]],['COURSE_MAP',scMap.files[0]]
+    ];
+    for(const [type,file] of singles)if(file)await replaceShowcaseMedia(type,file);
+    for(const file of Array.from(scGallery.files||[]))await addShowcaseMedia('GALLERY',file);
+    Swal.fire({icon:'success',title:'บันทึกหน้า Preview แล้ว',timer:1100,showConfirmButton:false});
+    renderShowcase();
+  }catch(e){Swal.fire('บันทึกไม่สำเร็จ',e.message||String(e),'error')}
+}
+async function addShowcaseMedia(type,file){
+  const url=await uploadMedia(file,type.toLowerCase());
+  const{error}=await db.from('restart_event_media').insert({event_id:state.event.id,media_type:type,url,alt_text:{th:type,en:type},sort_order:0,is_active:true});
+  if(error)throw error;
+}
+async function replaceShowcaseMedia(type,file){
+  const{error:delError}=await db.from('restart_event_media').delete().eq('event_id',state.event.id).eq('media_type',type);
+  if(delError)throw delError;
+  await addShowcaseMedia(type,file);
+}
+async function deleteShowcaseMedia(id,url){
+  const r=await Swal.fire({title:'ลบรูปนี้?',icon:'warning',showCancelButton:true,confirmButtonText:'ลบ'});
+  if(!r.isConfirmed)return;
+  const{error}=await db.from('restart_event_media').delete().eq('id',id);
+  if(error)return Swal.fire('ลบไม่ได้',error.message,'error');
+  try{
+    const marker='/restart-event-media/';
+    const i=String(url||'').indexOf(marker);
+    if(i>=0){const path=decodeURIComponent(String(url).slice(i+marker.length));await db.storage.from('restart-event-media').remove([path])}
+  }catch(e){}
+  renderShowcase();
+}
 async function renderForm(){document.getElementById('content').innerHTML=card('Form Builder','<div id="baseFieldBox"></div><div id="formBox" style="margin-top:16px">กำลังโหลด…</div>','<button class="btn soft" onclick="sectionDialog()">+ Section</button><button class="btn primary" onclick="fieldDialog()">+ Field</button>');renderBaseFieldSettings();const[{data:ss},{data:ff}]=await Promise.all([db.from('restart_form_sections').select('*').eq('event_id',state.event.id).order('sort_order'),db.from('restart_form_fields').select('*').eq('event_id',state.event.id).order('sort_order')]);formBox.innerHTML=(ss||[]).map(s=>'<div class="paybox" style="margin-top:10px"><div class="row space"><strong>'+esc(t(s.label))+'</strong><span class="badge">'+esc(s.section_key)+'</span></div>'+(ff||[]).filter(f=>f.section_id===s.id&&!reservedBaseKeys.has(String(f.field_key||'').toLowerCase())).map(f=>'<div class="row space" style="padding:10px 0;border-top:1px solid #eee"><span>'+esc(t(f.label))+' <small class="muted">('+esc(f.field_type)+')</small></span><span><span class="badge '+(f.is_required?'warn':'')+'">'+(f.is_required?'จำเป็น':'ไม่บังคับ')+'</span> <span class="badge '+(f.is_active?'ok':'')+'">'+(f.is_active?'เปิด':'ปิด')+'</span> <button class="btn sm soft" onclick="editField(\''+f.id+'\')">แก้ไข</button> <button class="btn sm soft" onclick="toggleRow(\'restart_form_fields\',\''+f.id+'\',\'is_active\','+(!f.is_active)+',renderForm)">'+(f.is_active?'ปิด':'เปิด')+'</button> <button class="btn sm danger" onclick="delRow(\'restart_form_fields\',\''+f.id+'\',renderForm)">ลบ</button></span></div>').join('')+'</div>').join('')||'<div class="rr-empty">ยังไม่มี Custom Field</div>'}
 function renderBaseFieldSettings(){const fs=state.event.field_settings||{};baseFieldBox.innerHTML='<div class="paybox"><div class="row space"><div><strong>ข้อมูลพื้นฐานของผู้สมัคร</strong><div class="muted">เปิด/ปิดและกำหนดบังคับกรอกได้รายช่อง</div></div><button class="btn primary sm" onclick="saveBaseFields()">บันทึกข้อมูลพื้นฐาน</button></div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>ช่องข้อมูล</th><th>แสดง</th><th>บังคับกรอก</th></tr></thead><tbody>'+Object.entries(baseFieldLabels).map(([k,l])=>{const s=fs[k]||{enabled:true,required:false};return '<tr><td>'+l+'</td><td><input type="checkbox" data-base-enabled="'+k+'" '+(s.enabled!==false?'checked':'')+'></td><td><input type="checkbox" data-base-required="'+k+'" '+(s.required?'checked':'')+'></td></tr>'}).join('')+'</tbody></table></div></div>'}
 async function saveBaseFields(){const fs={...state.event.field_settings};Object.keys(baseFieldLabels).forEach(k=>{const enabled=document.querySelector('[data-base-enabled="'+k+'"]').checked;const required=document.querySelector('[data-base-required="'+k+'"]').checked;fs[k]={enabled,required:enabled&&required}});const{data,error}=await db.from('restart_events').update({field_settings:fs}).eq('id',state.event.id).select().single();if(error)return Swal.fire('บันทึกไม่สำเร็จ',error.message,'error');state.event=data;state.events=state.events.map(x=>x.id===data.id?data:x);renderBaseFieldSettings();Swal.fire({icon:'success',title:'บันทึกข้อมูลพื้นฐานแล้ว',timer:1000,showConfirmButton:false})}
 async function sectionDialog(){const r=await Swal.fire({title:'เพิ่ม Section',html:'<input id="sKey" class="swal2-input" placeholder="key เช่น personal"><input id="sLabel" class="swal2-input" placeholder="ชื่อ Section">',showCancelButton:true,preConfirm:()=>({k:sKey.value.trim(),l:sLabel.value.trim()})});if(!r.isConfirmed)return;const{error}=await db.from('restart_form_sections').insert({event_id:state.event.id,section_key:r.value.k,label:{th:r.value.l,en:r.value.l}});if(error)return Swal.fire('เพิ่มไม่สำเร็จ',error.message,'error');renderForm()}
 async function fieldDialog(){const{data:ss}=await db.from('restart_form_sections').select('id,label').eq('event_id',state.event.id).eq('is_active',true).order('sort_order');if(!ss?.length)return Swal.fire('สร้าง Section ก่อน','','warning');const r=await Swal.fire({title:'เพิ่ม Field',width:700,html:'<div class="grid2" style="text-align:left"><label>Section<select id="fSec" class="swal2-select" style="margin:0;width:100%">'+ss.map(s=>'<option value="'+s.id+'">'+esc(t(s.label))+'</option>').join('')+'</select></label><label>Field Key<input id="fKey" class="swal2-input" style="margin:0"></label><label>ชื่อ Field<input id="fLabel" class="swal2-input" style="margin:0"></label><label>ประเภท<select id="fType" class="swal2-select" style="margin:0;width:100%"><option>text</option><option>number</option><option>date</option><option>tel</option><option>textarea</option><option>select</option><option>radio</option><option>checkbox</option><option>file</option></select></label><label style="display:flex;align-items:center;gap:8px"><input id="fReq" type="checkbox" style="width:auto"> บังคับกรอก</label></div>',showCancelButton:true,preConfirm:()=>{const key=fKey.value.trim().toLowerCase();if(!key)return Swal.showValidationMessage('กรุณาระบุ Field Key');if(reservedBaseKeys.has(key))return Swal.showValidationMessage('Field Key นี้เป็นข้อมูลพื้นฐานของระบบ ให้ตั้งค่าที่ตารางข้อมูลพื้นฐานด้านบน');return{sec:fSec.value,key,label:fLabel.value.trim(),type:fType.value,req:fReq.checked}}});if(!r.isConfirmed)return;const x=r.value;const{error}=await db.from('restart_form_fields').insert({event_id:state.event.id,section_id:x.sec,field_key:x.key,field_type:x.type,label:{th:x.label,en:x.label},is_required:x.req});if(error)return Swal.fire('เพิ่มไม่สำเร็จ',error.message,'error');renderForm()}
 async function toggleRow(table,id,column,value,cb){const{error}=await db.from(table).update({[column]:value}).eq('id',id);if(error)return Swal.fire('บันทึกไม่สำเร็จ',error.message,'error');cb()}
-async function editCategory(id){const{data:x,error}=await db.from('restart_race_categories').select('*').eq('id',id).single();if(error)return Swal.fire('โหลดข้อมูลไม่ได้',error.message,'error');const r=await Swal.fire({title:'แก้ไขรุ่นการแข่งขัน',width:720,html:'<div class="grid2" style="text-align:left"><label>รหัส<input id="ecCode" class="swal2-input" style="margin:0" value="'+esc(x.code)+'"></label><label>ชื่อรุ่น<input id="ecName" class="swal2-input" style="margin:0" value="'+esc(t(x.name))+'"></label><label>ระยะ km<input id="ecDist" type="number" step=".1" class="swal2-input" style="margin:0" value="'+(x.distance_km??'')+'"></label><label>เพศ<select id="ecGender" class="swal2-select" style="margin:0;width:100%"><option '+(x.gender_rule==='ANY'?'selected':'')+'>ANY</option><option '+(x.gender_rule==='MALE'?'selected':'')+'>MALE</option><option '+(x.gender_rule==='FEMALE'?'selected':'')+'>FEMALE</option></select></label><label>อายุต่ำสุด<input id="ecMin" type="number" class="swal2-input" style="margin:0" value="'+(x.min_age??'')+'"></label><label>อายุสูงสุด<input id="ecMax" type="number" class="swal2-input" style="margin:0" value="'+(x.max_age??'')+'"></label><label>ราคา<input id="ecPrice" type="number" class="swal2-input" style="margin:0" value="'+Number(x.base_price_thb||0)+'"></label><label>Early Bird<input id="ecEarly" type="number" class="swal2-input" style="margin:0" value="'+(x.early_bird_price_thb??'')+'"></label><label>จ่ายเต็ม<select id="ecFull" class="swal2-select" style="margin:0;width:100%"><option value="" '+(x.full_payment_enabled==null?'selected':'')+'>ตาม Event</option><option value="true" '+(x.full_payment_enabled===true?'selected':'')+'>เปิด</option><option value="false" '+(x.full_payment_enabled===false?'selected':'')+'>ปิด</option></select></label><label>การผ่อน<select id="ecInstall" class="swal2-select" style="margin:0;width:100%"><option value="" '+(x.installment_enabled==null?'selected':'')+'>ตาม Event</option><option value="true" '+(x.installment_enabled===true?'selected':'')+'>เปิด</option><option value="false" '+(x.installment_enabled===false?'selected':'')+'>ปิด</option></select></label></div>',showCancelButton:true,confirmButtonText:'บันทึก',preConfirm:()=>({code:ecCode.value.trim(),name:ecName.value.trim(),distance:ecDist.value?Number(ecDist.value):null,gender:ecGender.value,min:ecMin.value?Number(ecMin.value):null,max:ecMax.value?Number(ecMax.value):null,price:Number(ecPrice.value)||0,early:ecEarly.value?Number(ecEarly.value):null,full:ecFull.value===''?null:ecFull.value==='true',install:ecInstall.value===''?null:ecInstall.value==='true'})});if(!r.isConfirmed)return;const v=r.value;const{error:e}=await db.from('restart_race_categories').update({code:v.code,name:{...(x.name||{}),th:v.name,en:v.name},distance_km:v.distance,gender_rule:v.gender,min_age:v.min,max_age:v.max,base_price_thb:v.price,early_bird_price_thb:v.early,full_payment_enabled:v.full,installment_enabled:v.install}).eq('id',id);if(e)return Swal.fire('บันทึกไม่สำเร็จ',e.message,'error');renderCategories()}
+async function editCategory(id){
+  const{data:x,error}=await db.from('restart_race_categories').select('*').eq('id',id).single();
+  if(error)return Swal.fire('โหลดข้อมูลไม่ได้',error.message,'error');
+  const r=await Swal.fire({
+    title:'แก้ไขรุ่นการแข่งขัน',width:820,
+    html:'<div class="grid2" style="text-align:left">'+
+      '<label>รหัส<input id="ecCode" class="swal2-input" style="margin:0" value="'+esc(x.code)+'"></label>'+
+      '<label>ชื่อรุ่น<input id="ecName" class="swal2-input" style="margin:0" value="'+esc(t(x.name))+'"></label>'+
+      '<label>ระยะ km<input id="ecDist" type="number" step=".1" class="swal2-input" style="margin:0" value="'+(x.distance_km??'')+'"></label>'+
+      '<label>เพศ<select id="ecGender" class="swal2-select" style="margin:0;width:100%"><option '+(x.gender_rule==='ANY'?'selected':'')+'>ANY</option><option '+(x.gender_rule==='MALE'?'selected':'')+'>MALE</option><option '+(x.gender_rule==='FEMALE'?'selected':'')+'>FEMALE</option></select></label>'+
+      '<label>อายุต่ำสุด<input id="ecMin" type="number" class="swal2-input" style="margin:0" value="'+(x.min_age??'')+'"></label>'+
+      '<label>อายุสูงสุด<input id="ecMax" type="number" class="swal2-input" style="margin:0" value="'+(x.max_age??'')+'"></label>'+
+      '<label>ราคา<input id="ecPrice" type="number" class="swal2-input" style="margin:0" value="'+Number(x.base_price_thb||0)+'"></label>'+
+      '<label>Early Bird<input id="ecEarly" type="number" class="swal2-input" style="margin:0" value="'+(x.early_bird_price_thb??'')+'"></label>'+
+      '<label>เวลา Start<input id="ecStart" type="time" class="swal2-input" style="margin:0" value="'+(x.start_time?String(x.start_time).slice(0,5):'')+'"></label>'+
+      '<label>Cutoff (นาที)<input id="ecCutoff" type="number" min="1" class="swal2-input" style="margin:0" value="'+(x.cutoff_minutes??'')+'"></label>'+
+      '<label>เวลาคาดหมาย (นาที)<input id="ecDuration" type="number" min="1" class="swal2-input" style="margin:0" value="'+(x.expected_duration_minutes??'')+'"></label>'+
+      '<label>Elevation Gain (เมตร)<input id="ecElev" type="number" min="0" class="swal2-input" style="margin:0" value="'+(x.elevation_gain_m??'')+'"></label>'+
+      '<label>จ่ายเต็ม<select id="ecFull" class="swal2-select" style="margin:0;width:100%"><option value="" '+(x.full_payment_enabled==null?'selected':'')+'>ตาม Event</option><option value="true" '+(x.full_payment_enabled===true?'selected':'')+'>เปิด</option><option value="false" '+(x.full_payment_enabled===false?'selected':'')+'>ปิด</option></select></label>'+
+      '<label>การผ่อน<select id="ecInstall" class="swal2-select" style="margin:0;width:100%"><option value="" '+(x.installment_enabled==null?'selected':'')+'>ตาม Event</option><option value="true" '+(x.installment_enabled===true?'selected':'')+'>เปิด</option><option value="false" '+(x.installment_enabled===false?'selected':'')+'>ปิด</option></select></label>'+
+    '</div>',
+    showCancelButton:true,confirmButtonText:'บันทึก',
+    preConfirm:()=>({
+      code:ecCode.value.trim(),name:ecName.value.trim(),distance:ecDist.value?Number(ecDist.value):null,
+      gender:ecGender.value,min:ecMin.value?Number(ecMin.value):null,max:ecMax.value?Number(ecMax.value):null,
+      price:Number(ecPrice.value)||0,early:ecEarly.value?Number(ecEarly.value):null,
+      start:ecStart.value||null,cutoff:ecCutoff.value?Number(ecCutoff.value):null,
+      duration:ecDuration.value?Number(ecDuration.value):null,elev:ecElev.value?Number(ecElev.value):null,
+      full:ecFull.value===''?null:ecFull.value==='true',install:ecInstall.value===''?null:ecInstall.value==='true'
+    })
+  });
+  if(!r.isConfirmed)return;
+  const v=r.value;
+  const{error:e}=await db.from('restart_race_categories').update({
+    code:v.code,name:{...(x.name||{}),th:v.name,en:v.name},distance_km:v.distance,gender_rule:v.gender,
+    min_age:v.min,max_age:v.max,base_price_thb:v.price,early_bird_price_thb:v.early,
+    start_time:v.start,cutoff_minutes:v.cutoff,expected_duration_minutes:v.duration,elevation_gain_m:v.elev,
+    full_payment_enabled:v.full,installment_enabled:v.install
+  }).eq('id',id);
+  if(e)return Swal.fire('บันทึกไม่สำเร็จ',e.message,'error');
+  renderCategories();
+}
 async function editPackage(id){const{data:x,error}=await db.from('restart_packages').select('*').eq('id',id).single();if(error)return Swal.fire('โหลดข้อมูลไม่ได้',error.message,'error');const{data:cats}=await db.from('restart_race_categories').select('id,name').eq('event_id',state.event.id).eq('is_active',true);const opts='<option value="">ทุกรุ่น</option>'+(cats||[]).map(c=>'<option value="'+c.id+'" '+(x.category_id===c.id?'selected':'')+'>'+esc(t(c.name))+'</option>').join('');const r=await Swal.fire({title:'แก้ไข Package',width:700,html:'<div class="grid2" style="text-align:left"><label>รหัส<input id="epCode" class="swal2-input" style="margin:0" value="'+esc(x.code)+'"></label><label>ชื่อ<input id="epName" class="swal2-input" style="margin:0" value="'+esc(t(x.name))+'"></label><label>ผูกกับรุ่น<select id="epCat" class="swal2-select" style="margin:0;width:100%">'+opts+'</select></label><label>รูปแบบราคา<select id="epMode" class="swal2-select" style="margin:0;width:100%"><option value="ADD" '+(x.price_mode==='ADD'?'selected':'')+'>บวกเพิ่ม</option><option value="REPLACE" '+(x.price_mode==='REPLACE'?'selected':'')+'>ใช้ราคานี้แทน</option></select></label><label>ราคา<input id="epPrice" type="number" class="swal2-input" style="margin:0" value="'+Number(x.price_value_thb||0)+'"></label><label>ผู้แข่งขัน<input id="epRun" type="number" class="swal2-input" style="margin:0" value="'+x.runner_count+'"></label><label>ผู้ติดตาม<input id="epFollow" type="number" class="swal2-input" style="margin:0" value="'+x.follower_count+'"></label></div>',showCancelButton:true,confirmButtonText:'บันทึก',preConfirm:()=>({code:epCode.value.trim(),name:epName.value.trim(),cat:epCat.value||null,mode:epMode.value,price:Number(epPrice.value)||0,runners:Number(epRun.value)||1,followers:Number(epFollow.value)||0})});if(!r.isConfirmed)return;const v=r.value;const{error:e}=await db.from('restart_packages').update({code:v.code,name:{...(x.name||{}),th:v.name,en:v.name},category_id:v.cat,price_mode:v.mode,price_value_thb:v.price,runner_count:v.runners,follower_count:v.followers}).eq('id',id);if(e)return Swal.fire('บันทึกไม่สำเร็จ',e.message,'error');renderPackages()}
 async function editPayment(id){
   const{data:x,error}=await db.from('restart_payment_methods').select('*').eq('id',id).single();
@@ -304,5 +485,5 @@ async function renderRegistrations(){document.getElementById('content').innerHTM
 async function openSlip(path){const{data,error}=await db.storage.from('restart-slips').createSignedUrl(path,120);if(error)return Swal.fire('เปิดสลิปไม่ได้',error.message,'error');window.open(data.signedUrl,'_blank')}
 async function reviewPay(id,ok){let note='';if(!ok){const r=await Swal.fire({title:'เหตุผลที่ปฏิเสธ',input:'text',showCancelButton:true});if(!r.isConfirmed)return;note=r.value||''}const{error}=await db.rpc('restart_admin_review_payment',{p_attempt_id:id,p_approve:ok,p_note:note||null});if(error)return Swal.fire('ทำรายการไม่สำเร็จ',error.message,'error');Swal.fire({icon:'success',title:ok?'อนุมัติแล้ว':'ปฏิเสธแล้ว',timer:1000,showConfirmButton:false});renderRegistrations()}
 async function delRow(table,id,cb){const r=await Swal.fire({title:'ยืนยันการลบ?',icon:'warning',showCancelButton:true,confirmButtonText:'ลบ'});if(!r.isConfirmed)return;const{error}=await db.from(table).delete().eq('id',id);if(error)return Swal.fire('ลบไม่ได้',error.message,'error');cb()}
-Object.assign(window,{saveOverview,setAllFeatures,saveFeatures,renderCategories,categoryDialog,renderPackages,packageDialog,renderInstallments,installmentDialog,delPlan,renderPayments,paymentDialog,renderForm,sectionDialog,fieldDialog,saveBaseFields,toggleRow,editCategory,editPackage,editPayment,editField,saveTheme,renderRegistrations,openSlip,reviewPay,delRow});
+Object.assign(window,{saveOverview,setAllFeatures,saveFeatures,renderCategories,categoryDialog,renderPackages,packageDialog,renderInstallments,installmentDialog,delPlan,renderPayments,paymentDialog,renderShowcase,saveShowcase,deleteShowcaseMedia,renderForm,sectionDialog,fieldDialog,saveBaseFields,toggleRow,editCategory,editPackage,editPayment,editField,saveTheme,renderRegistrations,openSlip,reviewPay,delRow});
 init().catch(e=>Swal.fire('เกิดข้อผิดพลาด',e.message,'error'));
