@@ -59,7 +59,7 @@ async function init(){
     db.from('restart_installment_steps').select('*'),
     db.from('restart_event_showcase').select('*').eq('event_id',eid).maybeSingle(),
     db.from('restart_event_media').select('*').eq('event_id',eid).eq('is_active',true).order('sort_order'),
-    db.from('restart_event_routes').select('*,restart_route_points(*)').eq('event_id',eid).eq('is_active',true).order('sort_order')
+    db.from('restart_event_routes').select('*,restart_route_categories(category_id,restart_race_categories(name,distance_km)),restart_route_points(*)').eq('event_id',eid).eq('is_active',true).order('sort_order')
   ]);
   const firstError=results.find(x=>x.error&&x.status!==406)?.error;
   if(firstError)console.warn(firstError);
@@ -229,23 +229,25 @@ function renderRouteAnimationSection(p,flags){
 async function ensureRouteAnimationDeps(){
   if(!ROUTES.length)return false;
   if(!document.querySelector('link[data-restart-route-css]')){
-    const l=document.createElement('link');l.rel='stylesheet';l.href='route-animation.css?v=1.0.1';l.dataset.restartRouteCss='1';document.head.appendChild(l);
+    const l=document.createElement('link');l.rel='stylesheet';l.href='route-animation.css?v=1.1.0';l.dataset.restartRouteCss='1';document.head.appendChild(l);
   }
   if(!window.maplibregl){
-    if(!document.querySelector('link[data-maplibre-css]')){
-      const l=document.createElement('link');l.rel='stylesheet';l.href='https://cdn.jsdelivr.net/npm/maplibre-gl@6.11.2/dist/maplibre-gl.css';l.dataset.maplibreCss='1';document.head.appendChild(l);
-    }
-    await new Promise((resolve,reject)=>{
-      let sc=document.querySelector('script[data-maplibre-js]');
-      if(sc){if(window.maplibregl)return resolve();sc.addEventListener('load',resolve,{once:true});sc.addEventListener('error',reject,{once:true});return}
-      sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/maplibre-gl@6.11.2/dist/maplibre-gl.js';sc.dataset.maplibreJs='1';sc.onload=resolve;sc.onerror=()=>reject(new Error('MapLibre load failed'));document.head.appendChild(sc);
-    });
+    try{
+      if(!document.querySelector('link[data-maplibre-css]')){
+        const l=document.createElement('link');l.rel='stylesheet';l.href='https://cdn.jsdelivr.net/npm/maplibre-gl@6.11.2/dist/maplibre-gl.css';l.dataset.maplibreCss='1';document.head.appendChild(l);
+      }
+      await new Promise((resolve,reject)=>{
+        let sc=document.querySelector('script[data-maplibre-js]');
+        if(sc){if(window.maplibregl)return resolve();sc.addEventListener('load',resolve,{once:true});sc.addEventListener('error',reject,{once:true});return}
+        sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/maplibre-gl@6.11.2/dist/maplibre-gl.js';sc.dataset.maplibreJs='1';sc.onload=resolve;sc.onerror=()=>reject(new Error('MapLibre load failed'));document.head.appendChild(sc);
+      });
+    }catch(e){console.warn('MapLibre unavailable; SVG route fallback will be used',e)}
   }
   if(!window.RestartRouteAnimation){
     await new Promise((resolve,reject)=>{
       let sc=document.querySelector('script[data-restart-route-js]');
       if(sc){if(window.RestartRouteAnimation)return resolve();sc.addEventListener('load',resolve,{once:true});sc.addEventListener('error',reject,{once:true});return}
-      sc=document.createElement('script');sc.src='route-animation.js?v=1.0.1';sc.dataset.restartRouteJs='1';sc.onload=resolve;sc.onerror=()=>reject(new Error('Route module load failed'));document.head.appendChild(sc);
+      sc=document.createElement('script');sc.src='route-animation.js?v=1.1.0';sc.dataset.restartRouteJs='1';sc.onload=resolve;sc.onerror=()=>reject(new Error('Route module load failed'));document.head.appendChild(sc);
     });
   }
   return !!window.RestartRouteAnimation;
