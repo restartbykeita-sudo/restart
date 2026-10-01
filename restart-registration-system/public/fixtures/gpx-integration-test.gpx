@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="RESTART GPX Integration Test" xmlns="http://www.topografix.com/GPX/1/1">
+<trk><name>Integration Test Route</name><trkseg>
+<trkpt lat="7.916000" lon="98.333000"><ele>36</ele></trkpt>
+<trkpt lat="7.917500" lon="98.334500"><ele>42</ele></trkpt>
+<trkpt lat="7.919000" lon="98.336000"><ele>51</ele></trkpt>
+<trkpt lat="7.920500" lon="98.337500"><ele>63</ele></trkpt>
+<trkpt lat="7.922000" lon="98.339000"><ele>58</ele></trkpt>
+<trkpt lat="7.923500" lon="98.340500"><ele>72</ele></trkpt>
+<trkpt lat="7.925000" lon="98.342000"><ele>66</ele></trkpt>
+<trkpt lat="7.926500" lon="98.343500"><ele>54</ele></trkpt>
+<trkpt lat="7.928000" lon="98.345000"><ele>46</ele></trkpt>
+<trkpt lat="7.929500" lon="98.346500"><ele>39</ele></trkpt>
+</trkseg></trk></gpx>
