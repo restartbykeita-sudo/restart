@@ -233,12 +233,12 @@ async function ensureRouteAnimationDeps(){
   }
   if(!window.maplibregl){
     if(!document.querySelector('link[data-maplibre-css]')){
-      const l=document.createElement('link');l.rel='stylesheet';l.href='https://unpkg.com/maplibre-gl@6.11.2/dist/maplibre-gl.css';l.dataset.maplibreCss='1';document.head.appendChild(l);
+      const l=document.createElement('link');l.rel='stylesheet';l.href='https://cdn.jsdelivr.net/npm/maplibre-gl@6.11.2/dist/maplibre-gl.css';l.dataset.maplibreCss='1';document.head.appendChild(l);
     }
     await new Promise((resolve,reject)=>{
       let sc=document.querySelector('script[data-maplibre-js]');
       if(sc){if(window.maplibregl)return resolve();sc.addEventListener('load',resolve,{once:true});sc.addEventListener('error',reject,{once:true});return}
-      sc=document.createElement('script');sc.src='https://unpkg.com/maplibre-gl@6.11.2/dist/maplibre-gl.js';sc.dataset.maplibreJs='1';sc.onload=resolve;sc.onerror=()=>reject(new Error('MapLibre load failed'));document.head.appendChild(sc);
+      sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/maplibre-gl@6.11.2/dist/maplibre-gl.js';sc.dataset.maplibreJs='1';sc.onload=resolve;sc.onerror=()=>reject(new Error('MapLibre load failed'));document.head.appendChild(sc);
     });
   }
   if(!window.RestartRouteAnimation){
