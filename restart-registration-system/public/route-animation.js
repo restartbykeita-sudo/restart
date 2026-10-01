@@ -40,7 +40,16 @@ function kmMarker(map,km,coord){
  const el=document.createElement('div');el.className='rr-route-km';el.textContent=km;
  return new maplibregl.Marker({element:el,anchor:'center'}).setLngLat(coord).addTo(map)
 }
-function cpLabel(pt,t){if(pt.point_type==='CP_WATER')return (pt.code||t.checkpoint)+' · '+t.water;if(pt.point_type==='WATER')return pt.code||t.water;if(pt.point_type==='INFO')return pt.code||'INFO';return pt.code||t.checkpoint}
+function cpLabel(pt,t){
+ if(pt.point_type==='CP_WATER')return (pt.code||t.checkpoint)+' · '+t.water;
+ if(pt.point_type==='WATER')return pt.code||t.water;
+ if(pt.point_type==='FOOD')return pt.code||(t===I18N.th?'อาหาร':'FOOD');
+ if(pt.point_type==='MEDICAL')return pt.code||(t===I18N.th?'แพทย์':'MEDICAL');
+ if(pt.point_type==='VIEWPOINT')return pt.code||(t===I18N.th?'จุดชมวิว':'VIEW');
+ if(pt.point_type==='INFO')return pt.code||'INFO';
+ if(pt.point_type==='CUSTOM')return pt.code||'POINT';
+ return pt.code||t.checkpoint
+}
 function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 class RouteAnimation{
  constructor(root,route,coursePoints,opts={}){
@@ -50,7 +59,9 @@ class RouteAnimation{
  }
  renderShell(){
   const t=this.t,name=(this.route.name&&typeof this.route.name==='object'?(this.route.name[this.lang]||this.route.name.th||this.route.name.en):this.route.name)||t.route;
-  this.root.innerHTML='<div class="rr-route-head"><div><span class="preview-section-kicker">GPX · ANIMATED COURSE</span><h2>'+escapeHtml(name)+'</h2></div><a class="rr-route-download" href="'+escapeHtml(this.route.gpx_url)+'" target="_blank" rel="noopener">GPX ↗</a></div>'+
+  const linked=(this.route.restart_route_categories||[]).map(x=>x.restart_race_categories).filter(Boolean);
+  const chips=linked.length?'<div class="rr-route-cats">'+linked.map(c=>'<span>'+escapeHtml((c.name&&typeof c.name==='object'?(c.name[this.lang]||c.name.th||c.name.en):c.name)||'')+(c.distance_km!=null?' · '+c.distance_km+' km':'')+'</span>').join('')+'</div>':'';
+  this.root.innerHTML='<div class="rr-route-head"><div><span class="preview-section-kicker">GPX · ANIMATED COURSE</span><h2>'+escapeHtml(name)+'</h2>'+chips+'</div><a class="rr-route-download" href="'+escapeHtml(this.route.gpx_url)+'" target="_blank" rel="noopener">GPX ↗</a></div>'+
   '<div class="rr-route-stage"><div class="rr-route-map"></div><div class="rr-route-loading">'+escapeHtml(t.loading)+'</div><div class="rr-route-toast" hidden></div>'+
   '<div class="rr-route-stats">'+
    '<div><span>'+escapeHtml(t.position)+'</span><b data-v="position">0.00 '+escapeHtml(t.km)+'</b></div>'+
@@ -80,10 +91,12 @@ class RouteAnimation{
  }
  async load(){
   try{
-   if(!window.maplibregl)throw new Error('MapLibre unavailable');
    const res=await fetch(this.route.gpx_url,{cache:'no-store'});if(!res.ok)throw new Error('GPX HTTP '+res.status);
    Object.assign(this.state,parseGpx(await res.text()));
-   this.initMap();this.updateSummary();this.drawChart();this.loading.hidden=true
+   let mapped=false;
+   if(window.maplibregl){try{this.initMap();mapped=true}catch(err){console.warn('MapLibre fallback',err)}}
+   if(!mapped)this.initFallback();
+   this.updateSummary();this.drawChart();this.loading.hidden=true
   }catch(e){this.loading.textContent=this.t.error+' · '+(e.message||e);this.loading.classList.add('is-error')}
  }
  initMap(){
@@ -104,8 +117,35 @@ class RouteAnimation{
    this.addCoursePoints();this.fit();this.update(false)
   })
  }
+ initFallback(){
+  const pts=this.state.points,midLat=pts.reduce((a,p)=>a+p.lat,0)/pts.length,cos=Math.cos(midLat*Math.PI/180);
+  const xs=pts.map(p=>p.lon*cos),ys=pts.map(p=>p.lat);
+  const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
+  const pad=.05,spanX=Math.max(.000001,maxX-minX),spanY=Math.max(.000001,maxY-minY);
+  const xy=p=>({x:60+((p.lon*cos-minX)/spanX)*880,y:60+(1-(p.lat-minY)/spanY)*500});
+  const all=pts.map(p=>{const q=xy(p);return q.x.toFixed(2)+','+q.y.toFixed(2)}).join(' ');
+  this.mapEl.innerHTML='<svg class="rr-route-fallback-svg" viewBox="0 0 1000 620" preserveAspectRatio="xMidYMid meet">'+
+   '<defs><linearGradient id="rrRouteGlow" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#cc59e3"/><stop offset="55%" stop-color="#ff4d8d"/><stop offset="100%" stop-color="#ffb24d"/></linearGradient><filter id="rrGlow"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>'+
+   '<rect width="1000" height="620" fill="#101117"/><g opacity=".16">'+Array.from({length:12},(_,i)=>'<line x1="0" y1="'+(50+i*48)+'" x2="1000" y2="'+(50+i*48)+'" stroke="#fff" stroke-width="1"/>').join('')+'</g>'+
+   '<polyline points="'+all+'" fill="none" stroke="#090a0e" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>'+
+   '<polyline points="'+all+'" fill="none" stroke="url(#rrRouteGlow)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity=".88"/>'+
+   '<polyline class="rr-fallback-passed" points="" fill="none" stroke="#ffb24d" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" filter="url(#rrGlow)"/>'+
+   '<g class="rr-fallback-markers"></g>'+
+   '<circle class="rr-fallback-runner-halo" r="18" fill="rgba(255,77,141,.22)"/><circle class="rr-fallback-runner" r="9" fill="#fff" stroke="#ff4d8d" stroke-width="6"/>'+
+   '</svg>';
+  const svg=this.mapEl.querySelector('svg'),markers=svg.querySelector('.rr-fallback-markers');
+  const addMarker=(p,label,kind)=>{
+    const q=xy(p),g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('transform','translate('+q.x+' '+q.y+')');g.setAttribute('class','rr-fallback-marker '+kind);
+    g.innerHTML='<circle r="16"></circle><text text-anchor="middle" dominant-baseline="central">'+escapeHtml(label)+'</text>';markers.appendChild(g)
+  };
+  addMarker(pts[0],this.t.start,'start');addMarker(pts[pts.length-1],this.t.finish,'finish');
+  this.coursePoints.forEach(cp=>{if(Number(cp.distance_km)*1000>this.state.totalDistance)return;const p=pointAt(this.state,Number(cp.distance_km)*1000/this.state.totalDistance),q=xy(p),g=document.createElementNS('http://www.w3.org/2000/svg','g');g.setAttribute('transform','translate('+q.x+' '+q.y+')');g.setAttribute('class','rr-fallback-cp');g.innerHTML='<circle r="13"></circle><text y="-20" text-anchor="middle">'+escapeHtml(cpLabel(cp,this.t))+'</text>';g.style.cursor='pointer';g.addEventListener('click',()=>this.showPoint(cp,false));markers.appendChild(g)});
+  this.state.fallback={xy,svg,passed:svg.querySelector('.rr-fallback-passed'),runner:svg.querySelector('.rr-fallback-runner'),halo:svg.querySelector('.rr-fallback-runner-halo')};
+  this.update(false)
+ }
  addCoursePoints(){
-  this.coursePoints.forEach(cp=>{if(Number(cp.distance_km)*1000>this.state.totalDistance)return;const x=pointAt(this.state,Number(cp.distance_km)*1000/this.state.totalDistance);const el=document.createElement('button');el.type='button';el.className='rr-route-cp '+(cp.point_type==='CP_WATER'?'is-water':'');el.innerHTML='<strong>'+escapeHtml(cpLabel(cp,this.t))+'</strong><small>'+Number(cp.distance_km).toFixed(Number(cp.distance_km)%1?1:0)+' '+escapeHtml(this.t.km)+'</small>';el.onclick=()=>this.showPoint(cp,false);new maplibregl.Marker({element:el,anchor:'bottom'}).setLngLat([x.lon,x.lat]).addTo(this.state.map)})
+  this.coursePoints.forEach(cp=>{if(Number(cp.distance_km)*1000>this.state.totalDistance)return;const x=pointAt(this.state,Number(cp.distance_km)*1000/this.state.totalDistance);const el=document.createElement('button');el.type='button';el.className='rr-route-cp '+((cp.point_type==='CP_WATER'||cp.point_type==='WATER')?'is-water':cp.point_type==='MEDICAL'?'is-medical':cp.point_type==='FOOD'?'is-food':cp.point_type==='VIEWPOINT'?'is-view':'');el.innerHTML='<strong>'+escapeHtml(cpLabel(cp,this.t))+'</strong><small>'+Number(cp.distance_km).toFixed(Number(cp.distance_km)%1?1:0)+' '+escapeHtml(this.t.km)+'</small>';el.onclick=()=>this.showPoint(cp,false);new maplibregl.Marker({element:el,anchor:'bottom'}).setLngLat([x.lon,x.lat]).addTo(this.state.map)})
  }
  updateSummary(){
   const s=this.state,nf=n=>Number(n||0).toLocaleString(undefined,{maximumFractionDigits:1});
@@ -113,30 +153,36 @@ class RouteAnimation{
  }
  set(key,value){const el=this.root.querySelector('[data-v="'+key+'"]');if(el)el.textContent=value}
  update(moveCamera=true){
-  if(!this.state.map?.getSource('runner'))return;
-  const s=this.state,x=pointAt(s,s.progress),pct=Math.round(s.progress*100);
+  const s=this.state;if(!s.points?.length)return;const x=pointAt(s,s.progress),pct=Math.round(s.progress*100);
   this.set('position',(x.distance/1000).toFixed(2)+' '+this.t.km);this.set('elevation',Math.round(x.ele)+' m');this.set('ascent',Math.round(x.ascent)+' m');this.set('progress',pct+'%');
   this.root.querySelector('[data-a="seek"]').value=Math.round(s.progress*1000);
-  s.map.getSource('runner').setData(point([x.lon,x.lat]));
-  const passed=s.points.slice(0,Math.max(1,x.index)).map(p=>[p.lon,p.lat]);passed.push([x.lon,x.lat]);if(passed.length<2)passed.push([x.lon,x.lat]);s.map.getSource('route-passed').setData(line(passed));
-  if(moveCamera&&s.follow){const now=performance.now();if(now-(s.lastCameraUpdate||0)>160){s.lastCameraUpdate=now;s.map.easeTo({center:[x.lon,x.lat],bearing:s.is3D?x.bearing-15:0,pitch:s.is3D?48:0,duration:220,zoom:15})}}
+  if(s.map?.getSource('runner')){
+   s.map.getSource('runner').setData(point([x.lon,x.lat]));
+   const passed=s.points.slice(0,Math.max(1,x.index)).map(p=>[p.lon,p.lat]);passed.push([x.lon,x.lat]);if(passed.length<2)passed.push([x.lon,x.lat]);s.map.getSource('route-passed').setData(line(passed));
+   if(moveCamera&&s.follow){const now=performance.now();if(now-(s.lastCameraUpdate||0)>160){s.lastCameraUpdate=now;s.map.easeTo({center:[x.lon,x.lat],bearing:s.is3D?x.bearing-15:0,pitch:s.is3D?48:0,duration:220,zoom:15})}}
+  }else if(s.fallback){
+   const q=s.fallback.xy(x),passedPts=s.points.slice(0,Math.max(1,x.index)).map(p=>{const a=s.fallback.xy(p);return a.x.toFixed(2)+','+a.y.toFixed(2)});passedPts.push(q.x.toFixed(2)+','+q.y.toFixed(2));
+   s.fallback.passed.setAttribute('points',passedPts.join(' '));s.fallback.runner.setAttribute('cx',q.x);s.fallback.runner.setAttribute('cy',q.y);s.fallback.halo.setAttribute('cx',q.x);s.fallback.halo.setAttribute('cy',q.y)
+  }
   this.checkPoints(x.distance);this.drawChart(x.distance)
  }
  checkPoints(distance){
-  this.coursePoints.forEach(cp=>{const d=Number(cp.distance_km)*1000;if(distance>=d&&!this.state.reached.has(cp.id)){this.state.reached.add(cp.id);this.state.holdUntil=performance.now()+1800;this.showPoint(cp,true)}})
+  this.coursePoints.forEach(cp=>{const d=Number(cp.distance_km)*1000;if(distance>=d&&!this.state.reached.has(cp.id)){this.state.reached.add(cp.id);this.state.holdUntil=performance.now()+Math.max(0,Number(cp.pause_seconds??1.5))*1000;this.showPoint(cp,true)}})
  }
  showPoint(cp,arrival){
+  if(arrival&&cp.popup_enabled===false)return;
   const name=cp.name&&typeof cp.name==='object'?(cp.name[this.lang]||cp.name.th||cp.name.en):cp.name;
   const desc=cp.description&&typeof cp.description==='object'?(cp.description[this.lang]||cp.description.th||cp.description.en):cp.description;
-  this.toast.innerHTML=(cp.image_url?'<img src="'+escapeHtml(cp.image_url)+'" alt="">':'')+'<div><span>'+escapeHtml(cpLabel(cp,this.t))+' · '+Number(cp.distance_km).toFixed(Number(cp.distance_km)%1?1:0)+' '+escapeHtml(this.t.km)+'</span><strong>'+escapeHtml(name||this.t.arrived)+'</strong>'+(desc?'<p>'+escapeHtml(desc)+'</p>':'')+'</div>';
+  const cutoff=cp.cutoff_minutes!=null?'<p class="rr-route-cutoff">Cutoff · '+Math.floor(Number(cp.cutoff_minutes)/60)+'h '+(Number(cp.cutoff_minutes)%60)+'m</p>':'';
+  this.toast.innerHTML=(cp.image_url?'<img src="'+escapeHtml(cp.image_url)+'" alt="">':'')+'<div><span>'+escapeHtml(cpLabel(cp,this.t))+' · '+Number(cp.distance_km).toFixed(Number(cp.distance_km)%1?1:0)+' '+escapeHtml(this.t.km)+'</span><strong>'+escapeHtml(name||this.t.arrived)+'</strong>'+cutoff+(desc?'<p>'+escapeHtml(desc)+'</p>':'')+'</div>';
   this.toast.hidden=false;this.toast.classList.add('show');clearTimeout(this.toastTimer);this.toastTimer=setTimeout(()=>{this.toast.classList.remove('show');setTimeout(()=>this.toast.hidden=true,250)},arrival?3300:5000)
  }
  toggle(){this.state.playing=!this.state.playing;this.root.querySelector('[data-a="play"]').innerHTML=this.state.playing?'❚❚ '+escapeHtml(this.t.pause):'▶ '+escapeHtml(this.t.play);if(this.state.playing){this.state.last=performance.now();this.loop(this.state.last)}}
  loop(now){if(!this.state.playing)return;const s=this.state;if(now<s.holdUntil){s.last=now;s.raf=requestAnimationFrame(t=>this.loop(t));return}const dt=Math.max(0,now-s.last);s.last=now;const duration=Math.max(10,Number(this.route.animation_duration_seconds||48))*1000;s.progress=clamp(s.progress+dt*s.speed/duration,0,1);this.update(true);if(s.progress>=1){s.playing=false;this.root.querySelector('[data-a="play"]').innerHTML='▶ '+escapeHtml(this.t.play);return}s.raf=requestAnimationFrame(t=>this.loop(t))}
  replay(){cancelAnimationFrame(this.state.raf);this.state.playing=false;this.state.progress=0;this.state.reached.clear();this.state.holdUntil=0;this.root.querySelector('[data-a="play"]').innerHTML='▶ '+escapeHtml(this.t.play);this.update(false);this.fit()}
- fit(){if(!this.state.map||!this.state.points.length)return;const b=new maplibregl.LngLatBounds();this.state.points.forEach(p=>b.extend([p.lon,p.lat]));this.state.follow=false;this.root.querySelector('[data-a="follow"]')?.classList.remove('is-on');this.state.map.fitBounds(b,{padding:window.innerWidth<700?44:70,pitch:this.state.is3D?36:0,bearing:this.state.is3D?-18:0,duration:700})}
- toggleTerrain(){this.state.topo=!this.state.topo;if(!this.state.map?.getLayer('topo'))return;this.state.map.setLayoutProperty('topo','visibility',this.state.topo?'visible':'none');this.state.map.setLayoutProperty('osm','visibility',this.state.topo?'none':'visible')}
- toggleView(){this.state.is3D=!this.state.is3D;this.state.map?.easeTo({pitch:this.state.is3D?48:0,bearing:this.state.is3D?-18:0,duration:500})}
+ fit(){if(!this.state.points.length)return;if(!this.state.map)return;const b=new maplibregl.LngLatBounds();this.state.points.forEach(p=>b.extend([p.lon,p.lat]));this.state.follow=false;this.root.querySelector('[data-a="follow"]')?.classList.remove('is-on');this.state.map.fitBounds(b,{padding:window.innerWidth<700?44:70,pitch:this.state.is3D?36:0,bearing:this.state.is3D?-18:0,duration:700})}
+ toggleTerrain(){if(!this.state.map)return;this.state.topo=!this.state.topo;if(!this.state.map?.getLayer('topo'))return;this.state.map.setLayoutProperty('topo','visibility',this.state.topo?'visible':'none');this.state.map.setLayoutProperty('osm','visibility',this.state.topo?'none':'visible')}
+ toggleView(){if(!this.state.map)return;this.state.is3D=!this.state.is3D;this.state.map?.easeTo({pitch:this.state.is3D?48:0,bearing:this.state.is3D?-18:0,duration:500})}
  drawChart(currentDistance=0){
   const c=this.canvas,ctx=c.getContext('2d'),box=c.getBoundingClientRect(),dpr=Math.min(2,devicePixelRatio||1);if(box.width<10)return;c.width=box.width*dpr;c.height=box.height*dpr;ctx.scale(dpr,dpr);const w=box.width,h=box.height,pad=12,min=this.state.minElevation,max=this.state.maxElevation,span=Math.max(1,max-min),pts=this.state.points;
   ctx.clearRect(0,0,w,h);ctx.beginPath();pts.forEach((p,i)=>{const x=pad+(p.distance/this.state.totalDistance)*(w-pad*2),y=h-pad-((p.ele-min)/span)*(h-pad*2);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.lineWidth=2;ctx.strokeStyle='#d55adb';ctx.stroke();
