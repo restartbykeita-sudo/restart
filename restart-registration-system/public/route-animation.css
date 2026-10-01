@@ -56,3 +56,25 @@ html[data-ui-theme="dark"] .rr-route-summary>div,html[data-ui-theme="dark"] .rr-
  .rr-route-download{align-self:flex-start}
  .rr-route-profile{height:110px}
 }
+
+/* GPX fallback + rich points v1.1 */
+.rr-route-cats{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+.rr-route-cats span{display:inline-flex;align-items:center;min-height:26px;padding:5px 9px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);font-size:10px;font-weight:850}
+.rr-route-fallback-svg{width:100%;height:100%;display:block;background:radial-gradient(circle at 78% 16%,rgba(204,89,227,.18),transparent 32%),linear-gradient(145deg,#111218,#17121b)}
+.rr-fallback-marker circle{fill:#171920;stroke:#fff;stroke-width:3}
+.rr-fallback-marker.start circle{fill:#21a467}
+.rr-fallback-marker.finish circle{fill:#e83c67}
+.rr-fallback-marker text{fill:#fff;font-size:8px;font-weight:950;letter-spacing:.03em}
+.rr-fallback-cp circle{fill:#ffb24d;stroke:#171820;stroke-width:4}
+.rr-fallback-cp text{fill:#fff;font-size:10px;font-weight:900;paint-order:stroke;stroke:#11131a;stroke-width:4px;stroke-linejoin:round}
+.rr-fallback-runner-halo{animation:rrPulse 1.6s ease-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes rrPulse{0%{opacity:.9;transform:scale(.72)}70%{opacity:.12;transform:scale(1.6)}100%{opacity:0;transform:scale(1.8)}}
+.rr-route-cp.is-medical{background:linear-gradient(135deg,#d83b5d,#8b2348)}
+.rr-route-cp.is-food{background:linear-gradient(135deg,#b87525,#79511b)}
+.rr-route-cp.is-view{background:linear-gradient(135deg,#3c8b66,#245d47)}
+.rr-route-cutoff{margin:7px 0 0!important;padding:6px 8px;border-radius:8px;background:rgba(255,178,77,.12);color:#ffd29a!important;font-weight:800!important}
+@media(max-width:620px){
+ .rr-route-cats{gap:5px}
+ .rr-route-cats span{font-size:9px}
+ .rr-route-fallback-cp text{font-size:8px}
+}
