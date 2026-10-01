@@ -63,12 +63,18 @@ function eventDateParts(value){
 }
 function eventLandingCopy(){
   const x={
-    th:{eyebrow:'RESTART · CURATED RACE EXPERIENCES',title:'ค้นหาเส้นชัยครั้งต่อไปของคุณ',desc:'การแข่งขันที่คัดสรรมาเพื่อประสบการณ์ที่มากกว่าการวิ่ง — เลือก Event ที่ใช่ แล้วเริ่มต้นเรื่องราวบทใหม่ของคุณ',featured:'FEATURED EVENT',open:'เปิดรับสมัคร',published:'เร็ว ๆ นี้',view:'ดูรายละเอียดและสมัคร',events:'UPCOMING EVENTS',empty:'ยังไม่มี Event ที่เปิดให้เข้าชมในขณะนี้'},
+    th:{eyebrow:'RESTART · CURATED RACE EXPERIENCES',title:'ค้นหาเส้นชัยครั้งต่อไปของคุณ',desc:'การแข่งขันที่คัดสรรมาเพื่อประสบการณ์ที่มากกว่าการวิ่ง — เลือก Event ที่ใช่ แล้วเริ่มต้นเรื่องราวบทใหม่ของคุณ',featured:'FEATURED EVENT',open:'เปิดรับสมัครแล้ว',published:'เร็ว ๆ นี้',view:'ดูรายละเอียดและสมัคร',events:'UPCOMING EVENTS',empty:'ยังไม่มี Event ที่เปิดให้เข้าชมในขณะนี้'},
     en:{eyebrow:'RESTART · CURATED RACE EXPERIENCES',title:'Find your next finish line',desc:'Curated race experiences designed to be more than a run. Discover your next event and begin a new chapter.',featured:'FEATURED EVENT',open:'Registration Open',published:'Coming Soon',view:'View event & register',events:'UPCOMING EVENTS',empty:'No events are currently available.'},
     zh:{eyebrow:'RESTART · CURATED RACE EXPERIENCES',title:'寻找你的下一条终点线',desc:'精心策划的不只是比赛，而是一段值得记住的体验。选择你的下一场活动，开启新的篇章。',featured:'FEATURED EVENT',open:'开放报名',published:'即将开放',view:'查看活动并报名',events:'UPCOMING EVENTS',empty:'目前暂无可查看的活动。'},
     ja:{eyebrow:'RESTART · CURATED RACE EXPERIENCES',title:'次のフィニッシュラインへ',desc:'走るだけではない、記憶に残るレース体験を。次のイベントを見つけ、新しい物語を始めましょう。',featured:'FEATURED EVENT',open:'受付中',published:'近日公開',view:'イベントを見る・申し込む',events:'UPCOMING EVENTS',empty:'現在公開中のイベントはありません。'},
     ru:{eyebrow:'RESTART · CURATED RACE EXPERIENCES',title:'Найдите свой следующий финиш',desc:'Отобранные спортивные события — больше, чем просто забег. Выберите следующий старт и начните новую главу.',featured:'FEATURED EVENT',open:'Регистрация открыта',published:'Скоро',view:'О событии и регистрация',events:'UPCOMING EVENTS',empty:'Сейчас нет доступных событий.'}
   };return x[lang]||x.en;
+}
+function eventStatusLabel(status,copy){
+  if(status==='OPEN')return copy.open;
+  if(status==='PUBLISHED')return copy.published;
+  if(status==='CLOSED')return lang==='th'?'ปิดรับสมัครแล้ว':lang==='zh'?'报名已关闭':lang==='ja'?'受付終了':lang==='ru'?'Регистрация закрыта':'Registration Closed';
+  return copy.published;
 }
 function eventLandingLanguages(){
   const labels={th:'TH',en:'EN',zh:'中文',ja:'日本語',ru:'RU'};
@@ -85,7 +91,7 @@ function eventVisual(e){
 }
 function eventCard(e,index,copy){
   const date=eventDateParts(e.event_date_start);
-  const status=e.status==='OPEN'?copy.open:copy.published;
+  const status=eventStatusLabel(e.status,copy);
   const featured=index===0;
   const desc=String(e.description||'').trim();
   return '<a class="event-showcase-card '+(featured?'is-featured':'')+'" href="?event='+encodeURIComponent(e.slug)+'">'+
