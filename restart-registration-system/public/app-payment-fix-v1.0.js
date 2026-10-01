@@ -1,5 +1,5 @@
 const db=supabase.createClient(RESTART_REG_CONFIG.SUPABASE_URL,RESTART_REG_CONFIG.SUPABASE_PUBLISHABLE_KEY);
-const app=document.getElementById('app');const qs=new URLSearchParams(location.search);const slug=qs.get('event');let lang=localStorage.getItem('restart_lang')||'th';let E=null,C=[],P=[],F=[],S=[],PM=[],IP=[],IS=[];
+const app=document.getElementById('app');const qs=new URLSearchParams(location.search);const slug=qs.get('event');const registerMode=qs.get('register')==='1';let lang=localStorage.getItem('restart_lang')||'th';let E=null,C=[],P=[],F=[],S=[],PM=[],IP=[],IS=[],SHOW=null,MEDIA=[];
 let uiTheme=localStorage.getItem('restart_ui_theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');
 function applyUiTheme(){
   document.documentElement.dataset.uiTheme=uiTheme;
@@ -42,14 +42,33 @@ function initThemeToggle(){
 
 const dict={th:{apply:'สมัครแข่งขัน',choose:'เลือกรุ่นการแข่งขัน',package:'เลือก Package',personal:'ข้อมูลผู้สมัคร',insurance:'ผู้รับผลประโยชน์',payment:'การชำระเงิน',submit:'ส่งใบสมัคร',full:'ชำระเต็มจำนวน',install:'ผ่อนชำระ',copy:'คัดลอก',upload:'อัปโหลดสลิป',addbene:'+ เพิ่มผู้รับผลประโยชน์'},en:{apply:'Register',choose:'Competition category',package:'Package',personal:'Participant information',insurance:'Beneficiaries',payment:'Payment',submit:'Submit registration',full:'Pay in full',install:'Installments',copy:'Copy',upload:'Upload slip',addbene:'+ Add beneficiary'},zh:{apply:'报名',choose:'比赛组别',package:'套餐',personal:'参赛者信息',insurance:'受益人',payment:'付款',submit:'提交报名',full:'全额付款',install:'分期付款',copy:'复制',upload:'上传付款凭证',addbene:'+ 添加受益人'},ja:{apply:'参加申込',choose:'競技カテゴリー',package:'パッケージ',personal:'参加者情報',insurance:'受取人',payment:'支払い',submit:'申込を送信',full:'一括払い',install:'分割払い',copy:'コピー',upload:'支払証明をアップロード',addbene:'+ 受取人を追加'},ru:{apply:'Регистрация',choose:'Категория',package:'Пакет',personal:'Данные участника',insurance:'Получатели',payment:'Оплата',submit:'Отправить заявку',full:'Полная оплата',install:'Рассрочка',copy:'Копировать',upload:'Загрузить квитанцию',addbene:'+ Добавить получателя'}};
 const D=()=>dict[lang]||dict.en;const byId=id=>document.getElementById(id);const val=id=>(byId(id)?.value||'').trim();const baseFieldAliases=new Set(['title','prefix','first_name','last_name','birth_date','age','gender','id_document','phone','blood_group','shirt_size','address','emergency_phone','emergency_relation']);const baseMeta=(...keys)=>F.find(f=>keys.includes(f.field_key))||null;const optionTags=(meta,fallback=[])=>{const opts=meta?.options?.length?meta.options:fallback;return opts.map(o=>{const value=typeof o==='object'?(o.value??tr(o.label||o)):o;const label=typeof o==='object'?tr(o.label||o):o;return '<option value="'+esc(value)+'">'+esc(label)+'</option>'}).join('')};const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));const tr=v=>typeof v==='object'?(v?.[lang]||v?.en||v?.th||Object.values(v||{})[0]||''):v||'';const money=v=>Number(v||0).toLocaleString(undefined,{maximumFractionDigits:2});
-function langs(){const ls=E?.languages||['th','en','zh','ja','ru'];langbar.innerHTML=ls.map(x=>'<button class="'+(x===lang?'active':'')+'" data-l="'+x+'">'+x.toUpperCase()+'</button>').join('');langbar.onclick=e=>{const b=e.target.closest('[data-l]');if(!b)return;lang=b.dataset.l;localStorage.setItem('restart_lang',lang);render()}}
+function langs(){const ls=E?.languages||['th','en','zh','ja','ru'];langbar.innerHTML=ls.map(x=>'<button class="'+(x===lang?'active':'')+'" data-l="'+x+'">'+x.toUpperCase()+'</button>').join('');langbar.onclick=e=>{const b=e.target.closest('[data-l]');if(!b)return;lang=b.dataset.l;localStorage.setItem('restart_lang',lang);if(registerMode&&E?.status==='OPEN')render();else renderEventPreview()}}
 async function init(){
-  if(!document.querySelector('link[href*="app.css?v=1.11.0"]')){
-    const l=document.createElement('link');l.rel='stylesheet';l.href='../assets/app.css?v=1.11.0';document.head.appendChild(l);
-  }
-  document.body.classList.add('public-registration');
   initThemeToggle();
-  if(!slug)return listEvents();const{data:e,error}=await db.from('restart_events').select('*').eq('slug',slug).maybeSingle();if(error||!e)return app.innerHTML='<section class="rr-card rr-empty">Event not found</section>';E=e;const eid=e.id;const results=await Promise.all([db.from('restart_race_categories').select('*').eq('event_id',eid).eq('is_active',true).order('sort_order'),db.from('restart_packages').select('*').eq('event_id',eid).eq('is_active',true).order('sort_order'),db.from('restart_form_fields').select('*').eq('event_id',eid).eq('is_active',true).order('sort_order'),db.from('restart_form_sections').select('*').eq('event_id',eid).eq('is_active',true).order('sort_order'),db.from('restart_payment_methods').select('*').eq('event_id',eid).eq('is_enabled',true).order('sort_order'),db.from('restart_installment_plans').select('*').eq('event_id',eid).eq('is_active',true).order('priority',{ascending:false}),db.from('restart_installment_steps').select('*')]);C=results[0].data||[];P=results[1].data||[];F=results[2].data||[];S=results[3].data||[];PM=results[4].data||[];IP=results[5].data||[];IS=results[6].data||[];langs();render()}
+  if(!slug)return listEvents();
+  const{data:e,error}=await db.from('restart_events').select('*').eq('slug',slug).maybeSingle();
+  if(error||!e)return app.innerHTML='<section class="rr-card rr-empty">Event not found</section>';
+  E=e;const eid=e.id;
+  const results=await Promise.all([
+    db.from('restart_race_categories').select('*').eq('event_id',eid).eq('is_active',true).order('sort_order'),
+    db.from('restart_packages').select('*').eq('event_id',eid).eq('is_active',true).order('sort_order'),
+    db.from('restart_form_fields').select('*').eq('event_id',eid).eq('is_active',true).order('sort_order'),
+    db.from('restart_form_sections').select('*').eq('event_id',eid).eq('is_active',true).order('sort_order'),
+    db.from('restart_payment_methods').select('*').eq('event_id',eid).eq('is_enabled',true).order('sort_order'),
+    db.from('restart_installment_plans').select('*').eq('event_id',eid).eq('is_active',true).order('priority',{ascending:false}),
+    db.from('restart_installment_steps').select('*'),
+    db.from('restart_event_showcase').select('*').eq('event_id',eid).maybeSingle(),
+    db.from('restart_event_media').select('*').eq('event_id',eid).eq('is_active',true).order('sort_order')
+  ]);
+  const firstError=results.find(x=>x.error&&x.status!==406)?.error;
+  if(firstError)console.warn(firstError);
+  C=results[0].data||[];P=results[1].data||[];F=results[2].data||[];S=results[3].data||[];
+  PM=results[4].data||[];IP=results[5].data||[];IS=results[6].data||[];
+  SHOW=results[7].data||null;MEDIA=results[8].data||[];
+  langs();
+  if(registerMode&&E.status==='OPEN')render();
+  else renderEventPreview();
+}
 function eventDateParts(value){
   if(!value)return{day:'—',month:'',year:''};
   const d=new Date(value+'T00:00:00');
@@ -133,7 +152,117 @@ async function listEvents(){
     '</section>'+
     '<footer class="event-landing-footer"><span>RESTART</span><small>MOVE · DISCOVER · BEGIN AGAIN</small></footer>';
 }
-function render(){document.body.classList.remove('event-landing-page');app.classList.remove('event-landing-wrap');const th=E.theme||{};document.documentElement.style.setProperty('--primary',th.primary||'#6d4aff');const flags=E.feature_flags||{};const catOpts=C.map(c=>'<option value="'+c.id+'">'+esc(tr(c.name))+' · ฿'+money(currentCatPrice(c))+'</option>').join('');const categoryWrap=flags.competition_categories!==false?'<section class="rr-card"><h3>'+D().choose+'</h3><label>'+D().choose+'<select id="categorySel" required><option value="">—</option>'+catOpts+'</select></label></section>':'';const packageWrap=flags.packages?'<section class="rr-card"><h3>'+D().package+'</h3><label>'+D().package+'<select id="packageSel"><option value="">—</option></select></label></section>':'';let payModes='';if(flags.full_payment!==false)payModes+='<label style="display:flex;align-items:center;gap:8px"><input style="width:auto" type="radio" name="paymode" value="FULL" '+(!flags.installments?'checked':'')+'> '+D().full+'</label>';if(flags.installments)payModes+='<label style="display:flex;align-items:center;gap:8px"><input style="width:auto" type="radio" name="paymode" value="INSTALLMENT" '+(flags.full_payment===false?'checked':'')+'> '+D().install+'</label>';app.innerHTML='<section class="hero" style="--hero-primary:'+(th.primary||'#6d4aff')+';--hero-secondary:'+(th.secondary||'#e96d96')+';--hero-text:'+(th.text||'#fff')+'">'+(flags.logo!==false&&E.logo_url?'<img class="logo" src="'+esc(E.logo_url)+'">':'')+'<h1>'+esc(E.name)+'</h1><p>'+esc(E.description||'')+'</p><div>'+esc(E.location_name||'')+' · '+esc(E.event_date_start||'')+'</div>'+(flags.banner!==false&&E.banner_url?'<img class="banner" src="'+esc(E.banner_url)+'">':'')+'</section><form id="regForm">'+categoryWrap+packageWrap+(flags.basic_info!==false?'<section class="rr-card"><h3>'+D().personal+'</h3><div class="grid2">'+baseFields()+'</div>'+customFields()+'</section>':customFields())+(flags.insurance?insuranceHTML():'')+'<section class="rr-card"><h3>'+D().payment+'</h3><div id="priceBox" class="price">฿0</div><div class="row" style="margin:12px 0">'+payModes+'</div><div id="scheduleBox"></div><div id="methodsBox"></div>'+(flags.slip_upload?'<label style="margin-top:12px">'+D().upload+'<input id="slipFile" type="file" accept="image/*,application/pdf" required></label>':'')+'</section><section class="rr-card"><button class="btn primary" style="width:100%;padding:14px" type="submit">'+D().submit+'</button></section></form>';if(byId('categorySel'))byId('categorySel').onchange=()=>{refreshPackages();syncPaymentModes();refreshPrice()};document.querySelectorAll('[name=paymode]').forEach(x=>x.onchange=refreshPrice);if(byId('packageSel'))byId('packageSel').onchange=refreshPrice;byId('regForm').onsubmit=submit;if(byId('birthDate'))byId('birthDate').onchange=calcAge;calcAge();refreshPackages();syncPaymentModes();refreshPrice()}
+function previewCopy(){
+  const x={
+    th:{back:'กลับหน้ารวม Event',register:'สมัครการแข่งขัน',coming:'เร็ว ๆ นี้',closed:'ปิดรับสมัครแล้ว',overview:'เกี่ยวกับการแข่งขัน',raceInfo:'ระยะและรุ่นการแข่งขัน',distance:'ระยะ',category:'รุ่น',start:'เวลา Start',cutoff:'Cutoff',duration:'เวลาคาดหมาย',elevation:'Elevation Gain',price:'ค่าสมัคร',age:'อายุ',open:'เปิดรับสมัครแล้ว',kit:'Race Collection',shirt:'เสื้อแข่งขัน',medal:'เหรียญ Finisher',trophy:'ถ้วยรางวัล',map:'แผนที่เส้นทาง',gallery:'บรรยากาศงาน',highlights:'Highlights',inclusions:'สิ่งที่นักวิ่งได้รับ',awards:'รางวัลและถ้วย',course:'รายละเอียดเส้นทาง',rules:'กติกาสำคัญ',venue:'สถานที่และการเดินทาง',packages:'Package',registration:'ช่วงรับสมัคร',categories:'รุ่นการแข่งขัน',from:'เริ่มต้น',contact:'ติดต่อผู้จัด',days:'วันแข่งขัน'},
+    en:{back:'All Events',register:'Register Now',coming:'Coming Soon',closed:'Registration Closed',overview:'About the Event',raceInfo:'Distances & Categories',distance:'Distance',category:'Category',start:'Start Time',cutoff:'Cutoff',duration:'Expected Time',elevation:'Elevation Gain',price:'Entry Fee',age:'Age',open:'Registration Open',kit:'Race Collection',shirt:'Race Shirt',medal:'Finisher Medal',trophy:'Trophy',map:'Course Map',gallery:'Event Gallery',highlights:'Highlights',inclusions:'Runner Entitlements',awards:'Awards & Trophies',course:'Course Details',rules:'Important Rules',venue:'Venue & Travel',packages:'Packages',registration:'Registration Period',categories:'Categories',from:'From',contact:'Contact',days:'Race Day'},
+    zh:{back:'返回活动列表',register:'立即报名',coming:'即将开放',closed:'报名已关闭',overview:'赛事介绍',raceInfo:'距离与组别',distance:'距离',category:'组别',start:'起跑时间',cutoff:'关门时间',duration:'预计用时',elevation:'累计爬升',price:'报名费',age:'年龄',open:'开放报名',kit:'赛事纪念品',shirt:'赛事服',medal:'完赛奖牌',trophy:'奖杯',map:'路线图',gallery:'赛事图库',highlights:'亮点',inclusions:'参赛权益',awards:'奖项与奖杯',course:'路线说明',rules:'重要规则',venue:'地点与交通',packages:'套餐',registration:'报名时间',categories:'竞赛组别',from:'起价',contact:'联系方式',days:'比赛日'},
+    ja:{back:'イベント一覧',register:'申し込む',coming:'近日公開',closed:'受付終了',overview:'イベント概要',raceInfo:'距離・カテゴリー',distance:'距離',category:'カテゴリー',start:'スタート',cutoff:'制限時間',duration:'目安時間',elevation:'獲得標高',price:'参加費',age:'年齢',open:'受付中',kit:'Race Collection',shirt:'大会シャツ',medal:'フィニッシャーメダル',trophy:'トロフィー',map:'コースマップ',gallery:'ギャラリー',highlights:'ハイライト',inclusions:'参加特典',awards:'表彰・トロフィー',course:'コース詳細',rules:'重要ルール',venue:'会場・アクセス',packages:'パッケージ',registration:'受付期間',categories:'カテゴリー',from:'〜',contact:'お問い合わせ',days:'開催日'},
+    ru:{back:'Все события',register:'Зарегистрироваться',coming:'Скоро',closed:'Регистрация закрыта',overview:'О событии',raceInfo:'Дистанции и категории',distance:'Дистанция',category:'Категория',start:'Старт',cutoff:'Cutoff',duration:'Ожидаемое время',elevation:'Набор высоты',price:'Взнос',age:'Возраст',open:'Регистрация открыта',kit:'Race Collection',shirt:'Футболка',medal:'Медаль финишера',trophy:'Кубок',map:'Карта трассы',gallery:'Галерея',highlights:'Highlights',inclusions:'Что входит',awards:'Награды',course:'Описание трассы',rules:'Правила',venue:'Место и проезд',packages:'Пакеты',registration:'Период регистрации',categories:'Категории',from:'От',contact:'Контакты',days:'День забега'}
+  };return x[lang]||x.en
+}
+function fmtPreviewDate(v){
+  if(!v)return'—';
+  const d=new Date(v.length===10?v+'T00:00:00':v);
+  if(Number.isNaN(d.getTime()))return esc(v);
+  const locale=lang==='th'?'th-TH':lang==='zh'?'zh-CN':lang==='ja'?'ja-JP':lang==='ru'?'ru-RU':'en-GB';
+  return new Intl.DateTimeFormat(locale,{day:'numeric',month:'long',year:'numeric'}).format(d);
+}
+function fmtClock(v){return v?String(v).slice(0,5):'—'}
+function fmtDuration(v){
+  const n=Number(v||0);if(!n)return'—';
+  const h=Math.floor(n/60),m=n%60;
+  if(lang==='th')return h?(h+' ชม.'+(m?' '+m+' นาที':'')):(m+' นาที');
+  return h?(h+'h'+(m?' '+m+'m':'')):(m+'m');
+}
+function previewMedia(type){return MEDIA.filter(m=>m.media_type===type)}
+function firstPreviewMedia(type){return previewMedia(type)[0]?.url||''}
+function previewText(v){return tr(v)||''}
+function previewList(v){return Array.isArray(v)?v.filter(Boolean):[]}
+function previewMediaCard(url,label,wide=false){
+  if(!url)return'';
+  return '<article class="preview-media-card '+(wide?'is-wide':'')+'"><img src="'+esc(url)+'" alt="'+esc(label)+'"><div class="preview-media-caption">'+esc(label)+'</div></article>';
+}
+function raceCategoryCard(c,p){
+  const age=(c.min_age!=null||c.max_age!=null)?((c.min_age??'—')+'–'+(c.max_age??'∞')):'—';
+  return '<article class="preview-race-card">'+
+    '<div class="preview-race-distance">'+(c.distance_km!=null?esc(c.distance_km)+' <small>KM</small>':'—')+'</div>'+
+    '<div class="preview-race-name">'+esc(tr(c.name))+'</div>'+
+    '<div class="preview-race-grid">'+
+      '<div><span>'+esc(p.start)+'</span><b>'+esc(fmtClock(c.start_time))+'</b></div>'+
+      '<div><span>'+esc(p.cutoff)+'</span><b>'+esc(fmtDuration(c.cutoff_minutes))+'</b></div>'+
+      '<div><span>'+esc(p.duration)+'</span><b>'+esc(fmtDuration(c.expected_duration_minutes))+'</b></div>'+
+      '<div><span>'+esc(p.price)+'</span><b>฿'+money(currentCatPrice(c))+'</b></div>'+
+      '<div><span>'+esc(p.age)+'</span><b>'+esc(age)+'</b></div>'+
+      '<div><span>'+esc(p.elevation)+'</span><b>'+(c.elevation_gain_m!=null?esc(c.elevation_gain_m)+' m':'—')+'</b></div>'+
+    '</div>'+
+  '</article>';
+}
+function infoListSection(title,items,cls=''){
+  const arr=previewList(items);if(!arr.length)return'';
+  return '<section class="preview-section '+cls+'"><div class="preview-section-kicker">RESTART</div><h2>'+esc(title)+'</h2><div class="preview-bullet-grid">'+arr.map((x,i)=>'<div class="preview-bullet"><span>'+String(i+1).padStart(2,'0')+'</span><p>'+esc(x)+'</p></div>').join('')+'</div></section>';
+}
+function textSection(title,body,cls=''){
+  const value=previewText(body);if(!value)return'';
+  return '<section class="preview-section '+cls+'"><div class="preview-section-kicker">RESTART</div><h2>'+esc(title)+'</h2><div class="preview-prose">'+esc(value).replace(/\n/g,'<br>')+'</div></section>';
+}
+function renderEventPreview(){
+  document.body.classList.remove('event-landing-page');
+  document.body.classList.add('event-preview-page');
+  app.classList.remove('event-landing-wrap');
+  app.classList.add('event-preview-wrap');
+  const p=previewCopy(), flags=E.feature_flags||{};
+  const bg=firstPreviewMedia('BACKGROUND')||E.banner_url||firstPreviewMedia('BANNER');
+  const shirt=firstPreviewMedia('SHIRT'),medal=firstPreviewMedia('MEDAL'),trophy=firstPreviewMedia('TROPHY'),map=firstPreviewMedia('COURSE_MAP');
+  const gallery=[...previewMedia('AWARD'),...previewMedia('GALLERY')];
+  const prices=C.map(currentCatPrice).filter(v=>Number.isFinite(Number(v))).map(Number);
+  const minPrice=prices.length?Math.min(...prices):0,maxPrice=prices.length?Math.max(...prices):0;
+  const distances=[...new Set(C.map(c=>c.distance_km).filter(v=>v!=null).map(Number))].sort((a,b)=>a-b);
+  const status=E.status==='OPEN'?p.open:E.status==='CLOSED'?p.closed:p.coming;
+  const canRegister=E.status==='OPEN';
+  const heroStyle=bg?' style="background-image:linear-gradient(90deg,rgba(7,8,11,.88),rgba(7,8,11,.42)),url(\''+esc(bg).replaceAll("'","%27")+'\')"':'';
+  const mediaCards=[
+    previewMediaCard(shirt,p.shirt),previewMediaCard(medal,p.medal),previewMediaCard(trophy,p.trophy),
+    previewMediaCard(map,p.map,true),...gallery.map((m,i)=>previewMediaCard(m.url,p.gallery+' '+(i+1)))
+  ].filter(Boolean).join('');
+  const packageHtml=P.length?'<section class="preview-section"><div class="preview-section-kicker">OPTIONS</div><h2>'+esc(p.packages)+'</h2><div class="preview-package-grid">'+P.map(x=>'<article class="preview-package"><div><b>'+esc(tr(x.name))+'</b><p>'+esc(tr(x.description)||'')+'</p></div><strong>'+(x.price_mode==='ADD'?'+ ':'')+'฿'+money(x.price_value_thb)+'</strong></article>').join('')+'</div></section>':'';
+  app.innerHTML=
+    '<div class="preview-back-row"><a class="preview-back" href="?">← '+esc(p.back)+'</a></div>'+
+    '<section class="preview-hero"'+heroStyle+'>'+
+      '<div class="preview-hero-overlay"></div>'+
+      '<div class="preview-hero-content">'+
+        (E.logo_url?'<img class="preview-event-logo" src="'+esc(E.logo_url)+'" alt="">':'')+
+        '<div class="preview-status '+(canRegister?'is-open':'')+'">'+esc(status)+'</div>'+
+        (previewText(SHOW?.tagline)?'<div class="preview-tagline">'+esc(previewText(SHOW.tagline))+'</div>':'')+
+        '<h1>'+esc(E.name)+'</h1>'+
+        '<p>'+esc(previewText(SHOW?.overview)||E.description||'')+'</p>'+
+        '<div class="preview-hero-meta">'+
+          '<div><span>'+esc(p.days)+'</span><b>'+esc(fmtPreviewDate(E.event_date_start))+'</b></div>'+
+          '<div><span>'+esc(p.venue)+'</span><b>'+esc(E.location_name||previewText(SHOW?.venue_details)||'—')+'</b></div>'+
+          '<div><span>'+esc(p.categories)+'</span><b>'+C.length+'</b></div>'+
+          '<div><span>'+esc(p.distance)+'</span><b>'+(distances.length?distances.join(' / ')+' KM':'—')+'</b></div>'+
+          '<div><span>'+esc(p.price)+'</span><b>'+(prices.length?(minPrice===maxPrice?'฿'+money(minPrice):'฿'+money(minPrice)+' – ฿'+money(maxPrice)):'—')+'</b></div>'+
+        '</div>'+
+        '<div class="preview-hero-actions">'+
+          (canRegister?'<a class="preview-register-btn" href="?event='+encodeURIComponent(E.slug)+'&register=1">'+esc(p.register)+' <span>↗</span></a>':'<span class="preview-register-btn is-disabled">'+esc(status)+'</span>')+
+        '</div>'+
+      '</div>'+
+    '</section>'+
+    (C.length?'<section class="preview-section"><div class="preview-section-kicker">RACE INFORMATION</div><div class="preview-section-head"><h2>'+esc(p.raceInfo)+'</h2><span>'+C.length+' '+esc(p.categories)+'</span></div><div class="preview-race-cards">'+C.map(c=>raceCategoryCard(c,p)).join('')+'</div></section>':'')+
+    (flags.showcase_media!==false&&mediaCards?'<section class="preview-section preview-collection-section"><div class="preview-section-kicker">COLLECTION</div><h2>'+esc(p.kit)+'</h2><div class="preview-media-grid">'+mediaCards+'</div></section>':'')+
+    infoListSection(p.highlights,SHOW?.highlights,'preview-highlight-section')+
+    infoListSection(p.inclusions,SHOW?.inclusions)+
+    textSection(p.awards,SHOW?.awards_text)+
+    textSection(p.course,SHOW?.course_notes)+
+    (map?'':'')+
+    infoListSection(p.rules,SHOW?.rules)+
+    textSection(p.venue,SHOW?.venue_details)+
+    packageHtml+
+    '<section class="preview-section preview-registration-window"><div class="preview-section-kicker">REGISTRATION</div><h2>'+esc(p.registration)+'</h2><div class="preview-window-grid"><div><span>OPEN</span><b>'+esc(fmtPreviewDate(E.registration_opens_at||''))+'</b></div><div><span>CLOSE</span><b>'+esc(fmtPreviewDate(E.registration_closes_at||''))+'</b></div></div></section>'+
+    textSection(p.contact,SHOW?.contact_details)+
+    '<div class="preview-final-cta"><div><span>RESTART</span><h2>'+esc(E.name)+'</h2></div>'+(canRegister?'<a class="preview-register-btn" href="?event='+encodeURIComponent(E.slug)+'&register=1">'+esc(p.register)+' <span>↗</span></a>':'<span class="preview-register-btn is-disabled">'+esc(status)+'</span>')+'</div>';
+}
+function render(){document.body.classList.remove('event-landing-page','event-preview-page');app.classList.remove('event-landing-wrap','event-preview-wrap');const th=E.theme||{};document.documentElement.style.setProperty('--primary',th.primary||'#6d4aff');const flags=E.feature_flags||{};const catOpts=C.map(c=>'<option value="'+c.id+'">'+esc(tr(c.name))+' · ฿'+money(currentCatPrice(c))+'</option>').join('');const categoryWrap=flags.competition_categories!==false?'<section class="rr-card"><h3>'+D().choose+'</h3><label>'+D().choose+'<select id="categorySel" required><option value="">—</option>'+catOpts+'</select></label></section>':'';const packageWrap=flags.packages?'<section class="rr-card"><h3>'+D().package+'</h3><label>'+D().package+'<select id="packageSel"><option value="">—</option></select></label></section>':'';let payModes='';if(flags.full_payment!==false)payModes+='<label style="display:flex;align-items:center;gap:8px"><input style="width:auto" type="radio" name="paymode" value="FULL" '+(!flags.installments?'checked':'')+'> '+D().full+'</label>';if(flags.installments)payModes+='<label style="display:flex;align-items:center;gap:8px"><input style="width:auto" type="radio" name="paymode" value="INSTALLMENT" '+(flags.full_payment===false?'checked':'')+'> '+D().install+'</label>';app.innerHTML='<section class="hero" style="--hero-primary:'+(th.primary||'#6d4aff')+';--hero-secondary:'+(th.secondary||'#e96d96')+';--hero-text:'+(th.text||'#fff')+'">'+(flags.logo!==false&&E.logo_url?'<img class="logo" src="'+esc(E.logo_url)+'">':'')+'<h1>'+esc(E.name)+'</h1><p>'+esc(E.description||'')+'</p><div>'+esc(E.location_name||'')+' · '+esc(E.event_date_start||'')+'</div>'+(flags.banner!==false&&E.banner_url?'<img class="banner" src="'+esc(E.banner_url)+'">':'')+'</section><form id="regForm">'+categoryWrap+packageWrap+(flags.basic_info!==false?'<section class="rr-card"><h3>'+D().personal+'</h3><div class="grid2">'+baseFields()+'</div>'+customFields()+'</section>':customFields())+(flags.insurance?insuranceHTML():'')+'<section class="rr-card"><h3>'+D().payment+'</h3><div id="priceBox" class="price">฿0</div><div class="row" style="margin:12px 0">'+payModes+'</div><div id="scheduleBox"></div><div id="methodsBox"></div>'+(flags.slip_upload?'<label style="margin-top:12px">'+D().upload+'<input id="slipFile" type="file" accept="image/*,application/pdf" required></label>':'')+'</section><section class="rr-card"><button class="btn primary" style="width:100%;padding:14px" type="submit">'+D().submit+'</button></section></form>';if(byId('categorySel'))byId('categorySel').onchange=()=>{refreshPackages();syncPaymentModes();refreshPrice()};document.querySelectorAll('[name=paymode]').forEach(x=>x.onchange=refreshPrice);if(byId('packageSel'))byId('packageSel').onchange=refreshPrice;byId('regForm').onsubmit=submit;if(byId('birthDate'))byId('birthDate').onchange=calcAge;calcAge();refreshPackages();syncPaymentModes();refreshPrice()}
 function calcAge(){if(!window.birthDate||!birthDate.value||!window.age)return;const b=new Date(birthDate.value+'T00:00:00'),ref=E?.event_date_start?new Date(E.event_date_start+'T00:00:00'):new Date();let y=ref.getFullYear()-b.getFullYear();const m=ref.getMonth()-b.getMonth();if(m<0||(m===0&&ref.getDate()<b.getDate()))y--;age.value=Math.max(0,y)}
 function currentCatPrice(c){const f=E.feature_flags||{};const n=new Date(),a=c.early_bird_starts_at?new Date(c.early_bird_starts_at):null,b=c.early_bird_ends_at?new Date(c.early_bird_ends_at):null;if(f.early_bird&&c.early_bird_price_thb!=null&&(!a||n>=a)&&(!b||n<=b))return Number(c.early_bird_price_thb);return Number(c.base_price_thb||0)}
 function baseFields(){const fs=E.field_settings||{};const on=k=>fs[k]?.enabled!==false,req=k=>fs[k]?.required?' required':'';const rows=[];const titleMeta=baseMeta('title','prefix'),shirtMeta=baseMeta('shirt_size'),bloodMeta=baseMeta('blood_group');if(on('title'))rows.push('<label>คำนำหน้า<select id="title"'+req('title')+'><option value="">—</option>'+optionTags(titleMeta,[{value:'mr',label:{th:'นาย',en:'Mr.',zh:'先生',ja:'Mr.',ru:'Г-н'}},{value:'ms',label:{th:'นางสาว',en:'Ms.',zh:'女士',ja:'Ms.',ru:'Г-жа'}},{value:'mrs',label:{th:'นาง',en:'Mrs.',zh:'女士',ja:'Mrs.',ru:'Г-жа'}}])+'</select></label>');if(on('first_name'))rows.push('<label>ชื่อ<input id="firstName"'+req('first_name')+'></label>');if(on('last_name'))rows.push('<label>นามสกุล<input id="lastName"'+req('last_name')+'></label>');if(on('birth_date'))rows.push('<label>วันเกิด<input id="birthDate" type="date"'+req('birth_date')+'></label>');if(on('age'))rows.push('<label>อายุ<input id="age" readonly placeholder="คำนวณอัตโนมัติ"></label>');if(on('gender'))rows.push('<label>เพศ<select id="gender"'+req('gender')+'><option value="">—</option><option value="MALE">ชาย</option><option value="FEMALE">หญิง</option><option value="OTHER">อื่นๆ</option></select></label>');if(on('id_document'))rows.push('<label>เลขบัตรประชาชน / Passport<input id="idDoc"'+req('id_document')+'></label>');if(on('phone'))rows.push('<label>เบอร์โทรศัพท์<input id="phone" type="tel"'+req('phone')+'></label>');if(on('blood_group'))rows.push('<label>กรุ๊ปเลือด<select id="blood"'+req('blood_group')+'><option value="">—</option>'+optionTags(bloodMeta,['A','B','AB','O'])+'</select></label>');if(on('shirt_size')&&(E.feature_flags||{}).shirts!==false){if(shirtMeta?.options?.length)rows.push('<label>ขนาดเสื้อ<select id="shirt"'+req('shirt_size')+'><option value="">—</option>'+optionTags(shirtMeta)+'</select></label>');else rows.push('<label>ขนาดเสื้อ<input id="shirt"'+req('shirt_size')+'></label>')}if(on('address'))rows.push('<label style="grid-column:1/-1">ที่อยู่<textarea id="address" rows="3"'+req('address')+'></textarea></label>');if(on('emergency_phone'))rows.push('<label>เบอร์โทรฉุกเฉิน<input id="emergencyPhone" type="tel"'+req('emergency_phone')+'></label>');if(on('emergency_relation'))rows.push('<label>ความสัมพันธ์ผู้ติดต่อฉุกเฉิน<input id="emergencyRelation"'+req('emergency_relation')+'></label>');return rows.join('')}
