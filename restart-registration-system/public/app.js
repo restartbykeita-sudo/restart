@@ -186,7 +186,32 @@ function renderRouteAnimationSection(p,flags){
     ROUTES.map(r=>'<div class="rr-route-block" id="route_animation_'+r.id+'"></div>').join('')+
   '</section>';
 }
-function mountPreviewRoutes(){
+async function ensureRouteAnimationDeps(){
+  if(!ROUTES.length)return false;
+  if(!document.querySelector('link[data-restart-route-css]')){
+    const l=document.createElement('link');l.rel='stylesheet';l.href='route-animation.css?v=1.0.1';l.dataset.restartRouteCss='1';document.head.appendChild(l);
+  }
+  if(!window.maplibregl){
+    if(!document.querySelector('link[data-maplibre-css]')){
+      const l=document.createElement('link');l.rel='stylesheet';l.href='https://unpkg.com/maplibre-gl@6.11.2/dist/maplibre-gl.css';l.dataset.maplibreCss='1';document.head.appendChild(l);
+    }
+    await new Promise((resolve,reject)=>{
+      let sc=document.querySelector('script[data-maplibre-js]');
+      if(sc){if(window.maplibregl)return resolve();sc.addEventListener('load',resolve,{once:true});sc.addEventListener('error',reject,{once:true});return}
+      sc=document.createElement('script');sc.src='https://unpkg.com/maplibre-gl@6.11.2/dist/maplibre-gl.js';sc.dataset.maplibreJs='1';sc.onload=resolve;sc.onerror=()=>reject(new Error('MapLibre load failed'));document.head.appendChild(sc);
+    });
+  }
+  if(!window.RestartRouteAnimation){
+    await new Promise((resolve,reject)=>{
+      let sc=document.querySelector('script[data-restart-route-js]');
+      if(sc){if(window.RestartRouteAnimation)return resolve();sc.addEventListener('load',resolve,{once:true});sc.addEventListener('error',reject,{once:true});return}
+      sc=document.createElement('script');sc.src='route-animation.js?v=1.0.1';sc.dataset.restartRouteJs='1';sc.onload=resolve;sc.onerror=()=>reject(new Error('Route module load failed'));document.head.appendChild(sc);
+    });
+  }
+  return !!window.RestartRouteAnimation;
+}
+async function mountPreviewRoutes(){
+  try{if(!await ensureRouteAnimationDeps())return}catch(e){console.warn(e);return}
   if(!window.RestartRouteAnimation)return;
   window.RestartRouteAnimation.destroyAll?.();
   ROUTES.forEach(r=>{
