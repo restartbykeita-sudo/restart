@@ -240,11 +240,23 @@ async function shirtProductDialog(id=null){
 }
 async function deleteShirtProduct(id){
   const p=(window.__restartShirtProducts||[]).find(x=>x.id===id);
-  const r=await Swal.fire({title:'ลบสินค้าเสื้อนี้?',text:'ประวัติรายการที่เคยขายจะยังเก็บชื่อ/ไซส์/ราคาเดิมไว้',icon:'warning',showCancelButton:true,confirmButtonText:'ลบ'});
+  const{count,error:ce}=await db.from('restart_merch_order_items').select('id',{count:'exact',head:true}).eq('product_id',id);
+  if(ce)return Swal.fire('ตรวจสอบประวัติไม่ได้',ce.message,'error');
+  const hasSales=Number(count||0)>0;
+  const r=await Swal.fire({
+    title:hasSales?'ปิดขายสินค้าเสื้อนี้?':'ลบสินค้าเสื้อนี้?',
+    text:hasSales?'สินค้านี้มีประวัติการขายแล้ว ระบบจะปิดขายและเก็บสินค้า/ไซส์ไว้เพื่อรักษาประวัติและการคืนสต๊อก':'สินค้านี้ยังไม่มีประวัติการขาย สามารถลบได้',
+    icon:'warning',showCancelButton:true,confirmButtonText:hasSales?'ปิดขาย':'ลบ'
+  });
   if(!r.isConfirmed)return;
-  const{error}=await db.from('restart_merch_products').delete().eq('id',id).eq('event_id',state.event.id);
-  if(error)return Swal.fire('ลบไม่ได้',error.message,'error');
-  if(p?.image_storage_path)await db.storage.from('restart-event-media').remove([p.image_storage_path]).catch(()=>{});
+  if(hasSales){
+    const{error}=await db.from('restart_merch_products').update({is_active:false,updated_at:new Date().toISOString()}).eq('id',id).eq('event_id',state.event.id);
+    if(error)return Swal.fire('ปิดขายไม่ได้',error.message,'error');
+  }else{
+    const{error}=await db.from('restart_merch_products').delete().eq('id',id).eq('event_id',state.event.id);
+    if(error)return Swal.fire('ลบไม่ได้',error.message,'error');
+    if(p?.image_storage_path)await db.storage.from('restart-event-media').remove([p.image_storage_path]).catch(()=>{});
+  }
   renderShirtSalesAdmin()
 }
 async function toggleShirtFulfilled(id,fulfilled){
