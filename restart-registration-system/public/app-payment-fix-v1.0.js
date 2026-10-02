@@ -232,7 +232,7 @@ function renderRouteAnimationSection(p,flags){
 async function ensureRouteAnimationDeps(){
   if(!ROUTES.length)return false;
   if(!document.querySelector('link[data-restart-route-css]')){
-    const l=document.createElement('link');l.rel='stylesheet';l.href='https://cdn.jsdelivr.net/gh/restartbykeita-sudo/restart@ccc38c55670e37110dc7dedd5555b820bcf41449/restart-registration-system/public/route-animation-real-v1.css';l.dataset.restartRouteCss='1';document.head.appendChild(l);
+    const l=document.createElement('link');l.rel='stylesheet';l.href='https://cdn.jsdelivr.net/gh/restartbykeita-sudo/restart@630a32e71aa36a30c93aecb6a02c46d4e3cf8d4e/restart-registration-system/public/route-animation-real-v1.css';l.dataset.restartRouteCss='1';document.head.appendChild(l);
   }
   if(!window.maplibregl){
     try{
@@ -250,7 +250,7 @@ async function ensureRouteAnimationDeps(){
     await new Promise((resolve,reject)=>{
       let sc=document.querySelector('script[data-restart-route-js]');
       if(sc){if(window.RestartRouteAnimation)return resolve();sc.addEventListener('load',resolve,{once:true});sc.addEventListener('error',reject,{once:true});return}
-      sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/gh/restartbykeita-sudo/restart@7cc824c5f275bc17512444dda668c357559f10b7/restart-registration-system/public/route-animation-real-v1.js';sc.dataset.restartRouteJs='1';sc.onload=resolve;sc.onerror=()=>reject(new Error('Route module load failed'));document.head.appendChild(sc);
+      sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/gh/restartbykeita-sudo/restart@630a32e71aa36a30c93aecb6a02c46d4e3cf8d4e/restart-registration-system/public/route-animation-real-v1.js';sc.dataset.restartRouteJs='1';sc.onload=resolve;sc.onerror=()=>reject(new Error('Route module load failed'));document.head.appendChild(sc);
     });
   }
   return !!window.RestartRouteAnimation;
