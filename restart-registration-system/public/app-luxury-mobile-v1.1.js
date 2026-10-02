@@ -349,12 +349,12 @@ function groupCopy(){
     ru:{type:'Тип регистрации',single:'Индивидуально',pair:'Пара',team:'Команда',teamSize:'Участников в команде',groupName:'Название пары / команды',contact:'Основной контакт',setup:'Сначала выберите тип и количество участников, затем заполните данные',runner:'Участник',pairHelp:'Для пары требуется ровно 2 участника',teamHelp:'Размер команды должен соответствовать настройкам организатора'}
   };return x[lang]||x.en
 }
-function teamLimits(){const f=E.feature_flags||{};const min=Math.max(2,Number(f.team_min_members||3));const max=Math.max(min,Math.min(100,Number(f.team_max_members||20)));return{min,max}}
+function teamMemberCount(){const f=E.feature_flags||{};return Math.max(2,Math.min(100,Number(f.team_members_count||f.team_min_members||3)))}
 function registrationType(){return byId('registrationType')?.value||'SINGLE'}
 function registrationRunnerCount(){
-  const type=registrationType(),lim=teamLimits();
+  const type=registrationType();
   if(type==='PAIR')return 2;
-  if(type==='TEAM')return Math.min(lim.max,Math.max(lim.min,Number(byId('teamSize')?.value||lim.min)));
+  if(type==='TEAM')return teamMemberCount();
   return 1
 }
 function registrationSetupHTML(flags){
@@ -362,10 +362,10 @@ function registrationSetupHTML(flags){
   if(flags.pair_registration)types.push('<option value="PAIR">'+g.pair+'</option>');
   if(flags.team_registration)types.push('<option value="TEAM">'+g.team+'</option>');
   if(types.length===1)return'<input id="registrationType" type="hidden" value="SINGLE">';
-  const lim=teamLimits();
+  const teamCount=teamMemberCount();
   return '<section class="rr-card"><h3>'+esc(g.type)+'</h3><p class="muted">'+esc(g.setup)+'</p><div class="grid2">'+
     '<label>'+esc(g.type)+'<select id="registrationType">'+types.join('')+'</select></label>'+
-    '<label id="teamSizeWrap" style="display:none">'+esc(g.teamSize)+'<input id="teamSize" type="number" min="'+lim.min+'" max="'+lim.max+'" value="'+lim.min+'"></label>'+
+    '<label id="teamSizeWrap" style="display:none">'+esc(g.teamSize)+'<input id="teamSize" type="text" value="'+teamCount+' คน" disabled><small class="muted">กำหนดโดยผู้จัดการแข่งขัน</small></label>'+
     '<label id="groupNameWrap" style="display:none">'+esc(g.groupName)+'<input id="groupName" maxlength="120"></label>'+
     '<label id="contactRunnerWrap" style="display:none">'+esc(g.contact)+'<select id="contactRunner"></select></label>'+
     '</div><div id="groupRuleHint" class="muted" style="margin-top:8px"></div></section>'
@@ -403,13 +403,12 @@ function syncGroupSetup(){
   if(nameWrap)nameWrap.style.display=type==='SINGLE'?'none':'block';
   if(contactWrap)contactWrap.style.display=type==='SINGLE'?'none':'block';
   const groupName=byId('groupName');if(groupName)groupName.required=type==='TEAM'&&flags.team_name_required!==false;
-  if(hint)hint.textContent=type==='PAIR'?g.pairHelp:(type==='TEAM'?g.teamHelp:'');
+  if(hint)hint.textContent=type==='PAIR'?g.pairHelp:(type==='TEAM'?('ทีมนี้กำหนด '+teamMemberCount()+' คน โดยผู้จัดการแข่งขัน'):'');
   renderRunnerForms();refreshPackages();refreshPrice()
 }
 function render(){window.RestartRouteAnimation?.destroyAll?.();document.body.classList.remove('event-landing-page','event-preview-page');app.classList.remove('event-landing-wrap','event-preview-wrap');const th=E.theme||{};document.documentElement.style.setProperty('--primary',th.primary||'#6d4aff');const flags=E.feature_flags||{};const catOpts=C.map(c=>'<option value="'+c.id+'">'+esc(tr(c.name))+' · ฿'+money(currentCatPrice(c))+'</option>').join('');const categoryWrap=flags.competition_categories!==false?'<section class="rr-card"><h3>'+D().choose+'</h3><label>'+D().choose+'<select id="categorySel" required><option value="">—</option>'+catOpts+'</select></label></section>':'';const packageWrap=flags.packages?'<section class="rr-card"><h3>'+D().package+'</h3><label>'+D().package+'<select id="packageSel"><option value="">—</option></select></label><small class="muted">Package ที่ระบุจำนวนผู้แข่งขันมากกว่า 1 คน จะใช้ได้เฉพาะคู่/ทีมที่มีจำนวนสมาชิกตรงกัน</small></section>':'';let payModes='';if(flags.full_payment!==false)payModes+='<label style="display:flex;align-items:center;gap:8px"><input style="width:auto" type="radio" name="paymode" value="FULL" '+(!flags.installments?'checked':'')+'> '+D().full+'</label>';if(flags.installments)payModes+='<label style="display:flex;align-items:center;gap:8px"><input style="width:auto" type="radio" name="paymode" value="INSTALLMENT" '+(flags.full_payment===false?'checked':'')+'> '+D().install+'</label>';
   app.innerHTML='<section class="hero" style="--hero-primary:'+(th.primary||'#6d4aff')+';--hero-secondary:'+(th.secondary||'#e96d96')+';--hero-text:'+(th.text||'#fff')+'">'+(flags.logo!==false&&E.logo_url?'<img class="logo" src="'+esc(E.logo_url)+'">':'')+'<h1>'+esc(E.name)+'</h1><p>'+esc(E.description||'')+'</p><div>'+esc(E.location_name||'')+' · '+esc(E.event_date_start||'')+'</div>'+(flags.banner!==false&&E.banner_url?'<img class="banner" src="'+esc(E.banner_url)+'">':'')+'</section><form id="regForm">'+registrationSetupHTML(flags)+categoryWrap+packageWrap+'<div id="runnersBox"></div><section class="rr-card"><h3>'+D().payment+'</h3><div id="priceBox" class="price">฿0</div><div class="row" style="margin:12px 0">'+payModes+'</div><div id="scheduleBox"></div><div id="methodsBox"></div>'+(flags.slip_upload?'<label style="margin-top:12px">'+D().upload+'<input id="slipFile" type="file" accept="image/*,application/pdf" required></label>':'')+'</section><section class="rr-card"><button class="btn primary" style="width:100%;padding:14px" type="submit">'+D().submit+'</button></section></form>';
   if(byId('registrationType'))byId('registrationType').onchange=syncGroupSetup;
-  if(byId('teamSize'))byId('teamSize').onchange=syncGroupSetup;
   if(byId('categorySel'))byId('categorySel').onchange=()=>{refreshPackages();syncPaymentModes();refreshPrice()};
   document.querySelectorAll('[name=paymode]').forEach(x=>x.onchange=refreshPrice);
   if(byId('packageSel'))byId('packageSel').onchange=refreshPrice;
@@ -470,14 +469,14 @@ function collectRunner(i){
 }
 function registrationErrorMessage(err){
   const s=String(err?.message||err||'');
-  const map={PAIR_REGISTRATION_DISABLED:'Event นี้ไม่ได้เปิดสมัครคู่',PAIR_REQUIRES_TWO_RUNNERS:'สมัครคู่ต้องมีผู้แข่งขัน 2 คน',TEAM_REGISTRATION_DISABLED:'Event นี้ไม่ได้เปิดสมัครทีม',TEAM_SIZE_INVALID:'จำนวนสมาชิกทีมไม่ถูกต้อง',TEAM_NAME_REQUIRED:'กรุณาระบุชื่อทีม',PACKAGE_RUNNER_COUNT_MISMATCH:'จำนวนผู้แข่งขันไม่ตรงกับ Package',DUPLICATE_RUNNER_ID:'เลขบัตรประชาชน / Passport ของผู้แข่งขันในใบสมัครซ้ำกัน',RUNNER_ALREADY_REGISTERED:'มีผู้แข่งขันคนนี้สมัคร Event นี้แล้ว',EVENT_CAPACITY_EXCEEDED:'จำนวนผู้สมัครเต็มหรือจำนวนที่เหลือไม่พอสำหรับคู่/ทีมนี้',PRICE_MISMATCH:'ยอดชำระไม่ตรงกับราคาที่ระบบคำนวณ',BENEFICIARY_TOTAL_MUST_BE_100:'ผู้รับผลประโยชน์ของผู้แข่งขันแต่ละคนต้องรวม 100%',BENEFICIARY_ID_SAME_AS_RUNNER:'เลขบัตร/Passport ผู้รับผลประโยชน์ห้ามซ้ำกับผู้แข่งขันในใบสมัคร',DUPLICATE_BENEFICIARY_ID:'เลขบัตร/Passport ผู้รับผลประโยชน์ห้ามซ้ำกันในใบสมัคร'};
+  const map={PAIR_REGISTRATION_DISABLED:'Event นี้ไม่ได้เปิดสมัครคู่',PAIR_REQUIRES_TWO_RUNNERS:'สมัครคู่ต้องมีผู้แข่งขัน 2 คน',TEAM_REGISTRATION_DISABLED:'Event นี้ไม่ได้เปิดสมัครทีม',TEAM_SIZE_INVALID:'จำนวนสมาชิกทีมไม่ตรงกับจำนวนที่ Admin กำหนด',TEAM_NAME_REQUIRED:'กรุณาระบุชื่อทีม',PACKAGE_RUNNER_COUNT_MISMATCH:'จำนวนผู้แข่งขันไม่ตรงกับ Package',DUPLICATE_RUNNER_ID:'เลขบัตรประชาชน / Passport ของผู้แข่งขันในใบสมัครซ้ำกัน',RUNNER_ALREADY_REGISTERED:'มีผู้แข่งขันคนนี้สมัคร Event นี้แล้ว',EVENT_CAPACITY_EXCEEDED:'จำนวนผู้สมัครเต็มหรือจำนวนที่เหลือไม่พอสำหรับคู่/ทีมนี้',PRICE_MISMATCH:'ยอดชำระไม่ตรงกับราคาที่ระบบคำนวณ',BENEFICIARY_TOTAL_MUST_BE_100:'ผู้รับผลประโยชน์ของผู้แข่งขันแต่ละคนต้องรวม 100%',BENEFICIARY_ID_SAME_AS_RUNNER:'เลขบัตร/Passport ผู้รับผลประโยชน์ห้ามซ้ำกับผู้แข่งขันในใบสมัคร',DUPLICATE_BENEFICIARY_ID:'เลขบัตร/Passport ผู้รับผลประโยชน์ห้ามซ้ำกันในใบสมัคร'};
   const k=Object.keys(map).find(k=>s.includes(k));return k?map[k]:s
 }
 async function submit(e){e.preventDefault();try{
   const flags=E.feature_flags||{},categoryId=byId('categorySel')?.value||null,type=registrationType(),count=registrationRunnerCount();
   if(flags.competition_categories!==false&&!categoryId)throw new Error('กรุณาเลือกรุ่นการแข่งขัน');
   if(type==='PAIR'&&count!==2)throw new Error('สมัครคู่ต้องมีผู้แข่งขัน 2 คน');
-  if(type==='TEAM'){const lim=teamLimits();if(count<lim.min||count>lim.max)throw new Error('จำนวนสมาชิกทีมไม่ถูกต้อง');if(flags.team_name_required!==false&&!val('groupName'))throw new Error('กรุณาระบุชื่อทีม')}
+  if(type==='TEAM'){if(count!==teamMemberCount())throw new Error('จำนวนสมาชิกทีมไม่ตรงกับที่ผู้จัดกำหนด');if(flags.team_name_required!==false&&!val('groupName'))throw new Error('กรุณาระบุชื่อทีม')}
   const pkg=P.find(x=>x.id===(byId('packageSel')?.value||''));if(pkg&&Number(pkg.runner_count||1)>1&&Number(pkg.runner_count)!==count)throw new Error('จำนวนผู้แข่งขันไม่ตรงกับ Package');
   const runners=Array.from({length:count},(_,x)=>collectRunner(x+1));
   const ids=runners.map(r=>r.id_normalized).filter(Boolean);if(new Set(ids).size!==ids.length)throw new Error('เลขบัตรประชาชน / Passport ของผู้แข่งขันห้ามซ้ำกัน');const beneIds=runners.flatMap(r=>(r.beneficiaries||[]).map(b=>String(b.id_document||'').replace(/[^a-z0-9]/gi,'').toUpperCase()).filter(Boolean));if(new Set(beneIds).size!==beneIds.length)throw new Error('เลขบัตรประชาชน / Passport ของผู้รับผลประโยชน์ห้ามซ้ำกันในใบสมัคร');if(beneIds.some(x=>ids.includes(x)))throw new Error('เลขบัตรประชาชน / Passport ผู้รับผลประโยชน์ห้ามซ้ำกับผู้แข่งขันในใบสมัคร');
