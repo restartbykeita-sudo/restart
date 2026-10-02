@@ -302,8 +302,8 @@ async function offerWaitlist(payload){
 async function notifyRegistration(registrationId,registrationCode){
   if(!fullFlags().notifications||!registrationId||!registrationCode)return;
   try{
-    const res=await fetch(App.cfg.SUPABASE_URL+'/functions/v1/restart-registration-api?action=notify-registration',{
-      method:'POST',headers:{'content-type':'application/json','apikey':App.cfg.SUPABASE_PUBLISHABLE_KEY},
+    const res=await fetch(RESTART_REG_CONFIG.SUPABASE_URL+'/functions/v1/restart-registration-api?action=notify-registration',{
+      method:'POST',headers:{'content-type':'application/json','apikey':RESTART_REG_CONFIG.SUPABASE_PUBLISHABLE_KEY},
       body:JSON.stringify({registration_id:registrationId,registration_code:registrationCode})
     });
     if(!res.ok)console.warn('notification failed',await res.text());
