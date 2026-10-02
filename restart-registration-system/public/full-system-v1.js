@@ -19,6 +19,16 @@ function fullFlags(){return E?.feature_flags||{}}
 function normalizeId(v){return String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'')}
 function fullMoney(v){return Number(v||0).toLocaleString('th-TH',{maximumFractionDigits:2})}
 function fullErr(err){return String(err?.message||err||'')}
+async function fullApi(action,body={}){
+  const res=await fetch(RESTART_REG_CONFIG.SUPABASE_URL+'/functions/v1/restart-registration-api?action='+encodeURIComponent(action),{
+    method:'POST',
+    headers:{'content-type':'application/json','apikey':RESTART_REG_CONFIG.SUPABASE_PUBLISHABLE_KEY},
+    body:JSON.stringify(body)
+  });
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok)throw new Error(data.error||('HTTP '+res.status));
+  return data
+}
 
 currentCatPrice=function(c){
   if((E?.feature_flags||{}).category_pricing===false)return Number(E?.base_registration_price_thb||0);
@@ -163,6 +173,7 @@ function injectRegistrationFullUI(){
     const div=document.createElement('div');div.id='followersBox';byId('runnersBox')?.after(div);
   }
   renderFollowers();
+  if(byId('packageSel')&&!P.length){const sec=byId('packageSel').closest('.rr-card');if(sec)sec.style.display='none'}
 
   if((f.promotions||f.discount_codes)&&!byId('fullDiscountBox')){
     const sec=document.createElement('section');sec.id='fullDiscountBox';sec.className='rr-card';
@@ -263,6 +274,7 @@ refreshPrice=function(){
     if(!q||!byId('priceBox'))return;
     baseRefreshPrice();
     const b=byId('fullQuoteBreakdown');
+    const slip=byId('slipFile');if(slip)slip.required=Number(q.total_amount_thb||0)>0;
     if(b)b.innerHTML=
       'ก่อนส่วนลด <b>฿'+fullMoney(q.subtotal_amount_thb)+'</b>'+
       (Number(q.promotion_discount_thb||0)>0?' · Promotion <b>-฿'+fullMoney(q.promotion_discount_thb)+'</b>':'')+
@@ -294,8 +306,7 @@ function validateFullClient(runners,followers){
 async function offerWaitlist(payload){
   const r=await Swal.fire({icon:'info',title:'จำนวนรับเต็มแล้ว',text:'ต้องการเข้าคิวรอหรือไม่?',showCancelButton:true,confirmButtonText:'เข้าคิวรอ',cancelButtonText:'ยกเลิก'});
   if(!r.isConfirmed)return;
-  const{data,error}=await db.rpc('restart_join_waitlist',{p_payload:{...payload,slip_path:null,schedule:[]}});
-  if(error)throw error;
+  const data=await fullApi('join-waitlist',{payload:{...payload,slip_path:null,schedule:[]}});
   await Swal.fire({icon:'success',title:'เข้าคิวรอแล้ว',html:'ลำดับคิวปัจจุบัน <b>'+Number(data.queue_position||0)+'</b>',confirmButtonText:'ตกลง'});
 }
 
@@ -333,9 +344,7 @@ submit=async function(e){
 
     if(f.slip_upload&&total>0){
       const file=slipInput?.files?.[0];if(!file)throw new Error('กรุณาอัปโหลดสลิป');
-      const uid=crypto.randomUUID(),ext=(file.name.split('.').pop()||'jpg').toLowerCase();
-      uploadedSlip=uid+'/slip-'+Date.now()+'.'+ext;
-      const{error}=await db.storage.from('restart-slips').upload(uploadedSlip,file,{contentType:file.type,upsert:false});if(error)throw error;
+      uploadedSlip=await uploadPublicSlip(file,'registration');
     }
 
     const payload={
@@ -346,10 +355,11 @@ submit=async function(e){
       pdpa_accepted:!f.pdpa||!!byId('pdpaConsent')?.checked,
       slip_path:uploadedSlip,schedule,runners,followers
     };
-    const{data,error}=await db.rpc('restart_create_registration',{p_payload:payload});
-    if(error){
+    let data;
+    try{data=await fullApi('create-registration',{payload})}
+    catch(error){
       if(fullErr(error).includes('WAITLIST_AVAILABLE')){
-        if(uploadedSlip){await db.storage.from('restart-slips').remove([uploadedSlip]).catch(()=>{});uploadedSlip=null}
+        uploadedSlip=null;
         Swal.close();return offerWaitlist(payload)
       }
       throw error;
@@ -357,7 +367,6 @@ submit=async function(e){
     await notifyRegistration(data.id,data.registration_code);
     Swal.fire({icon:'success',title:'สมัครสำเร็จ',html:'เลขที่สมัคร <b>'+esc(data.registration_code)+'</b><br>ผู้แข่งขัน <b>'+data.runner_count+'</b> คน'+(data.follower_count?'<br>ผู้ติดตาม <b>'+data.follower_count+'</b> คน':'')+'<br>ยอดสุทธิ <b>฿'+fullMoney(data.total_amount_thb)+'</b><br>สถานะ <b>'+esc(data.status)+'</b>',confirmButtonText:'ตกลง'}).then(()=>location.reload())
   }catch(err){
-    if(uploadedSlip)await db.storage.from('restart-slips').remove([uploadedSlip]).catch(()=>{});
     Swal.fire('สมัครไม่สำเร็จ',fullRegistrationError(err),'error')
   }
 };
@@ -382,16 +391,18 @@ function fullRegistrationError(err){
 }
 
 async function uploadPublicSlip(file,prefix='next'){
-  const ext=(file.name.split('.').pop()||'jpg').toLowerCase(),path=crypto.randomUUID()+'/'+prefix+'-'+Date.now()+'.'+ext;
-  const{error}=await db.storage.from('restart-slips').upload(path,file,{contentType:file.type,upsert:false});if(error)throw error;
-  return path;
+  const form=new FormData();form.append('event_slug',E.slug);form.append('purpose',prefix);form.append('slip',file);
+  const res=await fetch(RESTART_REG_CONFIG.SUPABASE_URL+'/functions/v1/restart-registration-api?action=upload-slip',{
+    method:'POST',headers:{'apikey':RESTART_REG_CONFIG.SUPABASE_PUBLISHABLE_KEY},body:form
+  });
+  const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.error||('HTTP '+res.status));
+  return data.path
 }
 async function openNextPayment(){
   const ask=await Swal.fire({title:'ชำระงวดถัดไป',input:'text',inputLabel:'เลขบัตรประชาชน / Passport ของผู้แข่งขัน',inputPlaceholder:'กรอกเลขบัตรหรือ Passport',showCancelButton:true,confirmButtonText:'ค้นหา',preConfirm:v=>v.trim()||Swal.showValidationMessage('กรุณากรอกข้อมูล')});
   if(!ask.isConfirmed)return;
   const id=ask.value.trim();
-  const{data,error}=await db.rpc('restart_lookup_next_payment',{p_event_slug:E.slug,p_id_document:id});
-  if(error)return Swal.fire('ค้นหาไม่สำเร็จ',fullErr(error),'error');
+  let data;try{data=await fullApi('next-payment-lookup',{event_slug:E.slug,id_document:id})}catch(error){return Swal.fire('ค้นหาไม่สำเร็จ',fullErr(error),'error')}
   if(data.fully_paid)return Swal.fire({icon:'success',title:'ชำระครบแล้ว',html:'เลขสมัคร <b>'+esc(data.registration_code)+'</b>'});
   if(data.payment_status==='PENDING_REVIEW')return Swal.fire('รอตรวจสลิป','งวดนี้ส่งสลิปแล้ว กำลังรอ Admin ตรวจสอบ','info');
 
@@ -400,10 +411,9 @@ async function openNextPayment(){
   let path=null;try{
     Swal.fire({title:'กำลังส่งสลิป…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
     path=await uploadPublicSlip(r.value,'installment');
-    const{data:done,error:err}=await db.rpc('restart_submit_next_payment_public',{p_event_slug:E.slug,p_id_document:id,p_slip_path:path});
-    if(err)throw err;
+    const done=await fullApi('next-payment-submit',{event_slug:E.slug,id_document:id,slip_path:path});
     Swal.fire({icon:'success',title:'ส่งสลิปแล้ว',html:'งวด '+done.installment_no+' · ฿'+fullMoney(done.amount_due_thb)+'<br>สถานะ '+esc(done.status)})
-  }catch(e){if(path)await db.storage.from('restart-slips').remove([path]).catch(()=>{});Swal.fire('ส่งไม่สำเร็จ',fullErr(e),'error')}
+  }catch(e){Swal.fire('ส่งไม่สำเร็จ',fullErr(e),'error')}
 }
 
 async function openManageRegistration(){
@@ -412,8 +422,7 @@ async function openManageRegistration(){
   return loadManageRegistration(ask.value.code,ask.value.id);
 }
 async function loadManageRegistration(code,id){
-  const{data,error}=await db.rpc('restart_manage_registration_lookup',{p_event_slug:E.slug,p_registration_code:code,p_id_document:id});
-  if(error)return Swal.fire('ไม่พบใบสมัคร',fullErr(error),'error');
+  let data;try{data=await fullApi('manage-lookup',{event_slug:E.slug,registration_code:code,id_document:id})}catch(error){return Swal.fire('ไม่พบใบสมัคร',fullErr(error),'error')}
   const ps=data.participants||[];
   const html='<div style="text-align:left"><p><b>'+esc(data.registration_code)+'</b> · '+esc(data.registration_type)+' · สถานะ '+esc(data.status)+'</p>'+
     ps.map(p=>'<div class="paybox" style="margin:8px 0"><b>'+p.runner_index+'. '+esc((p.first_name||'')+' '+(p.last_name||''))+'</b><div class="muted">'+esc(p.id_document||'')+' · '+esc(p.phone||'')+' · เสื้อ '+esc(p.shirt_size||'—')+'</div><div class="row" style="margin-top:8px">'+(data.can_edit?'<button class="btn sm soft" data-mg-edit="'+p.runner_index+'">แก้ไข</button>':'')+(data.can_transfer?'<button class="btn sm soft" data-mg-transfer="'+p.runner_index+'">โอนสิทธิ์</button>':'')+'</div></div>').join('')+
@@ -438,7 +447,7 @@ async function editRunner(code,id,data,idx){
     '<label>เบอร์ฉุกเฉิน<input id="erEmergency" class="swal2-input" style="margin:0" value="'+esc(p.emergency_phone||'')+'"></label>'+
     '<label>ความสัมพันธ์ฉุกเฉิน<input id="erRelation" class="swal2-input" style="margin:0" value="'+esc(p.emergency_relation||'')+'"></label>'+
     '</div>',preConfirm:()=>({runner_index:idx,first_name:erFirst.value.trim(),last_name:erLast.value.trim(),phone:erPhone.value.trim(),birth_date:erBirth.value,gender:erGender.value,shirt_size:erShirt.value,address:erAddress.value.trim(),emergency_phone:erEmergency.value.trim(),emergency_relation:erRelation.value.trim()})});
-  if(!r.isConfirmed)return;const{error}=await db.rpc('restart_manage_registration_action',{p_event_slug:E.slug,p_registration_code:code,p_id_document:id,p_action:'EDIT',p_payload:r.value});if(error)return Swal.fire('แก้ไขไม่ได้',fullErr(error),'error');Swal.fire({icon:'success',title:'แก้ไขแล้ว'}).then(()=>loadManageRegistration(code,id))
+  if(!r.isConfirmed)return;try{await fullApi('manage-action',{event_slug:E.slug,registration_code:code,id_document:id,manage_action:'EDIT',payload:r.value})}catch(error){return Swal.fire('แก้ไขไม่ได้',fullErr(error),'error')}Swal.fire({icon:'success',title:'แก้ไขแล้ว'}).then(()=>loadManageRegistration(code,id))
 }
 async function transferRunner(code,id,data,idx){
   const sizes=E.field_settings?.shirt_size?.options||[];
@@ -455,12 +464,12 @@ async function transferRunner(code,id,data,idx){
       if(fullFlags().insurance){if(!tfBName.value.trim()||!tfBId.value.trim()||!tfBRel.value.trim())return Swal.showValidationMessage('กรุณากรอกผู้รับผลประโยชน์');payload.beneficiaries=[{full_name:tfBName.value.trim(),id_document:tfBId.value.trim(),relationship:tfBRel.value.trim(),percentage:Number(tfBPct.value||100)}]}
       return payload;
     }});
-  if(!r.isConfirmed)return;const{error}=await db.rpc('restart_manage_registration_action',{p_event_slug:E.slug,p_registration_code:code,p_id_document:id,p_action:'TRANSFER',p_payload:r.value});if(error)return Swal.fire('โอนสิทธิ์ไม่ได้',fullErr(error),'error');Swal.fire({icon:'success',title:'โอนสิทธิ์แล้ว'})
+  if(!r.isConfirmed)return;try{await fullApi('manage-action',{event_slug:E.slug,registration_code:code,id_document:id,manage_action:'TRANSFER',payload:r.value})}catch(error){return Swal.fire('โอนสิทธิ์ไม่ได้',fullErr(error),'error')}Swal.fire({icon:'success',title:'โอนสิทธิ์แล้ว'})
 }
 async function cancelRegistration(code,id){
   const r=await Swal.fire({title:'ยืนยันยกเลิกใบสมัคร?',input:'text',inputLabel:'เหตุผล (ถ้ามี)',showCancelButton:true,confirmButtonText:'ยืนยันยกเลิก',confirmButtonColor:'#b42318'});if(!r.isConfirmed)return;
-  const{error}=await db.rpc('restart_manage_registration_action',{p_event_slug:E.slug,p_registration_code:code,p_id_document:id,p_action:'CANCEL',p_payload:{reason:r.value||null}});
-  if(error)return Swal.fire('ยกเลิกไม่ได้',fullErr(error),'error');Swal.fire({icon:'success',title:'ยกเลิกใบสมัครแล้ว'})
+  try{await fullApi('manage-action',{event_slug:E.slug,registration_code:code,id_document:id,manage_action:'CANCEL',payload:{reason:r.value||null}})}
+  catch(error){return Swal.fire('ยกเลิกไม่ได้',fullErr(error),'error')}Swal.fire({icon:'success',title:'ยกเลิกใบสมัครแล้ว'})
 }
 
 async function initFullSystem(){
