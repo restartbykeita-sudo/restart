@@ -101,7 +101,6 @@ function postPreviewFlags(){
 renderEventPreview=function(){
   if(E?.status==='OPEN'&&fullFlags().event_preview===false){
     history.replaceState({},'',location.pathname+'?event='+encodeURIComponent(E.slug)+'&register=1');
-    registerMode=true;
     return render();
   }
   const out=withEventTranslation(()=>baseRenderEventPreview());
