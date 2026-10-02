@@ -100,7 +100,7 @@ drop policy if exists restart_merch_products_admin_update on public.restart_merc
 drop policy if exists restart_merch_products_admin_delete on public.restart_merch_products;
 
 create policy restart_merch_products_public_read
-on public.restart_merch_products for select to anon,authenticated
+on public.restart_merch_products for select to anon
 using (
   is_active=true
   and (sale_starts_at is null or now()>=sale_starts_at)
@@ -128,7 +128,7 @@ drop policy if exists restart_merch_variants_admin_update on public.restart_merc
 drop policy if exists restart_merch_variants_admin_delete on public.restart_merch_variants;
 
 create policy restart_merch_variants_public_read
-on public.restart_merch_variants for select to anon,authenticated
+on public.restart_merch_variants for select to anon
 using (
   is_active=true
   and exists(
