@@ -14,6 +14,54 @@ const esc=App.esc;
 function t(v,l='th'){return typeof v==='object'?(v?.[l]||v?.th||v?.en||''):v||''}
 function money(v){return Number(v||0).toLocaleString('th-TH',{minimumFractionDigits:0,maximumFractionDigits:2})}
 function card(title,body,actions=''){return '<section class="rr-card"><div class="row space"><div><h2>'+title+'</h2></div><div class="row">'+actions+'</div></div>'+body+'</section>'}
+const imageSpecs={
+  logo:{label:'Logo Event',size:'1000 × 1000 px',ratio:'1:1',ratioValue:1,minW:600,minH:600,maxMB:2,format:'PNG / WebP แนะนำพื้นหลังโปร่งใส'},
+  banner:{label:'Banner Event',size:'1920 × 1080 px',ratio:'16:9',ratioValue:16/9,minW:1280,minH:720,maxMB:3,format:'JPG / WebP'},
+  background:{label:'ภาพพื้นหลัง Hero',size:'1920 × 1080 px',ratio:'16:9',ratioValue:16/9,minW:1280,minH:720,maxMB:3,format:'JPG / WebP'},
+  square:{label:'ภาพสินค้า / รางวัล',size:'1200 × 1200 px',ratio:'1:1',ratioValue:1,minW:800,minH:800,maxMB:2,format:'JPG / PNG / WebP'},
+  courseMap:{label:'แผนที่เส้นทาง',size:'1600 × 1200 px',ratio:'4:3',ratioValue:4/3,minW:1200,minH:900,maxMB:3,format:'JPG / PNG / WebP'},
+  gallery:{label:'รูป Gallery',size:'1600 × 1200 px',ratio:'4:3',ratioValue:4/3,minW:1200,minH:900,maxMB:3,format:'JPG / WebP'},
+  routePoint:{label:'รูป CP / จุดบริการ',size:'1200 × 900 px',ratio:'4:3',ratioValue:4/3,minW:800,minH:600,maxMB:2,format:'JPG / WebP'}
+};
+function imageHint(specKey,statusId=''){
+  const s=imageSpecs[specKey];
+  return '<small class="muted" style="display:block;margin-top:6px;line-height:1.55"><b>แนะนำ:</b> '+s.size+' · '+s.ratio+' · '+s.format+' · ไม่เกิน '+s.maxMB+' MB</small>'+(statusId?'<small id="'+statusId+'" style="display:block;margin-top:4px"></small>':'')
+}
+function imageGuide(){
+  return '<div class="paybox" style="margin:14px 0"><b>คู่มือขนาดรูป</b><div class="muted" style="margin-top:6px;line-height:1.7">Logo: 1000×1000 (1:1) · Banner/Hero: 1920×1080 (16:9) · เสื้อ/เหรียญ/ถ้วย: 1200×1200 (1:1) · แผนที่/Gallery: 1600×1200 (4:3) · รูป CP: 1200×900 (4:3)<br>ระบบจะตรวจขนาดและสัดส่วนทันทีเมื่อเลือกไฟล์ แต่ยังอนุญาตให้อัปโหลดได้หากต้องการ</div></div>'
+}
+function inspectImageFile(file,specKey,statusEl){
+  if(!file||!statusEl)return;
+  const s=imageSpecs[specKey];
+  if(!file.type?.startsWith('image/')){statusEl.innerHTML='<span style="color:#b42318">ไฟล์นี้ไม่ใช่รูปภาพ</span>';return}
+  const mb=file.size/1024/1024,url=URL.createObjectURL(file),img=new Image();
+  img.onload=()=>{
+    const ratio=img.width/img.height,diff=Math.abs(ratio-s.ratioValue)/s.ratioValue;
+    const issues=[];
+    if(img.width<s.minW||img.height<s.minH)issues.push('ความละเอียดต่ำกว่าที่แนะนำ');
+    if(diff>.12)issues.push('สัดส่วนต่างจาก '+s.ratio);
+    if(mb>s.maxMB)issues.push('ไฟล์ใหญ่กว่า '+s.maxMB+' MB');
+    statusEl.innerHTML=issues.length
+      ?'<span style="color:#b54708">⚠ '+img.width+'×'+img.height+' px · '+mb.toFixed(2)+' MB · '+issues.join(' / ')+'</span>'
+      :'<span style="color:#067647">✓ '+img.width+'×'+img.height+' px · '+mb.toFixed(2)+' MB · เหมาะกับตำแหน่งนี้</span>';
+    URL.revokeObjectURL(url);
+  };
+  img.onerror=()=>{statusEl.innerHTML='<span style="color:#b42318">อ่านขนาดรูปไม่ได้</span>';URL.revokeObjectURL(url)};
+  img.src=url;
+}
+function bindImageInspector(inputId,specKey,statusId,multiple=false){
+  const input=document.getElementById(inputId),status=document.getElementById(statusId);if(!input||!status)return;
+  input.addEventListener('change',()=>{
+    const files=Array.from(input.files||[]);
+    if(!files.length){status.textContent='';return}
+    if(!multiple)return inspectImageFile(files[0],specKey,status);
+    Promise.all(files.map(file=>new Promise(resolve=>{
+      const s=imageSpecs[specKey],mb=file.size/1024/1024,url=URL.createObjectURL(file),img=new Image();
+      img.onload=()=>{const ratio=img.width/img.height,diff=Math.abs(ratio-s.ratioValue)/s.ratioValue,issues=[];if(img.width<s.minW||img.height<s.minH)issues.push('เล็ก');if(diff>.12)issues.push('สัดส่วน');if(mb>s.maxMB)issues.push('ไฟล์ใหญ่');URL.revokeObjectURL(url);resolve({name:file.name,w:img.width,h:img.height,mb,issues})};
+      img.onerror=()=>{URL.revokeObjectURL(url);resolve({name:file.name,issues:['อ่านไม่ได้']})};img.src=url;
+    }))).then(rows=>{const bad=rows.filter(x=>x.issues.length);status.innerHTML=(bad.length?'<span style="color:#b54708">⚠ ':'<span style="color:#067647">✓ ')+files.length+' รูป · '+(bad.length?bad.length+' รูปควรปรับ':'ทุกภาพเหมาะสม')+'</span>'})
+  });
+}
 async function init(){await App.init();document.getElementById('logoutBtn').onclick=()=>App.logout();document.getElementById('newEventBtn').onclick=createEvent;document.getElementById('eventSelect').onchange=e=>selectEvent(e.target.value);document.getElementById('nav').onclick=e=>{const b=e.target.closest('button[data-tab]');if(!b)return;state.tab=b.dataset.tab;document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x===b));render()};await loadEvents();}
 async function loadEvents(preferredId=null){const{data,error}=await db.from('restart_events').select('*').order('created_at',{ascending:false});if(error){Swal.fire('ไม่มีสิทธิ์เข้าถึง',error.message,'error');return}state.events=data||[];const sel=document.getElementById('eventSelect');sel.innerHTML='<option value="">-- เลือก Event --</option>'+state.events.map(e=>'<option value="'+e.id+'">'+esc(e.name)+'</option>').join('');const next=(preferredId&&state.events.find(e=>e.id===preferredId))||state.events[0]||null;state.event=next;if(next){sel.value=next.id;render()}else{sel.value='';document.getElementById('content').innerHTML='<section class="rr-card rr-empty">ยังไม่มี Event · กด “สร้าง Event ใหม่” เพื่อเริ่มต้น</section>'}}
 async function selectEvent(id){state.event=state.events.find(x=>x.id===id)||null;render()}
@@ -355,18 +403,19 @@ async function renderShowcase(){
       '<label>ข้อมูลติดต่อ<textarea id="scContact" rows="7">'+esc(localizedText(x.contact_details))+'</textarea></label>'+
     '</div>'+
     '<hr style="border:0;border-top:1px solid var(--line);margin:22px 0">'+
-    '<h3>รูปสำหรับหน้า Preview</h3>'+
+    '<h3>รูปสำหรับหน้า Preview</h3>'+imageGuide()+
     '<div class="grid3">'+
-      '<label>ภาพพื้นหลัง Hero<input id="scBackground" type="file" accept="image/*"></label>'+
-      '<label>เสื้อแข่งขัน<input id="scShirt" type="file" accept="image/*"></label>'+
-      '<label>เหรียญ<input id="scMedal" type="file" accept="image/*"></label>'+
-      '<label>ถ้วยรางวัล<input id="scTrophy" type="file" accept="image/*"></label>'+
-      '<label>แผนที่เส้นทาง<input id="scMap" type="file" accept="image/*"></label>'+
-      '<label>รูป Gallery เพิ่มเติม<input id="scGallery" type="file" accept="image/*" multiple></label>'+
+      '<label>ภาพพื้นหลัง Hero<input id="scBackground" type="file" accept="image/*">'+imageHint('background','scBackgroundStatus')+'</label>'+
+      '<label>เสื้อแข่งขัน<input id="scShirt" type="file" accept="image/*">'+imageHint('square','scShirtStatus')+'</label>'+
+      '<label>เหรียญ<input id="scMedal" type="file" accept="image/*">'+imageHint('square','scMedalStatus')+'</label>'+
+      '<label>ถ้วยรางวัล<input id="scTrophy" type="file" accept="image/*">'+imageHint('square','scTrophyStatus')+'</label>'+
+      '<label>แผนที่เส้นทาง<input id="scMap" type="file" accept="image/*">'+imageHint('courseMap','scMapStatus')+'</label>'+
+      '<label>รูป Gallery เพิ่มเติม<input id="scGallery" type="file" accept="image/*" multiple>'+imageHint('gallery','scGalleryStatus')+'</label>'+
     '</div>'+
     '<div class="grid3" style="margin-top:16px">'+(gallery.length?gallery.map(mediaCard).join(''):'<div class="rr-empty" style="grid-column:1/-1">ยังไม่มีรูป Preview</div>')+'</div>',
     '<a class="btn soft" target="_blank" href="../public/?event='+encodeURIComponent(state.event.slug)+'">เปิด Preview</a><button class="btn primary" onclick="saveShowcase()">บันทึก Preview</button>'
   );
+  bindImageInspector('scBackground','background','scBackgroundStatus');bindImageInspector('scShirt','square','scShirtStatus');bindImageInspector('scMedal','square','scMedalStatus');bindImageInspector('scTrophy','square','scTrophyStatus');bindImageInspector('scMap','courseMap','scMapStatus');bindImageInspector('scGallery','gallery','scGalleryStatus',true);
 }
 async function saveShowcase(){
   try{
@@ -598,11 +647,11 @@ async function routePointDialog(routeId,id=null){
       '<label>ชื่อจุด<input id="rpName" class="swal2-input" style="margin:0" value="'+esc(t(p?.name)||'')+'"></label>'+
       '<label>หยุด Animation เมื่อถึงจุด (วินาที)<input id="rpPause" type="number" min="0" max="30" step=".5" class="swal2-input" style="margin:0" value="'+(p?.pause_seconds??1.5)+'"></label>'+
       '<label style="grid-column:1/-1">รายละเอียด<textarea id="rpDesc" class="swal2-textarea" style="margin:0;width:100%">'+esc(t(p?.description)||'')+'</textarea></label>'+
-      '<label style="grid-column:1/-1">รูปประกอบจุด CP / จุดบริการ<input id="rpImage" type="file" accept="image/*" class="swal2-file" style="margin:0;width:100%">'+(p?.image_url?'<small class="muted">มีรูปเดิมแล้ว · ไม่เลือกไฟล์ใหม่ = ใช้รูปเดิม</small>':'<small class="muted">ไม่บังคับ · ใช้แสดงใน Popup ตอน Animation ถึงจุดนี้</small>')+'</label>'+
+      '<label style="grid-column:1/-1">รูปประกอบจุด CP / จุดบริการ<input id="rpImage" type="file" accept="image/*" class="swal2-file" style="margin:0;width:100%">'+imageHint('routePoint','rpImageStatus')+(p?.image_url?'<small class="muted">มีรูปเดิมแล้ว · ไม่เลือกไฟล์ใหม่ = ใช้รูปเดิม</small>':'<small class="muted">ไม่บังคับ · ใช้แสดงใน Popup ตอน Animation ถึงจุดนี้</small>')+'</label>'+
 
       '<label style="display:flex;align-items:center;gap:8px"><input id="rpPopup" type="checkbox" style="width:auto" '+(p?.popup_enabled===false?'':'checked')+'> แสดง Popup เมื่อ Animation ถึงจุดนี้</label>'+
     '</div>',
-    didOpen:()=>{rpType.value=p?.point_type||'CP'},
+    didOpen:()=>{rpType.value=p?.point_type||'CP';bindImageInspector('rpImage','routePoint','rpImageStatus')},
     showCancelButton:true,confirmButtonText:'บันทึก',
     preConfirm:()=>({
       type:rpType.value,code:rpCode.value.trim(),km:Number(rpKm.value),name:rpName.value.trim(),
@@ -749,7 +798,7 @@ async function editPayment(id){
   renderPayments();
 }
 async function editField(id){const{data:x,error}=await db.from('restart_form_fields').select('*').eq('id',id).single();if(error)return Swal.fire('โหลดข้อมูลไม่ได้',error.message,'error');const r=await Swal.fire({title:'แก้ไข Field',html:'<input id="efLabel" class="swal2-input" value="'+esc(t(x.label))+'" placeholder="ชื่อ Field"><label style="display:flex;align-items:center;gap:8px;justify-content:center"><input id="efReq" type="checkbox" style="width:auto" '+(x.is_required?'checked':'')+'> บังคับกรอก</label>',showCancelButton:true,confirmButtonText:'บันทึก',preConfirm:()=>({label:efLabel.value.trim(),req:efReq.checked})});if(!r.isConfirmed)return;const{error:e}=await db.from('restart_form_fields').update({label:{...(x.label||{}),th:r.value.label,en:r.value.label},is_required:r.value.req}).eq('id',id);if(e)return Swal.fire('บันทึกไม่สำเร็จ',e.message,'error');renderForm()}
-function renderTheme(){const th=state.event.theme||{};document.getElementById('content').innerHTML=card('Theme / Logo / Banner','<div class="grid2"><div class="grid2"><label>Primary<input id="thPrimary" type="color" value="'+(th.primary||'#6d4aff')+'"></label><label>Secondary<input id="thSecondary" type="color" value="'+(th.secondary||'#e96d96')+'"></label><label>Background<input id="thBg" type="color" value="'+(th.background||'#100d1d')+'"></label><label>Text<input id="thText" type="color" value="'+(th.text||'#f7f3ff')+'"></label><label>Template<select id="thTemplate"><option>luxury</option><option>minimal</option><option>sport</option><option>dark</option><option>tropical</option></select></label><label>Logo<input id="logoFile" type="file" accept="image/*"></label><label>Banner<input id="bannerFile" type="file" accept="image/*"></label></div><div class="preview" id="themePreview"><h3>'+esc(state.event.name)+'</h3><span>RESTART Registration</span><button class="btn primary" style="width:max-content">สมัครเลย</button></div></div>','<button class="btn primary" onclick="saveTheme()">บันทึก Theme</button>');thTemplate.value=th.template||'luxury';['thPrimary','thSecondary','thBg','thText'].forEach(id=>document.getElementById(id).oninput=updatePreview);updatePreview()}
+function renderTheme(){const th=state.event.theme||{};document.getElementById('content').innerHTML=card('Theme / Logo / Banner',imageGuide()+'<div class="grid2"><div class="grid2"><label>Primary<input id="thPrimary" type="color" value="'+(th.primary||'#6d4aff')+'"></label><label>Secondary<input id="thSecondary" type="color" value="'+(th.secondary||'#e96d96')+'"></label><label>Background<input id="thBg" type="color" value="'+(th.background||'#100d1d')+'"></label><label>Text<input id="thText" type="color" value="'+(th.text||'#f7f3ff')+'"></label><label>Template<select id="thTemplate"><option>luxury</option><option>minimal</option><option>sport</option><option>dark</option><option>tropical</option></select></label><label>Logo<input id="logoFile" type="file" accept="image/*">'+imageHint('logo','logoFileStatus')+'</label><label>Banner<input id="bannerFile" type="file" accept="image/*">'+imageHint('banner','bannerFileStatus')+'</label></div><div class="preview" id="themePreview"><h3>'+esc(state.event.name)+'</h3><span>RESTART Registration</span><button class="btn primary" style="width:max-content">สมัครเลย</button></div></div>','<button class="btn primary" onclick="saveTheme()">บันทึก Theme</button>');thTemplate.value=th.template||'luxury';['thPrimary','thSecondary','thBg','thText'].forEach(id=>document.getElementById(id).oninput=updatePreview);bindImageInspector('logoFile','logo','logoFileStatus');bindImageInspector('bannerFile','banner','bannerFileStatus');updatePreview()}
 function updatePreview(){themePreview.style.background='linear-gradient(135deg,'+thBg.value+','+thSecondary.value+')';themePreview.style.color=thText.value;themePreview.querySelector('button').style.background=thPrimary.value}
 async function uploadMedia(file,type){if(!file)return null;const ext=(file.name.split('.').pop()||'jpg').toLowerCase();const path=state.event.id+'/'+type+'-'+Date.now()+'.'+ext;const{error}=await db.storage.from('restart-event-media').upload(path,file,{upsert:false});if(error)throw error;return db.storage.from('restart-event-media').getPublicUrl(path).data.publicUrl}
 async function saveTheme(){try{Swal.fire({title:'กำลังบันทึก',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});const [logo,banner]=await Promise.all([uploadMedia(logoFile.files[0],'logo'),uploadMedia(bannerFile.files[0],'banner')]);const theme={...state.event.theme,primary:thPrimary.value,secondary:thSecondary.value,background:thBg.value,text:thText.value,template:thTemplate.value};const upd={theme};if(logo)upd.logo_url=logo;if(banner)upd.banner_url=banner;const{data,error}=await db.from('restart_events').update(upd).eq('id',state.event.id).select().single();if(error)throw error;state.event=data;Swal.fire({icon:'success',title:'บันทึก Theme แล้ว',timer:1100,showConfirmButton:false})}catch(e){Swal.fire('บันทึกไม่สำเร็จ',e.message,'error')}}
