@@ -59,9 +59,10 @@ class RouteAnimation{
  }
  renderShell(){
   const t=this.t,name=(this.route.name&&typeof this.route.name==='object'?(this.route.name[this.lang]||this.route.name.th||this.route.name.en):this.route.name)||t.route;
+  const description=(this.route.description&&typeof this.route.description==='object'?(this.route.description[this.lang]||this.route.description.th||this.route.description.en):this.route.description)||'';
   const linked=(this.route.restart_route_categories||[]).map(x=>x.restart_race_categories).filter(Boolean);
   const chips=linked.length?'<div class="rr-route-cats">'+linked.map(c=>'<span>'+escapeHtml((c.name&&typeof c.name==='object'?(c.name[this.lang]||c.name.th||c.name.en):c.name)||'')+(c.distance_km!=null?' · '+c.distance_km+' km':'')+'</span>').join('')+'</div>':'';
-  this.root.innerHTML='<div class="rr-route-head"><div><span class="preview-section-kicker">GPX · ANIMATED COURSE</span><h2>'+escapeHtml(name)+'</h2>'+chips+'</div><a class="rr-route-download" href="'+escapeHtml(this.route.gpx_url)+'" target="_blank" rel="noopener">GPX ↗</a></div>'+
+  this.root.innerHTML='<div class="rr-route-head"><div><span class="preview-section-kicker">GPX · ANIMATED COURSE</span><h2>'+escapeHtml(name)+'</h2>'+(description?'<p class="rr-route-description">'+escapeHtml(description)+'</p>':'')+chips+'</div><a class="rr-route-download" href="'+escapeHtml(this.route.gpx_url)+'" target="_blank" rel="noopener">GPX ↗</a></div>'+
   '<div class="rr-route-stage"><div class="rr-route-map"></div><div class="rr-route-loading">'+escapeHtml(t.loading)+'</div><div class="rr-route-toast" hidden></div>'+
   '<div class="rr-route-stats">'+
    '<div><span>'+escapeHtml(t.position)+'</span><b data-v="position">0.00 '+escapeHtml(t.km)+'</b></div>'+
@@ -88,6 +89,7 @@ class RouteAnimation{
   this.root.querySelector('[data-a="terrain"]').onclick=()=>this.toggleTerrain();
   this.root.querySelector('[data-a="view"]').onclick=()=>this.toggleView();
   this.root.querySelector('[data-a="full"]').onclick=()=>this.root.requestFullscreen?.();
+  this.updateModeButtons();
  }
  async load(){
   try{
@@ -124,9 +126,14 @@ class RouteAnimation{
   const pad=.05,spanX=Math.max(.000001,maxX-minX),spanY=Math.max(.000001,maxY-minY);
   const xy=p=>({x:60+((p.lon*cos-minX)/spanX)*880,y:60+(1-(p.lat-minY)/spanY)*500});
   const all=pts.map(p=>{const q=xy(p);return q.x.toFixed(2)+','+q.y.toFixed(2)}).join(' ');
+  this.mapEl.classList.add('is-svg-fallback');
+  this.mapEl.classList.toggle('is-3d',this.state.is3D);
+  this.mapEl.classList.toggle('is-terrain',this.state.topo);
   this.mapEl.innerHTML='<svg class="rr-route-fallback-svg" viewBox="0 0 1000 620" preserveAspectRatio="xMidYMid meet">'+
-   '<defs><linearGradient id="rrRouteGlow" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#cc59e3"/><stop offset="55%" stop-color="#ff4d8d"/><stop offset="100%" stop-color="#ffb24d"/></linearGradient><filter id="rrGlow"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>'+
-   '<rect width="1000" height="620" fill="#101117"/><g opacity=".16">'+Array.from({length:12},(_,i)=>'<line x1="0" y1="'+(50+i*48)+'" x2="1000" y2="'+(50+i*48)+'" stroke="#fff" stroke-width="1"/>').join('')+'</g>'+
+   '<defs><linearGradient id="rrRouteGlow" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#cc59e3"/><stop offset="55%" stop-color="#ff4d8d"/><stop offset="100%" stop-color="#ffb24d"/></linearGradient><radialGradient id="rrTerrainBg" cx="72%" cy="18%" r="90%"><stop offset="0%" stop-color="#244c45"/><stop offset="52%" stop-color="#172a2a"/><stop offset="100%" stop-color="#101117"/></radialGradient><filter id="rrGlow"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>'+
+   '<rect class="rr-fallback-bg" width="1000" height="620" fill="#101117"/>'+
+   '<g class="rr-fallback-grid" opacity=".16">'+Array.from({length:12},(_,i)=>'<line x1="0" y1="'+(50+i*48)+'" x2="1000" y2="'+(50+i*48)+'" stroke="#fff" stroke-width="1"/>').join('')+'</g>'+
+   '<g class="rr-fallback-topo" opacity=".28">'+Array.from({length:9},(_,i)=>'<ellipse cx="'+(220+i*72)+'" cy="'+(330-(i%3)*48)+'" rx="'+(110+i*14)+'" ry="'+(58+i*10)+'" fill="none" stroke="#b8d3b2" stroke-width="2"/>').join('')+'</g>'+
    '<polyline points="'+all+'" fill="none" stroke="#090a0e" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>'+
    '<polyline points="'+all+'" fill="none" stroke="url(#rrRouteGlow)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity=".88"/>'+
    '<polyline class="rr-fallback-passed" points="" fill="none" stroke="#ffb24d" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" filter="url(#rrGlow)"/>'+
@@ -181,8 +188,39 @@ class RouteAnimation{
  loop(now){if(!this.state.playing)return;const s=this.state;if(now<s.holdUntil){s.last=now;s.raf=requestAnimationFrame(t=>this.loop(t));return}const dt=Math.max(0,now-s.last);s.last=now;const duration=Math.max(10,Number(this.route.animation_duration_seconds||48))*1000;s.progress=clamp(s.progress+dt*s.speed/duration,0,1);this.update(true);if(s.progress>=1){s.playing=false;this.root.querySelector('[data-a="play"]').innerHTML='▶ '+escapeHtml(this.t.play);return}s.raf=requestAnimationFrame(t=>this.loop(t))}
  replay(){cancelAnimationFrame(this.state.raf);this.state.playing=false;this.state.progress=0;this.state.reached.clear();this.state.holdUntil=0;this.root.querySelector('[data-a="play"]').innerHTML='▶ '+escapeHtml(this.t.play);this.update(false);this.fit()}
  fit(){if(!this.state.points.length)return;if(!this.state.map)return;const b=new maplibregl.LngLatBounds();this.state.points.forEach(p=>b.extend([p.lon,p.lat]));this.state.follow=false;this.root.querySelector('[data-a="follow"]')?.classList.remove('is-on');this.state.map.fitBounds(b,{padding:window.innerWidth<700?44:70,pitch:this.state.is3D?36:0,bearing:this.state.is3D?-18:0,duration:700})}
- toggleTerrain(){if(!this.state.map)return;this.state.topo=!this.state.topo;if(!this.state.map?.getLayer('topo'))return;this.state.map.setLayoutProperty('topo','visibility',this.state.topo?'visible':'none');this.state.map.setLayoutProperty('osm','visibility',this.state.topo?'none':'visible')}
- toggleView(){if(!this.state.map)return;this.state.is3D=!this.state.is3D;this.state.map?.easeTo({pitch:this.state.is3D?48:0,bearing:this.state.is3D?-18:0,duration:500})}
+ updateModeButtons(){
+  const terrainBtn=this.root.querySelector('[data-a="terrain"]');
+  const viewBtn=this.root.querySelector('[data-a="view"]');
+  if(terrainBtn){
+   terrainBtn.classList.toggle('is-on',!!this.state.topo);
+   terrainBtn.textContent=this.t.terrain+(this.state.topo?' ✓':'');
+  }
+  if(viewBtn){
+   viewBtn.classList.toggle('is-on',!!this.state.is3D);
+   viewBtn.textContent=this.state.is3D?'3D':'2D';
+  }
+ }
+ toggleTerrain(){
+  this.state.topo=!this.state.topo;
+  if(this.state.map?.getLayer('topo')){
+   this.state.map.setLayoutProperty('topo','visibility',this.state.topo?'visible':'none');
+   this.state.map.setLayoutProperty('osm','visibility',this.state.topo?'none':'visible');
+  }
+  if(this.state.fallback){
+   this.mapEl.classList.toggle('is-terrain',this.state.topo);
+  }
+  this.updateModeButtons();
+ }
+ toggleView(){
+  this.state.is3D=!this.state.is3D;
+  if(this.state.map){
+   this.state.map.easeTo({pitch:this.state.is3D?48:0,bearing:this.state.is3D?-18:0,duration:500});
+  }
+  if(this.state.fallback){
+   this.mapEl.classList.toggle('is-3d',this.state.is3D);
+  }
+  this.updateModeButtons();
+ }
  drawChart(currentDistance=0){
   const c=this.canvas,ctx=c.getContext('2d'),box=c.getBoundingClientRect(),dpr=Math.min(2,devicePixelRatio||1);if(box.width<10)return;c.width=box.width*dpr;c.height=box.height*dpr;ctx.scale(dpr,dpr);const w=box.width,h=box.height,pad=12,min=this.state.minElevation,max=this.state.maxElevation,span=Math.max(1,max-min),pts=this.state.points;
   ctx.clearRect(0,0,w,h);ctx.beginPath();pts.forEach((p,i)=>{const x=pad+(p.distance/this.state.totalDistance)*(w-pad*2),y=h-pad-((p.ele-min)/span)*(h-pad*2);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.lineWidth=2;ctx.strokeStyle='#d55adb';ctx.stroke();
