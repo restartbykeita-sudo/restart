@@ -467,6 +467,7 @@ async function renderRoutes(){
         '<div class="row space"><div><div class="row"><strong>'+esc(t(r.name)||'เส้นทางการแข่งขัน')+'</strong>'+
         cats.map(x=>'<span class="badge">'+esc(x)+'</span>').join('')+
         '<span class="badge '+(r.is_active?'ok':'')+'">'+(r.is_active?'เปิด':'ปิด')+'</span></div>'+
+        '<div class="muted" style="margin-top:5px">'+esc(t(r.description)||'')+'</div>'+
         '<div class="muted" style="margin-top:5px">'+esc(stats||'ยังไม่มีสถิติ GPX')+' · Animation '+r.animation_duration_seconds+' วินาที · หมุด กม. '+(r.show_km_markers?'เปิด':'ปิด')+'</div></div>'+
         '<div class="row"><a class="btn sm soft" target="_blank" href="../public/?event='+encodeURIComponent(state.event.slug)+'#routeSection">Preview</a><button class="btn sm primary" onclick="routePointDialog(\''+r.id+'\')">+ จุดบนเส้นทาง</button><button class="btn sm soft" onclick="routeDialog(\''+r.id+'\')">แก้ไข GPX</button><button class="btn sm danger" onclick="deleteRoute(\''+r.id+'\')">ลบ</button></div></div>'+
         routePointRows(r)+'</div>';
@@ -487,6 +488,7 @@ async function routeDialog(id=null){
     title:id?'แก้ไข GPX Route':'นำเข้าไฟล์ GPX',width:820,
     html:'<div class="grid2" style="text-align:left">'+
       '<label>ชื่อเส้นทาง<input id="rtName" class="swal2-input" style="margin:0" value="'+esc(t(current?.name)||'เส้นทางการแข่งขัน')+'"></label>'+
+      '<label style="grid-column:1/-1">รายละเอียดเส้นทาง<textarea id="rtDesc" class="swal2-textarea" style="margin:0;width:100%" placeholder="ข้อความนี้จะแสดงในหน้า Event Preview">'+esc(t(current?.description)||'')+'</textarea></label>'+
       '<label>ผูกกับรุ่น (เลือกได้หลายรุ่น)<select id="rtCats" multiple size="5" class="swal2-select" style="margin:0;width:100%">'+opts+'</select><small class="muted">กด Ctrl/Cmd เพื่อเลือกหลายรุ่นบนคอมพิวเตอร์</small></label>'+
       '<label>ความยาว Animation (วินาที)<input id="rtDuration" type="number" min="10" max="600" class="swal2-input" style="margin:0" value="'+(current?.animation_duration_seconds||48)+'"></label>'+
       '<label>ไฟล์ GPX<input id="rtFile" type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml" class="swal2-file" style="margin:0;width:100%"><small class="muted">'+(current?'ไม่เลือกไฟล์ = ใช้ GPX เดิม':'ต้องเลือกไฟล์ .gpx')+'</small></label>'+
@@ -496,6 +498,7 @@ async function routeDialog(id=null){
     showCancelButton:true,confirmButtonText:id?'บันทึก':'นำเข้า GPX',
     preConfirm:()=>({
       name:rtName.value.trim(),
+      description:rtDesc.value.trim(),
       category_ids:[...rtCats.selectedOptions].map(o=>o.value),
       duration:Number(rtDuration.value)||48,
       show_km_markers:rtKm.checked,is_active:rtActive.checked,file:rtFile.files[0]||null
@@ -511,6 +514,7 @@ async function routeDialog(id=null){
     const row={
       event_id:state.event.id,
       name:{th:r.value.name,en:r.value.name},
+      description:{th:r.value.description,en:r.value.description},
       animation_duration_seconds:r.value.duration,
       show_km_markers:r.value.show_km_markers,
       is_active:r.value.is_active,
