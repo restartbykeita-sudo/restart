@@ -255,10 +255,11 @@ class RouteAnimation{
   }
   if(viewBtn){
    const noReal3D=!!this.state.fallback;
+   viewBtn.hidden=noReal3D;
    viewBtn.disabled=noReal3D;
    viewBtn.classList.toggle('is-on',!!this.state.is3D&&!noReal3D);
-   viewBtn.textContent=noReal3D?(this.lang==='th'?'3D ต้องใช้ WebGL':'3D needs WebGL'):(this.state.is3D?'3D':'2D');
-   viewBtn.title=noReal3D?(this.lang==='th'?'อุปกรณ์นี้ไม่รองรับ 3D Terrain จริง จึงไม่แสดง 3D ปลอม':'Real 3D terrain requires WebGL'):'';
+   if(!noReal3D)viewBtn.textContent=this.state.is3D?'3D':'2D';
+   viewBtn.title='';
   }
  }
  toggleTerrain(){
