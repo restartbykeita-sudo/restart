@@ -238,6 +238,29 @@ function bindFormQuoteListeners(){
 let quoteTimer=null;
 function debouncedQuote(){clearTimeout(quoteTimer);quoteTimer=setTimeout(()=>refreshPrice(),350)}
 
+function quoteReady(){
+  const f=fullFlags(),count=registrationRunnerCount();
+  let runners=[];try{runners=Array.from({length:count},(_,i)=>collectRunner(i+1))}catch(e){return false}
+  if(f.competition_categories!==false){
+    const cid=byId('categorySel')?.value||'';
+    if(cid){
+      const cat=C.find(x=>x.id===cid);if(!cat)return false;
+      if((cat.min_age!=null||cat.max_age!=null)&&runners.some(r=>!r.birth_date))return false;
+      if(['MALE','FEMALE'].includes(String(cat.gender_rule||''))&&runners.some(r=>!r.gender))return false;
+    }else if(f.auto_category){
+      const needsBirth=C.some(cat=>cat.min_age!=null||cat.max_age!=null);
+      const needsGender=C.some(cat=>['MALE','FEMALE'].includes(String(cat.gender_rule||'')));
+      if(needsBirth&&runners.some(r=>!r.birth_date))return false;
+      if(needsGender&&runners.some(r=>!r.gender))return false;
+    }else if(f.self_select_category===false&&C.length===1){
+      const cat=C[0];
+      if((cat.min_age!=null||cat.max_age!=null)&&runners.some(r=>!r.birth_date))return false;
+      if(['MALE','FEMALE'].includes(String(cat.gender_rule||''))&&runners.some(r=>!r.gender))return false;
+    }else return false;
+  }
+  return true
+}
+
 function quotePayload(){
   const count=registrationRunnerCount();
   let runners=[];
@@ -253,6 +276,7 @@ function quotePayload(){
   };
 }
 async function getFullQuote(silent=true){
+  if(!quoteReady())return null;
   const seq=++quoteSeq,q=quotePayload();
   let data;
   try{
