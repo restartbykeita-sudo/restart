@@ -299,12 +299,12 @@ async function offerWaitlist(payload){
   await Swal.fire({icon:'success',title:'เข้าคิวรอแล้ว',html:'ลำดับคิวปัจจุบัน <b>'+Number(data.queue_position||0)+'</b>',confirmButtonText:'ตกลง'});
 }
 
-async function notifyRegistration(registrationId){
-  if(!fullFlags().notifications||!registrationId)return;
+async function notifyRegistration(registrationId,registrationCode){
+  if(!fullFlags().notifications||!registrationId||!registrationCode)return;
   try{
     const res=await fetch(App.cfg.SUPABASE_URL+'/functions/v1/restart-registration-api?action=notify-registration',{
       method:'POST',headers:{'content-type':'application/json','apikey':App.cfg.SUPABASE_PUBLISHABLE_KEY},
-      body:JSON.stringify({registration_id:registrationId})
+      body:JSON.stringify({registration_id:registrationId,registration_code:registrationCode})
     });
     if(!res.ok)console.warn('notification failed',await res.text());
   }catch(e){console.warn(e)}
@@ -354,7 +354,7 @@ submit=async function(e){
       }
       throw error;
     }
-    await notifyRegistration(data.id);
+    await notifyRegistration(data.id,data.registration_code);
     Swal.fire({icon:'success',title:'สมัครสำเร็จ',html:'เลขที่สมัคร <b>'+esc(data.registration_code)+'</b><br>ผู้แข่งขัน <b>'+data.runner_count+'</b> คน'+(data.follower_count?'<br>ผู้ติดตาม <b>'+data.follower_count+'</b> คน':'')+'<br>ยอดสุทธิ <b>฿'+fullMoney(data.total_amount_thb)+'</b><br>สถานะ <b>'+esc(data.status)+'</b>',confirmButtonText:'ตกลง'}).then(()=>location.reload())
   }catch(err){
     if(uploadedSlip)await db.storage.from('restart-slips').remove([uploadedSlip]).catch(()=>{});
