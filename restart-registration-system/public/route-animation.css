@@ -78,3 +78,35 @@ html[data-ui-theme="dark"] .rr-route-summary>div,html[data-ui-theme="dark"] .rr-
  .rr-route-cats span{font-size:9px}
  .rr-route-fallback-cp text{font-size:8px}
 }
+/* GPX mode controls + backend copy v1.2 */
+.rr-route-description{
+  max-width:760px;margin:8px 0 0;color:var(--muted);
+  font-size:13px;line-height:1.65
+}
+.rr-route-map.is-svg-fallback{
+  perspective:1000px;
+  overflow:hidden;
+}
+.rr-route-map.is-svg-fallback .rr-route-fallback-svg{
+  transform-origin:50% 64%;
+  transition:transform .45s ease,filter .35s ease;
+  will-change:transform;
+}
+.rr-route-map.is-svg-fallback.is-3d .rr-route-fallback-svg{
+  transform:perspective(980px) rotateX(42deg) scale(1.10) translateY(-3%);
+  filter:saturate(1.08) contrast(1.05);
+}
+.rr-fallback-topo{display:none}
+.rr-route-map.is-svg-fallback.is-terrain .rr-fallback-topo{display:block}
+.rr-route-map.is-svg-fallback.is-terrain .rr-fallback-grid{opacity:.05!important}
+.rr-route-map.is-svg-fallback.is-terrain .rr-fallback-bg{fill:url(#rrTerrainBg)}
+.rr-route-player button[data-a="terrain"].is-on,
+.rr-route-player button[data-a="view"].is-on{
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 25%,transparent)
+}
+@media(max-width:620px){
+  .rr-route-description{font-size:12px}
+  .rr-route-map.is-svg-fallback.is-3d .rr-route-fallback-svg{
+    transform:perspective(760px) rotateX(34deg) scale(1.06) translateY(-2%)
+  }
+}
