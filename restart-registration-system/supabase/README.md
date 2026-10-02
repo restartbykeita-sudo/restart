@@ -23,6 +23,16 @@
    - Public write RPCs restricted to `service_role`
    - Direct anonymous slip upload removed
 
+3. `003_shirt_sales_system.sql`
+   - Optional shirt add-on sales per Event
+   - Shirt products, images, sizes, SKU and stock
+   - Per-size price adjustment
+   - Server-side shirt quote + stock validation
+   - Shirt amount included in registration/payment schedule
+   - Shirt order snapshots for historical accuracy
+   - Fulfillment status (waiting / handed out / cancelled)
+   - Automatic stock return when an unfulfilled registration is cancelled
+
 ## Edge Function
 
 Source of truth:
