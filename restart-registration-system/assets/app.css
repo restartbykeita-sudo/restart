@@ -309,12 +309,17 @@ html[data-ui-theme="dark"] .swal2-textarea{background:#111218!important;color:#f
   display:flex;justify-content:center;margin-top:18px;padding-top:18px;border-top:1px solid var(--line)
 }
 .public-registration .payment-qr{
-  width:234px;min-height:234px;padding:7px;border-radius:18px;background:#fff;
-  display:flex;align-items:center;justify-content:center;box-shadow:0 12px 30px rgba(0,0,0,.10)
+  width:234px;height:234px;min-width:234px;min-height:234px;padding:7px;border-radius:18px;background:#fff;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;box-sizing:border-box;
+  box-shadow:0 12px 30px rgba(0,0,0,.10)
 }
-.public-registration .payment-qr img,
+/* qrcode.js creates both canvas and img. Show only canvas so the QR never duplicates side-by-side. */
 .public-registration .payment-qr canvas{
-  display:block!important;max-width:220px!important;width:220px!important;height:220px!important;padding:0!important;border-radius:8px!important
+  display:block!important;width:220px!important;height:220px!important;max-width:220px!important;max-height:220px!important;
+  padding:0!important;margin:0!important;border-radius:8px!important;object-fit:contain!important;flex:0 0 220px!important
+}
+.public-registration .payment-qr img{
+  display:none!important
 }
 html[data-ui-theme="dark"] .public-registration .payment-method-card{
   box-shadow:0 16px 38px rgba(0,0,0,.26)!important
