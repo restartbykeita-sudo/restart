@@ -773,11 +773,18 @@ async function showRegistrationDetail(id){
 function csvCell(v){const s=String(v??'');return '"'+s.replaceAll('"','""')+'"'}
 async function exportRegistrations(){
   Swal.fire({title:'กำลังสร้าง CSV…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
-  const{data,error}=await db.from('restart_registrations').select('*,restart_race_categories(code,name),restart_packages(code,name),restart_participants(*)').eq('event_id',state.event.id).order('created_at');
+  const{data,error}=await db.from('restart_registrations').select('*,restart_race_categories(code,name),restart_packages(code,name),restart_participants(*),restart_beneficiaries(*),restart_registration_answers(*)').eq('event_id',state.event.id).order('created_at');
   if(error)return Swal.fire('Export ไม่สำเร็จ',error.message,'error');
-  const head=['registration_code','registration_type','group_name','runner_count','runner_index','first_name','last_name','id_document','phone','birth_date','gender','shirt_size','blood_group','category','package','total_amount_thb','payment_mode','status','created_at'];
+  const head=['registration_code','registration_type','group_name','runner_count','contact_runner_index','runner_index','first_name','last_name','id_document','phone','birth_date','gender','shirt_size','blood_group','address','emergency_phone','emergency_relation','category','package','beneficiaries','custom_answers','total_amount_thb','payment_mode','status','created_at'];
   const lines=[head.map(csvCell).join(',')];
-  (data||[]).forEach(r=>(r.restart_participants||[]).sort((a,b)=>a.runner_index-b.runner_index).forEach(p=>lines.push([r.registration_code,r.registration_type,r.group_name||'',r.runner_count||r.restart_participants.length,p.runner_index,p.first_name,p.last_name,p.id_document,p.phone,p.birth_date,p.gender,p.shirt_size,p.blood_group,t(r.restart_race_categories?.name),t(r.restart_packages?.name),r.total_amount_thb,r.payment_mode,r.status,r.created_at].map(csvCell).join(','))));
+  (data||[]).forEach(r=>{
+    const beneficiaries=r.restart_beneficiaries||[],answers=r.restart_registration_answers||[];
+    (r.restart_participants||[]).sort((a,b)=>a.runner_index-b.runner_index).forEach(p=>{
+      const beneText=beneficiaries.filter(b=>b.runner_index===p.runner_index).map(b=>[b.full_name,b.relationship,b.percentage+'%',b.id_document].filter(Boolean).join(' | ')).join(' ; ');
+      const answerObj={};answers.filter(a=>a.runner_index===p.runner_index).forEach(a=>answerObj[a.field_key]=a.value);
+      lines.push([r.registration_code,r.registration_type,r.group_name||'',r.runner_count||r.restart_participants.length,r.contact_runner_index||1,p.runner_index,p.first_name,p.last_name,p.id_document,p.phone,p.birth_date,p.gender,p.shirt_size,p.blood_group,p.address,p.emergency_phone,p.emergency_relation,t(r.restart_race_categories?.name),t(r.restart_packages?.name),beneText,JSON.stringify(answerObj),r.total_amount_thb,r.payment_mode,r.status,r.created_at].map(csvCell).join(','))
+    })
+  });
   const blob=new Blob(['\ufeff'+lines.join('\n')],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(state.event.slug||'event')+'-registrations.csv';document.body.appendChild(a);a.click();URL.revokeObjectURL(a.href);a.remove();Swal.close()
 }
 async function openSlip(path){const{data,error}=await db.storage.from('restart-slips').createSignedUrl(path,120);if(error)return Swal.fire('เปิดสลิปไม่ได้',error.message,'error');window.open(data.signedUrl,'_blank')}
