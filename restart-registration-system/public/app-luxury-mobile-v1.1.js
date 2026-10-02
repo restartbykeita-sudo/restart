@@ -250,7 +250,7 @@ async function ensureRouteAnimationDeps(){
     await new Promise((resolve,reject)=>{
       let sc=document.querySelector('script[data-restart-route-js]');
       if(sc){if(window.RestartRouteAnimation)return resolve();sc.addEventListener('load',resolve,{once:true});sc.addEventListener('error',reject,{once:true});return}
-      sc=document.createElement('script');sc.src='route-animation.js?v=1.2.0';sc.dataset.restartRouteJs='1';sc.onload=resolve;sc.onerror=()=>reject(new Error('Route module load failed'));document.head.appendChild(sc);
+      sc=document.createElement('script');sc.src='route-animation.js?v=1.3.0';sc.dataset.restartRouteJs='1';sc.onload=resolve;sc.onerror=()=>reject(new Error('Route module load failed'));document.head.appendChild(sc);
     });
   }
   return !!window.RestartRouteAnimation;
