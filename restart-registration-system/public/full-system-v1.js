@@ -13,6 +13,8 @@ const baseListEvents=listEvents;
 let FULL_QUOTE=null;
 let FULL_TRANSLATIONS={};
 let FULL_LIST_TRANSLATIONS={};
+let SHIRT_PRODUCTS=[];
+let SHIRT_VARIANTS=[];
 let quoteSeq=0;
 
 function fullFlags(){return E?.feature_flags||{}}
@@ -67,6 +69,19 @@ async function loadFullTranslations(){
 async function loadListTranslations(){
   const{data}=await db.from('restart_event_translations').select('*');
   FULL_LIST_TRANSLATIONS={};(data||[]).forEach(x=>{(FULL_LIST_TRANSLATIONS[x.event_id]||={})[x.language]=x});
+}
+
+async function loadShirtCatalog(){
+  SHIRT_PRODUCTS=[];SHIRT_VARIANTS=[];
+  if(!E?.id||!fullFlags().shirt_sales)return;
+  const{data:products,error:pe}=await db.from('restart_merch_products').select('*').eq('event_id',E.id).eq('is_active',true).order('sort_order');
+  if(pe)throw pe;
+  SHIRT_PRODUCTS=products||[];
+  const ids=SHIRT_PRODUCTS.map(x=>x.id);
+  if(!ids.length)return;
+  const{data:variants,error:ve}=await db.from('restart_merch_variants').select('*').in('product_id',ids).eq('is_active',true).order('sort_order');
+  if(ve)throw ve;
+  SHIRT_VARIANTS=variants||[];
 }
 
 langs=function(){
@@ -173,6 +188,58 @@ function collectFollowers(){
   }));
 }
 
+function merchProductName(p){return tr(p?.name)||p?.code||'เสื้อ'}
+function merchProductDesc(p){return tr(p?.description)||''}
+function merchUnitPrice(p,v){return Math.max(0,Number(p?.price_thb||0)+Number(v?.price_adjustment_thb||0))}
+function collectMerchItems(){
+  return [...document.querySelectorAll('[data-merch-variant]')].map(input=>({
+    variant_id:input.dataset.merchVariant,
+    qty:Math.max(0,Math.floor(Number(input.value||0)))
+  })).filter(x=>x.qty>0)
+}
+function localMerchTotal(){
+  return collectMerchItems().reduce((sum,item)=>{
+    const v=SHIRT_VARIANTS.find(x=>x.id===item.variant_id),p=SHIRT_PRODUCTS.find(x=>x.id===v?.product_id);
+    return sum+(p&&v?merchUnitPrice(p,v)*item.qty:0)
+  },0)
+}
+function enforceMerchLimit(input){
+  const pid=input.dataset.productId,p=SHIRT_PRODUCTS.find(x=>x.id===pid);if(!p)return;
+  const peers=[...document.querySelectorAll('[data-product-id="'+CSS.escape(pid)+'"]')];
+  const others=peers.filter(x=>x!==input).reduce((s,x)=>s+Math.max(0,Math.floor(Number(x.value||0))),0);
+  const allowed=Math.max(0,Number(p.max_per_registration||10)-others);
+  const requested=Math.max(0,Math.floor(Number(input.value||0)));
+  if(requested>allowed){
+    input.value=String(allowed);
+    Swal.fire({icon:'info',title:'จำนวนเสื้อเกินที่กำหนด',text:merchProductName(p)+' ซื้อได้สูงสุด '+Number(p.max_per_registration||10)+' ตัวต่อใบสมัคร',timer:1800,showConfirmButton:false});
+  }
+}
+function renderShirtSales(){
+  const old=byId('shirtSalesBox');if(old)old.remove();
+  if(!fullFlags().shirt_sales||!SHIRT_PRODUCTS.length)return;
+  const payment=byId('priceBox')?.closest('.rr-card');if(!payment)return;
+  const sec=document.createElement('section');sec.id='shirtSalesBox';sec.className='rr-card';
+  const cards=SHIRT_PRODUCTS.map(p=>{
+    const vars=SHIRT_VARIANTS.filter(v=>v.product_id===p.id);
+    const rows=vars.map(v=>{
+      const available=Math.max(0,Number(v.stock_qty||0)-Number(v.sold_qty||0));
+      const max=Math.min(available,Number(p.max_per_registration||10));
+      const price=merchUnitPrice(p,v);
+      return '<div class="row space" style="gap:12px;padding:9px 0;border-top:1px solid rgba(127,127,127,.18)"><div><b>'+esc(v.size_label)+'</b>'+(v.sku?'<div class="muted" style="font-size:12px">'+esc(v.sku)+'</div>':'')+'<div class="muted">฿'+fullMoney(price)+'</div></div>'+(available>0?'<label style="min-width:120px">จำนวน<input data-merch-variant="'+esc(v.id)+'" data-product-id="'+esc(p.id)+'" type="number" min="0" max="'+max+'" step="1" value="0"></label>':'<span class="badge danger">หมด</span>')+'</div>'
+    }).join('');
+    return '<div class="paybox" style="margin-top:12px"><div class="row" style="align-items:flex-start;gap:14px">'+
+      (p.image_url?'<img src="'+esc(p.image_url)+'" alt="" style="width:110px;height:110px;object-fit:cover;border-radius:14px;background:#eee">':'')+
+      '<div style="flex:1;min-width:0"><div class="row space"><div><b style="font-size:18px">'+esc(merchProductName(p))+'</b><div class="muted">'+esc(merchProductDesc(p))+'</div></div><b>เริ่ม ฿'+fullMoney(p.price_thb)+'</b></div>'+
+      '<div class="muted" style="margin-top:6px">ซื้อเพิ่มได้สูงสุด '+Number(p.max_per_registration||10)+' ตัวต่อใบสมัคร</div>'+rows+'</div></div></div>'
+  }).join('');
+  sec.innerHTML='<h3>ซื้อเสื้อเพิ่ม</h3><p class="muted">ส่วนนี้เป็นเสื้อซื้อเพิ่ม แยกจากไซส์เสื้อที่รวมอยู่ในการสมัคร</p>'+cards;
+  payment.before(sec);
+  sec.querySelectorAll('[data-merch-variant]').forEach(input=>{
+    input.addEventListener('input',()=>{enforceMerchLimit(input);debouncedQuote()});
+    input.addEventListener('change',()=>{enforceMerchLimit(input);refreshPrice()});
+  });
+}
+
 function injectRegistrationFullUI(){
   const form=byId('regForm');if(!form)return;
   const f=fullFlags();
@@ -180,6 +247,7 @@ function injectRegistrationFullUI(){
     const div=document.createElement('div');div.id='followersBox';byId('runnersBox')?.after(div);
   }
   renderFollowers();
+  renderShirtSales();
   if(byId('packageSel')&&!P.length){const sec=byId('packageSel').closest('.rr-card');if(sec)sec.style.display='none'}
 
   if((f.promotions||f.discount_codes)&&!byId('fullDiscountBox')){
@@ -239,7 +307,7 @@ function bindFormQuoteListeners(){
     refreshPrice();
   });
   form.addEventListener('input',e=>{
-    if(e.target?.closest('[data-runner-card]')||e.target?.id==='discountCode')debouncedQuote();
+    if(e.target?.closest('[data-runner-card]')||e.target?.id==='discountCode'||e.target?.matches?.('[data-merch-variant]'))debouncedQuote();
   });
 }
 let quoteTimer=null;
@@ -279,7 +347,8 @@ function quotePayload(){
     p_registration_type:registrationType(),
     p_runner_count:count,
     p_discount_code:byId('discountCode')?.value.trim()||null,
-    p_runners:runners
+    p_runners:runners,
+    p_merch_items:collectMerchItems()
   };
 }
 async function getFullQuote(silent=true){
@@ -290,7 +359,7 @@ async function getFullQuote(silent=true){
     data=await fullApi('price-quote',{
       event_id:q.p_event_id,category_id:q.p_category_id,package_id:q.p_package_id,
       registration_type:q.p_registration_type,runner_count:q.p_runner_count,
-      discount_code:q.p_discount_code,runners:q.p_runners
+      discount_code:q.p_discount_code,runners:q.p_runners,merch_items:q.p_merch_items
     })
   }catch(error){if(!silent)throw error;return null}
   if(seq!==quoteSeq)return null;
@@ -302,7 +371,7 @@ async function getFullQuote(silent=true){
   return data;
 }
 
-totalPrice=function(){return FULL_QUOTE?Number(FULL_QUOTE.total_amount_thb||0):baseTotalPrice()};
+totalPrice=function(){return FULL_QUOTE?Number(FULL_QUOTE.total_amount_thb||0):(baseTotalPrice()+localMerchTotal())};
 
 refreshPrice=function(){
   FULL_QUOTE=null;
@@ -316,6 +385,7 @@ refreshPrice=function(){
       'ก่อนส่วนลด <b>฿'+fullMoney(q.subtotal_amount_thb)+'</b>'+
       (Number(q.promotion_discount_thb||0)>0?' · Promotion <b>-฿'+fullMoney(q.promotion_discount_thb)+'</b>':'')+
       (Number(q.discount_code_discount_thb||0)>0?' · Code <b>-฿'+fullMoney(q.discount_code_discount_thb)+'</b>':'')+
+      (Number(q.merchandise_amount_thb||0)>0?' · เสื้อเพิ่ม <b>฿'+fullMoney(q.merchandise_amount_thb)+'</b>':'')+
       ' · สุทธิ <b>฿'+fullMoney(q.total_amount_thb)+'</b>'+
       (q.promotion_name?'<br>Promotion: '+esc(q.promotion_name):'');
   }).catch(()=>{});
@@ -379,7 +449,7 @@ submit=async function(e){
       language:lang,payment_mode:document.querySelector('[name=paymode]:checked')?.value||'FULL',
       total_amount_thb:total,discount_code:byId('discountCode')?.value.trim()||null,
       pdpa_accepted:!f.pdpa||!!byId('pdpaConsent')?.checked,
-      slip_path:uploadedSlip,schedule,runners,followers
+      slip_path:uploadedSlip,schedule,runners,followers,merch_items:collectMerchItems()
     };
     let data;
     try{data=await fullApi('create-registration',{payload})}
@@ -390,7 +460,7 @@ submit=async function(e){
       }
       throw error;
     }
-    Swal.fire({icon:'success',title:'สมัครสำเร็จ',html:'เลขที่สมัคร <b>'+esc(data.registration_code)+'</b><br>ผู้แข่งขัน <b>'+data.runner_count+'</b> คน'+(data.follower_count?'<br>ผู้ติดตาม <b>'+data.follower_count+'</b> คน':'')+'<br>ยอดสุทธิ <b>฿'+fullMoney(data.total_amount_thb)+'</b><br>สถานะ <b>'+esc(data.status)+'</b>',confirmButtonText:'ตกลง'}).then(()=>location.reload())
+    Swal.fire({icon:'success',title:'สมัครสำเร็จ',html:'เลขที่สมัคร <b>'+esc(data.registration_code)+'</b><br>ผู้แข่งขัน <b>'+data.runner_count+'</b> คน'+(data.follower_count?'<br>ผู้ติดตาม <b>'+data.follower_count+'</b> คน':'')+(data.merchandise_qty?'<br>เสื้อซื้อเพิ่ม <b>'+data.merchandise_qty+'</b> ตัว · ฿'+fullMoney(data.merchandise_amount_thb):'')+'<br>ยอดสุทธิ <b>฿'+fullMoney(data.total_amount_thb)+'</b><br>สถานะ <b>'+esc(data.status)+'</b>',confirmButtonText:'ตกลง'}).then(()=>location.reload())
   }catch(err){
     Swal.fire('สมัครไม่สำเร็จ',fullRegistrationError(err),'error')
   }
@@ -410,7 +480,14 @@ function fullRegistrationError(err){
     SLIP_REQUIRED:'กรุณาอัปโหลดสลิป',
     EVENT_CAPACITY_EXCEEDED:'จำนวนรับเต็มแล้ว',
     CATEGORY_CAPACITY_EXCEEDED:'รุ่นนี้เต็มแล้ว',
-    WAITLIST_DISABLED:'Event นี้ไม่ได้เปิดคิวรอ'
+    WAITLIST_DISABLED:'Event นี้ไม่ได้เปิดคิวรอ',
+    SHIRT_SALES_DISABLED:'Event นี้ไม่ได้เปิดขายเสื้อเพิ่ม',
+    SHIRT_VARIANT_NOT_AVAILABLE:'ไซส์เสื้อที่เลือกไม่พร้อมจำหน่าย',
+    SHIRT_PRODUCT_NOT_AVAILABLE:'เสื้อที่เลือกไม่พร้อมจำหน่าย',
+    SHIRT_SALE_NOT_OPEN:'ยังไม่ถึงเวลาเปิดขายเสื้อ',
+    SHIRT_SALE_CLOSED:'ปิดขายเสื้อแล้ว',
+    SHIRT_MAX_PER_REGISTRATION:'จำนวนเสื้อเกินที่ผู้จัดกำหนดต่อใบสมัคร',
+    SHIRT_OUT_OF_STOCK:'เสื้อไซส์ที่เลือกหมดหรือจำนวนคงเหลือไม่พอ'
   };
   const k=Object.keys(map).find(k=>s.includes(k));return k?map[k]:registrationErrorMessage(err)
 }
@@ -500,7 +577,10 @@ async function cancelRegistration(code,id){
 async function initFullSystem(){
   let tries=0;while(!E&&tries++<80)await new Promise(r=>setTimeout(r,100));
   if(!E)return;
-  await loadFullTranslations().catch(()=>{});
+  await Promise.all([
+    loadFullTranslations().catch(()=>{}),
+    loadShirtCatalog().catch(e=>console.warn('shirt catalog',e))
+  ]);
   langs();
   if(registerMode&&E.status==='OPEN')render();else renderEventPreview();
 }
