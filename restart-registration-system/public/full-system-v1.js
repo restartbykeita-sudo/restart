@@ -253,10 +253,16 @@ function quotePayload(){
   };
 }
 async function getFullQuote(silent=true){
-  const seq=++quoteSeq;
-  const{data,error}=await db.rpc('restart_price_quote',quotePayload());
+  const seq=++quoteSeq,q=quotePayload();
+  let data;
+  try{
+    data=await fullApi('price-quote',{
+      event_id:q.p_event_id,category_id:q.p_category_id,package_id:q.p_package_id,
+      registration_type:q.p_registration_type,runner_count:q.p_runner_count,
+      discount_code:q.p_discount_code,runners:q.p_runners
+    })
+  }catch(error){if(!silent)throw error;return null}
   if(seq!==quoteSeq)return null;
-  if(error){if(!silent)throw error;return null}
   FULL_QUOTE=data;
   if(data?.category_id&&byId('categorySel')&&!byId('categorySel').value){
     byId('categorySel').value=data.category_id;
