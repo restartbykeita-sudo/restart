@@ -262,6 +262,17 @@ async function mountPreviewRoutes(){
     window.RestartRouteAnimation.mount(el,r,pts,{lang});
   });
 }
+function previewRouteButtonText(available){
+  const x={
+    th:{view:'ดูเส้นทาง Animation',empty:'ยังไม่มีเส้นทาง'},
+    en:{view:'View route animation',empty:'Route not available yet'},
+    zh:{view:'查看路线动画',empty:'暂无路线'},
+    ja:{view:'コースアニメーションを見る',empty:'コース未登録'},
+    ru:{view:'Смотреть анимацию маршрута',empty:'Маршрут пока не добавлен'}
+  };
+  const t=x[lang]||x.en;
+  return available?t.view:t.empty;
+}
 function renderEventPreview(){
   window.RestartRouteAnimation?.destroyAll?.();
   document.body.classList.remove('event-landing-page');
@@ -277,6 +288,10 @@ function renderEventPreview(){
   const distances=[...new Set(C.map(c=>c.distance_km).filter(v=>v!=null).map(Number))].sort((a,b)=>a-b);
   const status=E.status==='OPEN'?p.open:E.status==='CLOSED'?p.closed:p.coming;
   const canRegister=E.status==='OPEN';
+  const hasRouteAnimation=flags.route_animation!==false&&ROUTES.length>0;
+  const routeButton=hasRouteAnimation
+    ?'<a class="preview-route-btn" href="#routeSection"><span class="preview-route-icon">⌖</span>'+esc(previewRouteButtonText(true))+' <span>↓</span></a>'
+    :'<span class="preview-route-btn is-disabled"><span class="preview-route-icon">⌖</span>'+esc(previewRouteButtonText(false))+'</span>';
   const heroStyle=bg?' style="background-image:linear-gradient(90deg,rgba(7,8,11,.88),rgba(7,8,11,.42)),url(\''+esc(bg).replaceAll("'","%27")+'\')"':'';
   const mediaCards=[
     previewMediaCard(shirt,p.shirt),previewMediaCard(medal,p.medal),previewMediaCard(trophy,p.trophy),
@@ -303,6 +318,7 @@ function renderEventPreview(){
         '</div>'+
         '<div class="preview-hero-actions">'+
           (canRegister?'<a class="preview-register-btn" href="?event='+encodeURIComponent(E.slug)+'&register=1">'+esc(p.register)+' <span>↗</span></a>':'<span class="preview-register-btn is-disabled">'+esc(status)+'</span>')+
+          routeButton+
         '</div>'+
       '</div>'+
     '</section>'+renderRouteAnimationSection(p,flags)+
