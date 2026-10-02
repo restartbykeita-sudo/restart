@@ -251,9 +251,9 @@ function injectRegistrationFullUI(){
   renderShirtSales();
   if(byId('packageSel')&&!P.length){const sec=byId('packageSel').closest('.rr-card');if(sec)sec.style.display='none'}
 
-  if((f.promotions||f.discount_codes)&&!byId('fullDiscountBox')){
+  if((f.promotions||f.discount_codes||f.shirt_sales)&&!byId('fullDiscountBox')){
     const sec=document.createElement('section');sec.id='fullDiscountBox';sec.className='rr-card';
-    sec.innerHTML='<h3>Promotion / Discount</h3>'+
+    sec.innerHTML='<h3>สรุปราคา'+((f.promotions||f.discount_codes)?' / Promotion':'')+'</h3>'+
       (f.discount_codes?'<label>Discount Code<div class="row"><input id="discountCode" placeholder="กรอกโค้ดส่วนลด"><button type="button" id="applyDiscountBtn" class="btn soft">ใช้โค้ด</button></div></label>':'')+
       '<div id="fullQuoteBreakdown" class="muted" style="margin-top:10px"></div>';
     const payment=byId('priceBox')?.closest('.rr-card');payment?.before(sec);
