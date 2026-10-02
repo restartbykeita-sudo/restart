@@ -23,6 +23,18 @@
    - Public write RPCs restricted to `service_role`
    - Direct anonymous slip upload removed
 
+3. `003_shirt_sales.sql`
+   - Optional shirt add-on sales per Event
+   - Product image, code, localized name/description and sale window
+   - Size / SKU / stock / per-size price adjustment
+   - Server-side stock validation and atomic stock reservation
+   - Maximum quantity per registration
+   - Shirt price included in registration total
+   - Installment flow charges shirt add-ons with the first installment
+   - Cancellation returns stock for shirts not yet fulfilled
+   - Fulfillment status / shirt sales CSV / registration export integration
+   - Public catalog read via RLS; all writes remain Admin/Server controlled
+
 3. `003_shirt_sales_system.sql`
    - Optional shirt add-on sales per Event
    - Shirt products, images, sizes, SKU and stock
