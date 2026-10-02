@@ -525,9 +525,10 @@ async function openManageRegistration(){
 }
 async function loadManageRegistration(code,id){
   let data;try{data=await fullApi('manage-lookup',{event_slug:E.slug,registration_code:code,id_document:id})}catch(error){return Swal.fire('ไม่พบใบสมัคร',fullErr(error),'error')}
-  const ps=data.participants||[];
+  const ps=data.participants||[],merch=data.merchandise||[];
   const html='<div style="text-align:left"><p><b>'+esc(data.registration_code)+'</b> · '+esc(data.registration_type)+' · สถานะ '+esc(data.status)+'</p>'+
-    ps.map(p=>'<div class="paybox" style="margin:8px 0"><b>'+p.runner_index+'. '+esc((p.first_name||'')+' '+(p.last_name||''))+'</b><div class="muted">'+esc(p.id_document||'')+' · '+esc(p.phone||'')+' · เสื้อ '+esc(p.shirt_size||'—')+'</div><div class="row" style="margin-top:8px">'+(data.can_edit?'<button class="btn sm soft" data-mg-edit="'+p.runner_index+'">แก้ไข</button>':'')+(data.can_transfer?'<button class="btn sm soft" data-mg-transfer="'+p.runner_index+'">โอนสิทธิ์</button>':'')+'</div></div>').join('')+
+    ps.map(p=>'<div class="paybox" style="margin:8px 0"><b>'+p.runner_index+'. '+esc((p.first_name||'')+' '+(p.last_name||''))+'</b><div class="muted">'+esc(p.id_document||'')+' · '+esc(p.phone||'')+' · เสื้อสมัคร '+esc(p.shirt_size||'—')+'</div><div class="row" style="margin-top:8px">'+(data.can_edit?'<button class="btn sm soft" data-mg-edit="'+p.runner_index+'">แก้ไข</button>':'')+(data.can_transfer?'<button class="btn sm soft" data-mg-transfer="'+p.runner_index+'">โอนสิทธิ์</button>':'')+'</div></div>').join('')+
+    (merch.length?'<div class="paybox" style="margin:10px 0"><b>เสื้อซื้อเพิ่ม · ฿'+fullMoney(data.merchandise_amount_thb||0)+'</b>'+merch.map(m=>'<div style="margin-top:5px">'+esc(tr(m.product_name)||m.product_code||'เสื้อ')+' · '+esc(m.size_label)+' × '+m.qty+' · ฿'+fullMoney(m.total_price_thb)+' · '+esc(m.status==='FULFILLED'?'รับเสื้อแล้ว':m.status==='CANCELLED'?'ยกเลิก':'รอรับเสื้อ')+'</div>').join('')+'</div>':'')+
     (data.can_cancel?'<button class="btn danger" id="mgCancel" style="width:100%;margin-top:10px">ยกเลิกใบสมัคร</button>':'')+'</div>';
   Swal.fire({title:'ใบสมัคร',html,width:850,showConfirmButton:false,showCloseButton:true,didOpen:()=>{
     document.querySelectorAll('[data-mg-edit]').forEach(b=>b.onclick=()=>editRunner(code,id,data,Number(b.dataset.mgEdit)));
