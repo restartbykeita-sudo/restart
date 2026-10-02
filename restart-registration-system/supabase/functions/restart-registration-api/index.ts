@@ -619,6 +619,154 @@ async function registrationLookup(req: Request, origin: string) {
   }, 200, origin);
 }
 
+async function fullSystemRpc(req: Request, origin: string, action: string) {
+  const limits: Record<string, number> = {
+    'create-registration': 6,
+    'join-waitlist': 6,
+    'next-payment-lookup': 10,
+    'next-payment-submit': 8,
+    'manage-lookup': 10,
+    'manage-action': 8,
+    'price-quote': 20,
+  };
+  await limit(req, action, limits[action] || 8);
+  const body = await req.json();
+  let result: { data: any; error: any };
+
+  if (action === 'price-quote') {
+    const q = body || {};
+    result = await db.rpc('restart_price_quote', {
+      p_event_id: text(q.event_id),
+      p_category_id: text(q.category_id) || null,
+      p_package_id: text(q.package_id) || null,
+      p_registration_type: text(q.registration_type || 'SINGLE'),
+      p_runner_count: Number(q.runner_count || 1),
+      p_discount_code: text(q.discount_code) || null,
+      p_runners: Array.isArray(q.runners) ? q.runners : [],
+    });
+  } else if (action === 'create-registration') {
+    result = await db.rpc('restart_create_registration', { p_payload: body.payload || {} });
+  } else if (action === 'join-waitlist') {
+    result = await db.rpc('restart_join_waitlist', { p_payload: body.payload || {} });
+  } else if (action === 'next-payment-lookup') {
+    result = await db.rpc('restart_lookup_next_payment', {
+      p_event_slug: text(body.event_slug),
+      p_id_document: text(body.id_document),
+    });
+  } else if (action === 'next-payment-submit') {
+    result = await db.rpc('restart_submit_next_payment_public', {
+      p_event_slug: text(body.event_slug),
+      p_id_document: text(body.id_document),
+      p_slip_path: text(body.slip_path),
+    });
+  } else if (action === 'manage-lookup') {
+    result = await db.rpc('restart_manage_registration_lookup', {
+      p_event_slug: text(body.event_slug),
+      p_registration_code: text(body.registration_code),
+      p_id_document: text(body.id_document),
+    });
+  } else if (action === 'manage-action') {
+    result = await db.rpc('restart_manage_registration_action', {
+      p_event_slug: text(body.event_slug),
+      p_registration_code: text(body.registration_code),
+      p_id_document: text(body.id_document),
+      p_action: text(body.manage_action),
+      p_payload: body.payload || {},
+    });
+  } else {
+    fail(404, 'ไม่พบคำสั่ง');
+  }
+
+  if (result.error) {
+    const slipPath = action === 'create-registration'
+      ? text(body?.payload?.slip_path)
+      : action === 'next-payment-submit'
+        ? text(body?.slip_path)
+        : '';
+    if (slipPath) await db.storage.from('restart-slips').remove([slipPath]).catch(() => {});
+    const knownStatus = /NOT_FOUND|DISABLED|REQUIRED|INVALID|MISMATCH|EXCEEDED|CLOSED|NOT_OPEN|ALREADY|WRONG|DUPLICATE|FULL|WAITLIST|ELIGIBLE|PAID|PENDING|LIMIT/.test(text(result.error.message)) ? 409 : 400;
+    fail(knownStatus, text(result.error.message || 'ทำรายการไม่สำเร็จ'));
+  }
+  if (action === 'create-registration' && result.data?.id && result.data?.registration_code) {
+    try {
+      await notifyRegistrationRecord(text(result.data.id), text(result.data.registration_code).toUpperCase());
+    } catch (notifyError) {
+      console.error('Telegram post-registration notification failed', notifyError);
+    }
+  }
+  return json(result.data, action === 'create-registration' ? 201 : 200, origin);
+}
+
+async function publicSlipUpload(req: Request, origin: string) {
+  await limit(req, 'upload-slip', 8);
+  const form = await req.formData();
+  const event = await loadEvent(text(form.get('event_slug')));
+  const checked = await checkedSlip(form, true);
+  const path = await uploadSlip(checked!.file, checked!.ext, String(event.id));
+  return json({ path }, 201, origin);
+}
+
+async function notifyRegistrationRecord(registrationId: string, registrationCode: string) {
+  if (!registrationId || !registrationCode) throw new ApiError(400, 'ข้อมูลแจ้งเตือนไม่ครบ');
+
+  const { data: reg, error: regError } = await db.from('restart_registrations')
+    .select('*').eq('id', registrationId).eq('registration_code', registrationCode).maybeSingle();
+  if (regError || !reg) throw new ApiError(404, 'ไม่พบใบสมัคร');
+
+  const { data: event, error: eventError } = await db.from('restart_events')
+    .select('id,name,feature_flags').eq('id', reg.event_id).single();
+  if (eventError || !event) throw new ApiError(404, 'ไม่พบ Event');
+  const flags = (event.feature_flags || {}) as Record<string, unknown>;
+  if (!asBool(flags, 'notifications', false)) return { ok: true, skipped: true };
+
+  const claimed = await db.from('restart_registrations')
+    .update({ notified_at: new Date().toISOString() })
+    .eq('id', registrationId).is('notified_at', null).select('id').maybeSingle();
+  if (claimed.error) throw new ApiError(503, 'ล็อกการแจ้งเตือนไม่สำเร็จ');
+  if (!claimed.data) return { ok: true, already_sent: true };
+
+  try {
+    const [participants, category, pkg, schedules] = await Promise.all([
+      db.from('restart_participants').select('first_name,last_name').eq('registration_id', registrationId).order('runner_index'),
+      reg.category_id ? db.from('restart_race_categories').select('name').eq('id', reg.category_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
+      reg.package_id ? db.from('restart_packages').select('name').eq('id', reg.package_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
+      db.from('restart_payment_schedule').select('id,amount_due_thb').eq('registration_id', registrationId).order('installment_no').limit(1),
+    ]);
+    if (participants.error || category.error || pkg.error || schedules.error) throw new Error('โหลดข้อมูลแจ้งเตือนไม่สำเร็จ');
+
+    const firstScheduleId = schedules.data?.[0]?.id || null;
+    const firstDue = Number(schedules.data?.[0]?.amount_due_thb || 0);
+    let slipPath: string | null = null;
+    if (firstScheduleId) {
+      const attempt = await db.from('restart_payment_attempts')
+        .select('slip_path').eq('schedule_id', firstScheduleId).order('submitted_at', { ascending: false }).limit(1).maybeSingle();
+      if (!attempt.error) slipPath = text(attempt.data?.slip_path) || null;
+    }
+
+    await notifyNewRegistration({
+      event, flags, code: reg.registration_code,
+      runners: (participants.data || []) as Array<Record<string, unknown>>,
+      category: category.data as Record<string, unknown> | null,
+      pkg: pkg.data as Record<string, unknown> | null,
+      total: Number(reg.total_amount_thb || 0),
+      paymentMode: String(reg.payment_mode || 'FULL'),
+      firstDue,
+      slipPath,
+    });
+    return { ok: true };
+  } catch (error) {
+    await db.from('restart_registrations').update({ notified_at: null }).eq('id', registrationId);
+    throw error;
+  }
+}
+
+async function notifyRegistrationById(req: Request, origin: string) {
+  await requireAdmin(req);
+  const body = await req.json();
+  const result = await notifyRegistrationRecord(text(body.registration_id), text(body.registration_code).toUpperCase());
+  return json(result, 200, origin);
+}
+
 async function submitNextPayment(req: Request, origin: string) {
   await limit(req, 'submit-payment', 8);
   const form = await req.formData();
@@ -679,6 +827,9 @@ Deno.serve(async (req) => {
     if (action === 'register' && req.method === 'POST') return await register(req, origin);
     if (action === 'lookup' && req.method === 'POST') return await registrationLookup(req, origin);
     if (action === 'submit-payment' && req.method === 'POST') return await submitNextPayment(req, origin);
+    if (action === 'notify-registration' && req.method === 'POST') return await notifyRegistrationById(req, origin);
+    if (['price-quote','create-registration','join-waitlist','next-payment-lookup','next-payment-submit','manage-lookup','manage-action'].includes(action) && req.method === 'POST') return await fullSystemRpc(req, origin, action);
+    if (action === 'upload-slip' && req.method === 'POST') return await publicSlipUpload(req, origin);
     if (action === 'telegram-settings' && req.method === 'POST') return await telegramSettingsGet(req, origin);
     if (action === 'telegram-settings-save' && req.method === 'POST') return await telegramSettingsSave(req, origin);
     if (action === 'telegram-test' && req.method === 'POST') return await telegramTest(req, origin);
