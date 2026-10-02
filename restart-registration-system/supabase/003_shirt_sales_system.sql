@@ -77,39 +77,65 @@ alter table public.restart_merch_variants enable row level security;
 alter table public.restart_merch_order_items enable row level security;
 
 drop policy if exists restart_merch_products_admin_all on public.restart_merch_products;
-create policy restart_merch_products_admin_all
-on public.restart_merch_products for all to authenticated
-using ((select private.restart_is_admin()))
-with check ((select private.restart_is_admin()));
-
 drop policy if exists restart_merch_products_public_read on public.restart_merch_products;
-create policy restart_merch_products_public_read
+drop policy if exists restart_merch_products_read on public.restart_merch_products;
+drop policy if exists restart_merch_products_admin_insert on public.restart_merch_products;
+drop policy if exists restart_merch_products_admin_update on public.restart_merch_products;
+drop policy if exists restart_merch_products_admin_delete on public.restart_merch_products;
+
+create policy restart_merch_products_read
 on public.restart_merch_products for select to anon,authenticated
 using (
-  is_active=true
-  and (sale_starts_at is null or now()>=sale_starts_at)
-  and (sale_ends_at is null or now()<=sale_ends_at)
+  (
+    is_active=true
+    and (sale_starts_at is null or now()>=sale_starts_at)
+    and (sale_ends_at is null or now()<=sale_ends_at)
+  )
+  or (select private.restart_is_admin())
 );
-
-drop policy if exists restart_merch_variants_admin_all on public.restart_merch_variants;
-create policy restart_merch_variants_admin_all
-on public.restart_merch_variants for all to authenticated
+create policy restart_merch_products_admin_insert
+on public.restart_merch_products for insert to authenticated
+with check ((select private.restart_is_admin()));
+create policy restart_merch_products_admin_update
+on public.restart_merch_products for update to authenticated
 using ((select private.restart_is_admin()))
 with check ((select private.restart_is_admin()));
+create policy restart_merch_products_admin_delete
+on public.restart_merch_products for delete to authenticated
+using ((select private.restart_is_admin()));
 
+drop policy if exists restart_merch_variants_admin_all on public.restart_merch_variants;
 drop policy if exists restart_merch_variants_public_read on public.restart_merch_variants;
-create policy restart_merch_variants_public_read
+drop policy if exists restart_merch_variants_read on public.restart_merch_variants;
+drop policy if exists restart_merch_variants_admin_insert on public.restart_merch_variants;
+drop policy if exists restart_merch_variants_admin_update on public.restart_merch_variants;
+drop policy if exists restart_merch_variants_admin_delete on public.restart_merch_variants;
+
+create policy restart_merch_variants_read
 on public.restart_merch_variants for select to anon,authenticated
 using (
-  is_active=true
-  and exists(
-    select 1 from public.restart_merch_products p
-    where p.id=product_id
-      and p.is_active=true
-      and (p.sale_starts_at is null or now()>=p.sale_starts_at)
-      and (p.sale_ends_at is null or now()<=p.sale_ends_at)
+  (
+    is_active=true
+    and exists(
+      select 1 from public.restart_merch_products p
+      where p.id=product_id
+        and p.is_active=true
+        and (p.sale_starts_at is null or now()>=p.sale_starts_at)
+        and (p.sale_ends_at is null or now()<=p.sale_ends_at)
+    )
   )
+  or (select private.restart_is_admin())
 );
+create policy restart_merch_variants_admin_insert
+on public.restart_merch_variants for insert to authenticated
+with check ((select private.restart_is_admin()));
+create policy restart_merch_variants_admin_update
+on public.restart_merch_variants for update to authenticated
+using ((select private.restart_is_admin()))
+with check ((select private.restart_is_admin()));
+create policy restart_merch_variants_admin_delete
+on public.restart_merch_variants for delete to authenticated
+using ((select private.restart_is_admin()));
 
 drop policy if exists restart_merch_order_items_admin_all on public.restart_merch_order_items;
 create policy restart_merch_order_items_admin_all
