@@ -189,7 +189,7 @@ function renderRouteAnimationSection(p,flags){
 async function ensureRouteAnimationDeps(){
   if(!ROUTES.length)return false;
   if(!document.querySelector('link[data-restart-route-css]')){
-    const l=document.createElement('link');l.rel='stylesheet';l.href='route-animation.css?v=1.1.0';l.dataset.restartRouteCss='1';document.head.appendChild(l);
+    const l=document.createElement('link');l.rel='stylesheet';l.href='route-animation.css?v=1.2.0';l.dataset.restartRouteCss='1';document.head.appendChild(l);
   }
   if(!window.maplibregl){
     try{
@@ -207,7 +207,7 @@ async function ensureRouteAnimationDeps(){
     await new Promise((resolve,reject)=>{
       let sc=document.querySelector('script[data-restart-route-js]');
       if(sc){if(window.RestartRouteAnimation)return resolve();sc.addEventListener('load',resolve,{once:true});sc.addEventListener('error',reject,{once:true});return}
-      sc=document.createElement('script');sc.src='route-animation.js?v=1.1.0';sc.dataset.restartRouteJs='1';sc.onload=resolve;sc.onerror=()=>reject(new Error('Route module load failed'));document.head.appendChild(sc);
+      sc=document.createElement('script');sc.src='route-animation.js?v=1.2.0';sc.dataset.restartRouteJs='1';sc.onload=resolve;sc.onerror=()=>reject(new Error('Route module load failed'));document.head.appendChild(sc);
     });
   }
   return !!window.RestartRouteAnimation;
