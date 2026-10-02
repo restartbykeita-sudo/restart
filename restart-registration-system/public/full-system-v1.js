@@ -4,6 +4,7 @@ const baseRenderEventPreview=renderEventPreview;
 const baseRenderRunnerForms=renderRunnerForms;
 const baseRefreshPrice=refreshPrice;
 const baseTotalPrice=totalPrice;
+const baseMakeSchedule=makeSchedule;
 const baseCurrentCatPrice=currentCatPrice;
 const baseLangs=langs;
 const basePreviewMedia=previewMedia;
@@ -371,7 +372,22 @@ async function getFullQuote(silent=true){
   return data;
 }
 
-totalPrice=function(){return FULL_QUOTE?Number(FULL_QUOTE.total_amount_thb||0):(baseTotalPrice()+localMerchTotal())};
+let SCHEDULE_REG_ONLY=false;
+totalPrice=function(){
+  if(SCHEDULE_REG_ONLY)return FULL_QUOTE?Number(FULL_QUOTE.registration_amount_thb??FULL_QUOTE.total_amount_thb??0):baseTotalPrice();
+  return FULL_QUOTE?Number(FULL_QUOTE.total_amount_thb||0):(baseTotalPrice()+localMerchTotal())
+};
+makeSchedule=function(){
+  const merch=FULL_QUOTE?Number(FULL_QUOTE.merchandise_amount_thb||0):localMerchTotal();
+  SCHEDULE_REG_ONLY=true;
+  let rows;
+  try{rows=baseMakeSchedule()}finally{SCHEDULE_REG_ONLY=false}
+  if(merch>0){
+    if(!rows.length)rows=[{installment_no:1,amount_due_thb:merch,due_at:null}];
+    else rows[0]={...rows[0],amount_due_thb:Math.round((Number(rows[0].amount_due_thb||0)+merch)*100)/100};
+  }
+  return rows
+};
 
 refreshPrice=function(){
   FULL_QUOTE=null;
