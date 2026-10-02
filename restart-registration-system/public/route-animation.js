@@ -63,6 +63,11 @@ function cpLabel(pt,t){
  return pt.code||t.checkpoint
 }
 function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function mercatorWorld(lat,lon){
+ const clamped=clamp(Number(lat),-85.05112878,85.05112878),x=(Number(lon)+180)/360;
+ const s=Math.sin(rad(clamped)),y=.5-Math.log((1+s)/(1-s))/(4*Math.PI);
+ return{x,y}
+}
 class RouteAnimation{
  constructor(root,route,coursePoints,opts={}){
   this.root=root;this.route=route;this.coursePoints=(coursePoints||[]).filter(x=>x.is_active!==false).sort((a,b)=>Number(a.distance_km)-Number(b.distance_km));this.lang=opts.lang||'th';this.t=I18N[this.lang]||I18N.en;
@@ -135,25 +140,43 @@ class RouteAnimation{
   })
  }
  initFallback(){
-  const pts=this.state.points,midLat=pts.reduce((a,p)=>a+p.lat,0)/pts.length,cos=Math.cos(midLat*Math.PI/180);
-  const xs=pts.map(p=>p.lon*cos),ys=pts.map(p=>p.lat);
-  const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
-  const pad=.05,spanX=Math.max(.000001,maxX-minX),spanY=Math.max(.000001,maxY-minY);
-  const xy=p=>({x:60+((p.lon*cos-minX)/spanX)*880,y:60+(1-(p.lat-minY)/spanY)*500});
+  const pts=this.state.points,W=1000,H=620,pad=54;
+  const worlds=pts.map(p=>mercatorWorld(p.lat,p.lon));
+  const minWX=Math.min(...worlds.map(p=>p.x)),maxWX=Math.max(...worlds.map(p=>p.x));
+  const minWY=Math.min(...worlds.map(p=>p.y)),maxWY=Math.max(...worlds.map(p=>p.y));
+  const spanWX=Math.max(1e-9,maxWX-minWX),spanWY=Math.max(1e-9,maxWY-minWY);
+  let z=Math.floor(Math.log2(Math.min((W-pad*2)/(spanWX*256),(H-pad*2)/(spanWY*256))));
+  z=Math.max(2,Math.min(18,Number.isFinite(z)?z:13));
+  const n=2**z;
+  const worldPx=p=>({x:p.x*n*256,y:p.y*n*256});
+  const pMin=worldPx({x:minWX,y:minWY}),pMax=worldPx({x:maxWX,y:maxWY});
+  const spanPX=Math.max(1,pMax.x-pMin.x),spanPY=Math.max(1,pMax.y-pMin.y);
+  const scale=Math.min((W-pad*2)/spanPX,(H-pad*2)/spanPY);
+  const offsetX=(W-spanPX*scale)/2-pMin.x*scale;
+  const offsetY=(H-spanPY*scale)/2-pMin.y*scale;
+  const xy=p=>{const w=worldPx(mercatorWorld(p.lat,p.lon));return{x:w.x*scale+offsetX,y:w.y*scale+offsetY}};
+  const minTX=Math.floor(pMin.x/256)-1,maxTX=Math.floor(pMax.x/256)+1;
+  const minTY=Math.max(0,Math.floor(pMin.y/256)-1),maxTY=Math.min(n-1,Math.floor(pMax.y/256)+1);
+  let tiles='';
+  for(let ty=minTY;ty<=maxTY;ty++)for(let tx=minTX;tx<=maxTX;tx++){
+    const wrapped=((tx%n)+n)%n,x=tx*256*scale+offsetX,y=ty*256*scale+offsetY,size=256*scale;
+    tiles+='<image href="https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/'+z+'/'+ty+'/'+wrapped+'" x="'+x.toFixed(2)+'" y="'+y.toFixed(2)+'" width="'+(size+1).toFixed(2)+'" height="'+(size+1).toFixed(2)+'" preserveAspectRatio="none"/>';
+  }
   const all=pts.map(p=>{const q=xy(p);return q.x.toFixed(2)+','+q.y.toFixed(2)}).join(' ');
+  this.state.is3D=false;
   this.mapEl.classList.add('is-svg-fallback');
-  this.mapEl.classList.toggle('is-3d',this.state.is3D);
-  this.mapEl.classList.toggle('is-terrain',this.state.topo);
+  this.mapEl.classList.remove('is-3d','is-terrain');
   this.mapEl.innerHTML='<svg class="rr-route-fallback-svg" viewBox="0 0 1000 620" preserveAspectRatio="xMidYMid meet">'+
-   '<defs><linearGradient id="rrRouteGlow" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#cc59e3"/><stop offset="55%" stop-color="#ff4d8d"/><stop offset="100%" stop-color="#ffb24d"/></linearGradient><radialGradient id="rrTerrainBg" cx="72%" cy="18%" r="90%"><stop offset="0%" stop-color="#244c45"/><stop offset="52%" stop-color="#172a2a"/><stop offset="100%" stop-color="#101117"/></radialGradient><filter id="rrGlow"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>'+
+   '<defs><linearGradient id="rrRouteGlow" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#cc59e3"/><stop offset="55%" stop-color="#ff4d8d"/><stop offset="100%" stop-color="#ffb24d"/></linearGradient><filter id="rrGlow"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>'+
    '<rect class="rr-fallback-bg" width="1000" height="620" fill="#101117"/>'+
-   '<g class="rr-fallback-grid" opacity=".16">'+Array.from({length:12},(_,i)=>'<line x1="0" y1="'+(50+i*48)+'" x2="1000" y2="'+(50+i*48)+'" stroke="#fff" stroke-width="1"/>').join('')+'</g>'+
-   '<g class="rr-fallback-topo" opacity=".28">'+Array.from({length:9},(_,i)=>'<ellipse cx="'+(220+i*72)+'" cy="'+(330-(i%3)*48)+'" rx="'+(110+i*14)+'" ry="'+(58+i*10)+'" fill="none" stroke="#b8d3b2" stroke-width="2"/>').join('')+'</g>'+
+   '<g class="rr-fallback-grid" opacity=".12">'+Array.from({length:12},(_,i)=>'<line x1="0" y1="'+(50+i*48)+'" x2="1000" y2="'+(50+i*48)+'" stroke="#fff" stroke-width="1"/>').join('')+'</g>'+
+   '<g class="rr-fallback-satellite">'+tiles+'<rect width="1000" height="620" fill="rgba(0,0,0,.10)"/></g>'+
    '<polyline points="'+all+'" fill="none" stroke="#090a0e" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>'+
-   '<polyline points="'+all+'" fill="none" stroke="url(#rrRouteGlow)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity=".88"/>'+
+   '<polyline points="'+all+'" fill="none" stroke="url(#rrRouteGlow)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity=".92"/>'+
    '<polyline class="rr-fallback-passed" points="" fill="none" stroke="#ffb24d" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" filter="url(#rrGlow)"/>'+
    '<g class="rr-fallback-markers"></g>'+
    '<circle class="rr-fallback-runner-halo" r="18" fill="rgba(255,77,141,.22)"/><circle class="rr-fallback-runner" r="9" fill="#fff" stroke="#ff4d8d" stroke-width="6"/>'+
+   '<text class="rr-fallback-attribution" x="984" y="604" text-anchor="end">Satellite © Esri, Maxar, Earthstar Geographics</text>'+
    '</svg>';
   const svg=this.mapEl.querySelector('svg'),markers=svg.querySelector('.rr-fallback-markers');
   const addMarker=(p,label,kind)=>{
@@ -163,7 +186,8 @@ class RouteAnimation{
   };
   addMarker(pts[0],this.t.start,'start');addMarker(pts[pts.length-1],this.t.finish,'finish');
   this.coursePoints.forEach(cp=>{if(Number(cp.distance_km)*1000>this.state.totalDistance)return;const p=pointAt(this.state,Number(cp.distance_km)*1000/this.state.totalDistance),q=xy(p),g=document.createElementNS('http://www.w3.org/2000/svg','g');g.setAttribute('transform','translate('+q.x+' '+q.y+')');g.setAttribute('class','rr-fallback-cp');g.innerHTML='<circle r="13"></circle><text y="-20" text-anchor="middle">'+escapeHtml(cpLabel(cp,this.t))+'</text>';g.style.cursor='pointer';g.addEventListener('click',()=>this.showPoint(cp,false));markers.appendChild(g)});
-  this.state.fallback={xy,svg,passed:svg.querySelector('.rr-fallback-passed'),runner:svg.querySelector('.rr-fallback-runner'),halo:svg.querySelector('.rr-fallback-runner-halo')};
+  this.state.fallback={xy,svg,passed:svg.querySelector('.rr-fallback-passed'),runner:svg.querySelector('.rr-fallback-runner'),halo:svg.querySelector('.rr-fallback-runner-halo'),satellite:true,real3D:false};
+  this.updateModeButtons();
   this.update(false)
  }
  addCoursePoints(){
@@ -225,12 +249,16 @@ class RouteAnimation{
   const terrainBtn=this.root.querySelector('[data-a="terrain"]');
   const viewBtn=this.root.querySelector('[data-a="view"]');
   if(terrainBtn){
+   terrainBtn.disabled=false;
    terrainBtn.classList.toggle('is-on',!!this.state.topo);
    terrainBtn.textContent=this.t.terrain+(this.state.topo?' ✓':'');
   }
   if(viewBtn){
-   viewBtn.classList.toggle('is-on',!!this.state.is3D);
-   viewBtn.textContent=this.state.is3D?'3D':'2D';
+   const noReal3D=!!this.state.fallback;
+   viewBtn.disabled=noReal3D;
+   viewBtn.classList.toggle('is-on',!!this.state.is3D&&!noReal3D);
+   viewBtn.textContent=noReal3D?(this.lang==='th'?'3D ต้องใช้ WebGL':'3D needs WebGL'):(this.state.is3D?'3D':'2D');
+   viewBtn.title=noReal3D?(this.lang==='th'?'อุปกรณ์นี้ไม่รองรับ 3D Terrain จริง จึงไม่แสดง 3D ปลอม':'Real 3D terrain requires WebGL'):'';
   }
  }
  toggleTerrain(){
@@ -245,13 +273,15 @@ class RouteAnimation{
   this.updateModeButtons();
  }
  toggleView(){
+  if(this.state.fallback){
+   this.state.is3D=false;
+   this.updateModeButtons();
+   return;
+  }
   this.state.is3D=!this.state.is3D;
   if(this.state.map){
    this.applyTerrainModel();
    this.state.map.easeTo({pitch:this.state.is3D?62:0,bearing:this.state.is3D?-18:0,duration:650});
-  }
-  if(this.state.fallback){
-   this.mapEl.classList.toggle('is-3d',this.state.is3D);
   }
   this.updateModeButtons();
  }
