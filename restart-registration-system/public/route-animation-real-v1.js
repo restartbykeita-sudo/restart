@@ -157,10 +157,12 @@ class RouteAnimation{
   const xy=p=>{const w=worldPx(mercatorWorld(p.lat,p.lon));return{x:w.x*scale+offsetX,y:w.y*scale+offsetY}};
   const minTX=Math.floor(pMin.x/256)-1,maxTX=Math.floor(pMax.x/256)+1;
   const minTY=Math.max(0,Math.floor(pMin.y/256)-1),maxTY=Math.min(n-1,Math.floor(pMax.y/256)+1);
-  let tiles='';
+  let tiles='',hillshadeTiles='';
   for(let ty=minTY;ty<=maxTY;ty++)for(let tx=minTX;tx<=maxTX;tx++){
     const wrapped=((tx%n)+n)%n,x=tx*256*scale+offsetX,y=ty*256*scale+offsetY,size=256*scale;
-    tiles+='<image href="https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/'+z+'/'+ty+'/'+wrapped+'" x="'+x.toFixed(2)+'" y="'+y.toFixed(2)+'" width="'+(size+1).toFixed(2)+'" height="'+(size+1).toFixed(2)+'" preserveAspectRatio="none"/>';
+    const pos='" x="'+x.toFixed(2)+'" y="'+y.toFixed(2)+'" width="'+(size+1).toFixed(2)+'" height="'+(size+1).toFixed(2)+'" preserveAspectRatio="none"/>';
+    tiles+='<image href="https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/'+z+'/'+ty+'/'+wrapped+pos;
+    hillshadeTiles+='<image href="https://services.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/'+z+'/'+ty+'/'+wrapped+pos;
   }
   const all=pts.map(p=>{const q=xy(p);return q.x.toFixed(2)+','+q.y.toFixed(2)}).join(' ');
   this.state.is3D=false;
@@ -170,7 +172,8 @@ class RouteAnimation{
    '<defs><linearGradient id="rrRouteGlow" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#cc59e3"/><stop offset="55%" stop-color="#ff4d8d"/><stop offset="100%" stop-color="#ffb24d"/></linearGradient><filter id="rrGlow"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>'+
    '<rect class="rr-fallback-bg" width="1000" height="620" fill="#101117"/>'+
    '<g class="rr-fallback-grid" opacity=".12">'+Array.from({length:12},(_,i)=>'<line x1="0" y1="'+(50+i*48)+'" x2="1000" y2="'+(50+i*48)+'" stroke="#fff" stroke-width="1"/>').join('')+'</g>'+
-   '<g class="rr-fallback-satellite">'+tiles+'<rect width="1000" height="620" fill="rgba(0,0,0,.10)"/></g>'+
+   '<g class="rr-fallback-satellite">'+tiles+'<rect width="1000" height="620" fill="rgba(0,0,0,.08)"/></g>'+
+   '<g class="rr-fallback-hillshade" opacity=".34" style="mix-blend-mode:multiply">'+hillshadeTiles+'</g>'+
    '<polyline points="'+all+'" fill="none" stroke="#090a0e" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>'+
    '<polyline points="'+all+'" fill="none" stroke="url(#rrRouteGlow)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity=".92"/>'+
    '<polyline class="rr-fallback-passed" points="" fill="none" stroke="#ffb24d" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" filter="url(#rrGlow)"/>'+
@@ -226,7 +229,20 @@ class RouteAnimation{
  toggle(){this.state.playing=!this.state.playing;this.root.querySelector('[data-a="play"]').innerHTML=this.state.playing?'❚❚ '+escapeHtml(this.t.pause):'▶ '+escapeHtml(this.t.play);if(this.state.playing){this.state.last=performance.now();this.loop(this.state.last)}}
  loop(now){if(!this.state.playing)return;const s=this.state;if(now<s.holdUntil){s.last=now;s.raf=requestAnimationFrame(t=>this.loop(t));return}const dt=Math.max(0,now-s.last);s.last=now;const duration=Math.max(10,Number(this.route.animation_duration_seconds||48))*1000;s.progress=clamp(s.progress+dt*s.speed/duration,0,1);this.update(true);if(s.progress>=1){s.playing=false;this.root.querySelector('[data-a="play"]').innerHTML='▶ '+escapeHtml(this.t.play);return}s.raf=requestAnimationFrame(t=>this.loop(t))}
  replay(){cancelAnimationFrame(this.state.raf);this.state.playing=false;this.state.progress=0;this.state.reached.clear();this.state.holdUntil=0;this.root.querySelector('[data-a="play"]').innerHTML='▶ '+escapeHtml(this.t.play);this.update(false);this.fit()}
- fit(){if(!this.state.points.length)return;if(!this.state.map)return;const b=new maplibregl.LngLatBounds();this.state.points.forEach(p=>b.extend([p.lon,p.lat]));this.state.follow=false;this.root.querySelector('[data-a="follow"]')?.classList.remove('is-on');this.state.map.fitBounds(b,{padding:window.innerWidth<700?44:70,pitch:this.state.is3D?36:0,bearing:this.state.is3D?-18:0,duration:700})}
+ fit(){
+  if(!this.state.points.length)return;
+  if(this.state.fallback){
+   const svg=this.state.fallback.svg;
+   if(svg){svg.setAttribute('viewBox','0 0 1000 620');svg.removeAttribute('style')}
+   return;
+  }
+  if(!this.state.map)return;
+  const b=new maplibregl.LngLatBounds();
+  this.state.points.forEach(p=>b.extend([p.lon,p.lat]));
+  this.state.follow=false;
+  this.root.querySelector('[data-a="follow"]')?.classList.remove('is-on');
+  this.state.map.fitBounds(b,{padding:window.innerWidth<700?44:70,pitch:this.state.is3D?36:0,bearing:this.state.is3D?-18:0,duration:700})
+ }
  applyBaseLayerMode(){
   const map=this.state.map;
   if(!map)return;
@@ -248,6 +264,8 @@ class RouteAnimation{
  updateModeButtons(){
   const terrainBtn=this.root.querySelector('[data-a="terrain"]');
   const viewBtn=this.root.querySelector('[data-a="view"]');
+  const overviewBtn=this.root.querySelector('[data-a="overview"]');
+  if(overviewBtn)overviewBtn.hidden=!!this.state.fallback;
   if(terrainBtn){
    terrainBtn.disabled=false;
    terrainBtn.classList.toggle('is-on',!!this.state.topo);
