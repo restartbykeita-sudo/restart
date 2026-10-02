@@ -110,3 +110,25 @@ html[data-ui-theme="dark"] .rr-route-summary>div,html[data-ui-theme="dark"] .rr-
     transform:perspective(760px) rotateX(34deg) scale(1.06) translateY(-2%)
   }
 }
+/* Real satellite fallback v1.3 */
+.rr-fallback-satellite{display:none}
+.rr-route-map.is-svg-fallback.is-terrain .rr-fallback-satellite{display:block}
+.rr-route-map.is-svg-fallback.is-terrain .rr-fallback-grid{display:none}
+.rr-fallback-attribution{
+  fill:rgba(255,255,255,.72);
+  font-size:10px;
+  paint-order:stroke;
+  stroke:rgba(0,0,0,.58);
+  stroke-width:3px;
+  stroke-linejoin:round
+}
+.rr-route-map.is-svg-fallback .rr-route-fallback-svg{
+  transform:none!important;
+  filter:none!important
+}
+.rr-route-player button:disabled{
+  opacity:.46;
+  cursor:not-allowed;
+  transform:none!important
+}
+.rr-route-player button:disabled:hover{transform:none!important}
