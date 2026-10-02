@@ -370,7 +370,7 @@ function registrationSetupHTML(flags){
     '<label id="contactRunnerWrap" style="display:none">'+esc(g.contact)+'<select id="contactRunner"></select></label>'+
     '</div><div id="groupRuleHint" class="muted" style="margin-top:8px"></div></section>'
 }
-function baseFieldsFor(i){const fs=E.field_settings||{};const on=k=>fs[k]?.enabled!==false,req=k=>fs[k]?.required?' required':'';const rows=[];const titleMeta=baseMeta('title','prefix'),shirtMeta=baseMeta('shirt_size'),bloodMeta=baseMeta('blood_group');const id=k=>k+'_'+i;
+function baseFieldsFor(i){const fs=E.field_settings||{};const on=k=>fs[k]?.enabled!==false,req=k=>fs[k]?.required?' required':'';const rows=[];const titleMeta=baseMeta('title','prefix'),shirtMeta={options:Array.isArray(fs.shirt_size?.options)?fs.shirt_size.options:[]},bloodMeta=baseMeta('blood_group');const id=k=>k+'_'+i;
   if(on('title'))rows.push('<label>คำนำหน้า<select id="'+id('title')+'" data-rf="title"'+req('title')+'><option value="">—</option>'+optionTags(titleMeta,[{value:'mr',label:{th:'นาย',en:'Mr.',zh:'先生',ja:'Mr.',ru:'Г-н'}},{value:'ms',label:{th:'นางสาว',en:'Ms.',zh:'女士',ja:'Ms.',ru:'Г-жа'}},{value:'mrs',label:{th:'นาง',en:'Mrs.',zh:'女士',ja:'Mrs.',ru:'Г-жа'}}])+'</select></label>');
   if(on('first_name'))rows.push('<label>ชื่อ<input id="'+id('firstName')+'" data-rf="first_name"'+req('first_name')+'></label>');
   if(on('last_name'))rows.push('<label>นามสกุล<input id="'+id('lastName')+'" data-rf="last_name"'+req('last_name')+'></label>');
@@ -380,7 +380,7 @@ function baseFieldsFor(i){const fs=E.field_settings||{};const on=k=>fs[k]?.enabl
   if(on('id_document'))rows.push('<label>เลขบัตรประชาชน / Passport<input id="'+id('idDoc')+'" data-rf="id_document"'+req('id_document')+'></label>');
   if(on('phone'))rows.push('<label>เบอร์โทรศัพท์<input id="'+id('phone')+'" data-rf="phone" type="tel"'+req('phone')+'></label>');
   if(on('blood_group'))rows.push('<label>กรุ๊ปเลือด<select id="'+id('blood')+'" data-rf="blood_group"'+req('blood_group')+'><option value="">—</option>'+optionTags(bloodMeta,['A','B','AB','O'])+'</select></label>');
-  if(on('shirt_size')&&(E.feature_flags||{}).shirts!==false){if(shirtMeta?.options?.length)rows.push('<label>ขนาดเสื้อ<select id="'+id('shirt')+'" data-rf="shirt_size"'+req('shirt_size')+'><option value="">—</option>'+optionTags(shirtMeta)+'</select></label>');else rows.push('<label>ขนาดเสื้อ<input id="'+id('shirt')+'" data-rf="shirt_size"'+req('shirt_size')+'></label>')}
+  if(on('shirt_size')&&(E.feature_flags||{}).shirts!==false){if(shirtMeta?.options?.length)rows.push('<label>ขนาดเสื้อ<select id="'+id('shirt')+'" data-rf="shirt_size"'+req('shirt_size')+'><option value="">—</option>'+optionTags(shirtMeta)+'</select></label>');else rows.push('<label>ขนาดเสื้อ<input id="'+id('shirt')+'" data-rf="shirt_size"'+req('shirt_size')+' placeholder="ผู้จัดยังไม่ได้กำหนดรายการไซส์"></label>')}
   if(on('address'))rows.push('<label style="grid-column:1/-1">ที่อยู่<textarea id="'+id('address')+'" data-rf="address" rows="3"'+req('address')+'></textarea></label>');
   if(on('emergency_phone'))rows.push('<label>เบอร์โทรฉุกเฉิน<input id="'+id('emergencyPhone')+'" data-rf="emergency_phone" type="tel"'+req('emergency_phone')+'></label>');
   if(on('emergency_relation'))rows.push('<label>ความสัมพันธ์ผู้ติดต่อฉุกเฉิน<input id="'+id('emergencyRelation')+'" data-rf="emergency_relation"'+req('emergency_relation')+'></label>');
