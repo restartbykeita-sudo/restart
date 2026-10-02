@@ -47,7 +47,10 @@ async function init(){
   initThemeToggle();
   if(!slug)return listEvents();
   const{data:e,error}=await db.from('restart_events').select('*').eq('slug',slug).maybeSingle();
-  if(error||!e)return app.innerHTML='<section class="rr-card rr-empty">Event not found</section>';
+  if(error||!e){
+    history.replaceState({},'',location.pathname);
+    return listEvents();
+  }
   E=e;const eid=e.id;
   const results=await Promise.all([
     db.from('restart_race_categories').select('*').eq('event_id',eid).eq('is_active',true).order('sort_order'),
