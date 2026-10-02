@@ -210,7 +210,7 @@ async function ensureRouteAnimationDeps(){
     await new Promise((resolve,reject)=>{
       let sc=document.querySelector('script[data-restart-route-js]');
       if(sc){if(window.RestartRouteAnimation)return resolve();sc.addEventListener('load',resolve,{once:true});sc.addEventListener('error',reject,{once:true});return}
-      sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/gh/restartbykeita-sudo/restart@630a32e71aa36a30c93aecb6a02c46d4e3cf8d4e/restart-registration-system/public/route-animation-real-v1.js';sc.dataset.restartRouteJs='1';sc.onload=resolve;sc.onerror=()=>reject(new Error('Route module load failed'));document.head.appendChild(sc);
+      sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/gh/restartbykeita-sudo/restart@05bb7d4ec5ab83060e22b4378e6b07d0b224f7f4/restart-registration-system/public/route-animation-real-v1.js';sc.dataset.restartRouteJs='1';sc.onload=resolve;sc.onerror=()=>reject(new Error('Route module load failed'));document.head.appendChild(sc);
     });
   }
   return !!window.RestartRouteAnimation;
