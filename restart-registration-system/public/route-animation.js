@@ -2,11 +2,11 @@
 'use strict';
 const INSTANCES=new Set();
 const I18N={
- th:{route:'เส้นทางการแข่งขัน',distance:'ระยะทาง',ascent:'ไต่ขึ้นสะสม',descent:'ลงสะสม',high:'จุดสูงสุด',low:'จุดต่ำสุด',position:'ตำแหน่งบนเส้นทาง',elevation:'ความสูง',progress:'ความคืบหน้า',play:'เล่น',pause:'หยุด',replay:'เริ่มใหม่',follow:'ติดตาม',overview:'ดูทั้งหมด',terrain:'ภูมิประเทศ',view:'2D / 3D',fullscreen:'เต็มจอ',speed:'ความเร็ว',start:'START',finish:'FINISH',loading:'กำลังอ่าน GPX และเตรียมเส้นทาง…',error:'เปิดเส้นทางไม่สำเร็จ',remaining:'เหลือ',checkpoint:'CHECKPOINT',water:'จุดให้น้ำ',arrived:'ถึงจุดนี้แล้ว',km:'กม.'},
- en:{route:'Race Route',distance:'Distance',ascent:'Total ascent',descent:'Total descent',high:'Highest point',low:'Lowest point',position:'Route position',elevation:'Elevation',progress:'Progress',play:'Play',pause:'Pause',replay:'Replay',follow:'Follow',overview:'Overview',terrain:'Terrain',view:'2D / 3D',fullscreen:'Fullscreen',speed:'Speed',start:'START',finish:'FINISH',loading:'Reading GPX and preparing route…',error:'Unable to open route',remaining:'remaining',checkpoint:'CHECKPOINT',water:'WATER',arrived:'Reached this point',km:'km'},
- zh:{route:'比赛路线',distance:'距离',ascent:'累计爬升',descent:'累计下降',high:'最高点',low:'最低点',position:'路线位置',elevation:'海拔',progress:'进度',play:'播放',pause:'暂停',replay:'重播',follow:'跟随',overview:'全览',terrain:'地形',view:'2D / 3D',fullscreen:'全屏',speed:'速度',start:'起点',finish:'终点',loading:'正在读取 GPX…',error:'无法打开路线',remaining:'剩余',checkpoint:'检查点',water:'补水',arrived:'已到达',km:'公里'},
- ja:{route:'コース',distance:'距離',ascent:'累積上昇',descent:'累積下降',high:'最高地点',low:'最低地点',position:'現在位置',elevation:'標高',progress:'進捗',play:'再生',pause:'一時停止',replay:'リプレイ',follow:'追従',overview:'全体表示',terrain:'地形図',view:'2D / 3D',fullscreen:'全画面',speed:'速度',start:'START',finish:'FINISH',loading:'GPXを読み込み中…',error:'ルートを開けません',remaining:'残り',checkpoint:'CHECKPOINT',water:'給水',arrived:'到着',km:'km'},
- ru:{route:'Маршрут',distance:'Дистанция',ascent:'Набор высоты',descent:'Спуск',high:'Макс. высота',low:'Мин. высота',position:'Позиция',elevation:'Высота',progress:'Прогресс',play:'Старт',pause:'Пауза',replay:'Повтор',follow:'Следовать',overview:'Весь маршрут',terrain:'Рельеф',view:'2D / 3D',fullscreen:'Полный экран',speed:'Скорость',start:'START',finish:'FINISH',loading:'Чтение GPX…',error:'Не удалось открыть маршрут',remaining:'осталось',checkpoint:'CHECKPOINT',water:'ВОДА',arrived:'Точка достигнута',km:'км'}
+ th:{route:'เส้นทางการแข่งขัน',distance:'ระยะทาง',ascent:'ไต่ขึ้นสะสม',descent:'ลงสะสม',high:'จุดสูงสุด',low:'จุดต่ำสุด',position:'ตำแหน่งบนเส้นทาง',elevation:'ความสูง',progress:'ความคืบหน้า',play:'เล่น',pause:'หยุด',replay:'เริ่มใหม่',follow:'ติดตาม',overview:'ดูทั้งหมด',terrain:'ภูมิประเทศจริง',view:'2D / 3D',fullscreen:'เต็มจอ',speed:'ความเร็ว',start:'START',finish:'FINISH',loading:'กำลังอ่าน GPX และเตรียมเส้นทาง…',error:'เปิดเส้นทางไม่สำเร็จ',remaining:'เหลือ',checkpoint:'CHECKPOINT',water:'จุดให้น้ำ',arrived:'ถึงจุดนี้แล้ว',km:'กม.'},
+ en:{route:'Race Route',distance:'Distance',ascent:'Total ascent',descent:'Total descent',high:'Highest point',low:'Lowest point',position:'Route position',elevation:'Elevation',progress:'Progress',play:'Play',pause:'Pause',replay:'Replay',follow:'Follow',overview:'Overview',terrain:'Satellite terrain',view:'2D / 3D',fullscreen:'Fullscreen',speed:'Speed',start:'START',finish:'FINISH',loading:'Reading GPX and preparing route…',error:'Unable to open route',remaining:'remaining',checkpoint:'CHECKPOINT',water:'WATER',arrived:'Reached this point',km:'km'},
+ zh:{route:'比赛路线',distance:'距离',ascent:'累计爬升',descent:'累计下降',high:'最高点',low:'最低点',position:'路线位置',elevation:'海拔',progress:'进度',play:'播放',pause:'暂停',replay:'重播',follow:'跟随',overview:'全览',terrain:'真实地形',view:'2D / 3D',fullscreen:'全屏',speed:'速度',start:'起点',finish:'终点',loading:'正在读取 GPX…',error:'无法打开路线',remaining:'剩余',checkpoint:'检查点',water:'补水',arrived:'已到达',km:'公里'},
+ ja:{route:'コース',distance:'距離',ascent:'累積上昇',descent:'累積下降',high:'最高地点',low:'最低地点',position:'現在位置',elevation:'標高',progress:'進捗',play:'再生',pause:'一時停止',replay:'リプレイ',follow:'追従',overview:'全体表示',terrain:'衛星地形',view:'2D / 3D',fullscreen:'全画面',speed:'速度',start:'START',finish:'FINISH',loading:'GPXを読み込み中…',error:'ルートを開けません',remaining:'残り',checkpoint:'CHECKPOINT',water:'給水',arrived:'到着',km:'km'},
+ ru:{route:'Маршрут',distance:'Дистанция',ascent:'Набор высоты',descent:'Спуск',high:'Макс. высота',low:'Мин. высота',position:'Позиция',elevation:'Высота',progress:'Прогресс',play:'Старт',pause:'Пауза',replay:'Повтор',follow:'Следовать',overview:'Весь маршрут',terrain:'Спутниковый рельеф',view:'2D / 3D',fullscreen:'Полный экран',speed:'Скорость',start:'START',finish:'FINISH',loading:'Чтение GPX…',error:'Не удалось открыть маршрут',remaining:'осталось',checkpoint:'CHECKPOINT',water:'ВОДА',arrived:'Точка достигнута',km:'км'}
 };
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const rad=v=>v*Math.PI/180;
@@ -31,7 +31,19 @@ function pointAt(state,progress){
 }
 function line(coords){return{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:coords}}}
 function point(coords){return{type:'Feature',properties:{},geometry:{type:'Point',coordinates:coords}}}
-function style(){return{version:8,sources:{osm:{type:'raster',tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],tileSize:256,maxzoom:19,attribution:'© OpenStreetMap contributors'},topo:{type:'raster',tiles:['https://a.tile.opentopomap.org/{z}/{x}/{y}.png','https://b.tile.opentopomap.org/{z}/{x}/{y}.png','https://c.tile.opentopomap.org/{z}/{x}/{y}.png'],tileSize:256,maxzoom:17,attribution:'© OpenStreetMap contributors, SRTM | © OpenTopoMap'}},layers:[{id:'osm',type:'raster',source:'osm',paint:{'raster-saturation':-.22,'raster-brightness-max':.82,'raster-contrast':.12}},{id:'topo',type:'raster',source:'topo',layout:{visibility:'none'},paint:{'raster-saturation':-.08,'raster-brightness-max':.84,'raster-contrast':.12}}]}}
+function style(){return{
+ version:8,
+ sources:{
+  osm:{type:'raster',tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],tileSize:256,maxzoom:19,attribution:'© OpenStreetMap contributors'},
+  imagery:{type:'raster',tiles:['https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],tileSize:256,maxzoom:19,attribution:'Esri, Maxar, Earthstar Geographics, and the GIS User Community'},
+  'terrain-dem':{type:'raster-dem',tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],tileSize:256,maxzoom:15,encoding:'terrarium',attribution:'Elevation data © AWS Terrain Tiles'}
+ },
+ layers:[
+  {id:'osm',type:'raster',source:'osm',paint:{'raster-saturation':-.18,'raster-brightness-max':.88,'raster-contrast':.08}},
+  {id:'imagery',type:'raster',source:'imagery',layout:{visibility:'none'},paint:{'raster-saturation':.08,'raster-contrast':.08,'raster-brightness-min':.03,'raster-brightness-max':.95}},
+  {id:'terrain-hillshade',type:'hillshade',source:'terrain-dem',layout:{visibility:'none'},paint:{'hillshade-exaggeration':.28,'hillshade-shadow-color':'#17201d','hillshade-highlight-color':'#f4ead0','hillshade-accent-color':'#655d4b'}}
+ ]
+}}
 function endpoint(map,label,coord,kind){
  const el=document.createElement('div');el.className='rr-route-endpoint '+kind;el.textContent=label;
  return new maplibregl.Marker({element:el,anchor:'center'}).setLngLat(coord).addTo(map)
@@ -116,7 +128,10 @@ class RouteAnimation{
    this.state.map.addLayer({id:'runner',type:'circle',source:'runner',paint:{'circle-radius':8,'circle-color':'#fff','circle-stroke-width':5,'circle-stroke-color':'#ff4d8d'}});
    endpoint(this.state.map,this.t.start,[p[0].lon,p[0].lat],'start');endpoint(this.state.map,this.t.finish,[p[p.length-1].lon,p[p.length-1].lat],'finish');
    if(this.route.show_km_markers!==false){for(let km=1;km<=Math.floor(this.state.totalDistance/1000);km++){if(this.coursePoints.some(cp=>Math.abs(Number(cp.distance_km)-km)<.2))continue;const x=pointAt(this.state,km*1000/this.state.totalDistance);kmMarker(this.state.map,km,[x.lon,x.lat])}}
-   this.addCoursePoints();this.fit();this.update(false)
+   this.addCoursePoints();
+   this.applyTerrainModel();
+   this.applyBaseLayerMode();
+   this.fit();this.update(false)
   })
  }
  initFallback(){
@@ -188,6 +203,24 @@ class RouteAnimation{
  loop(now){if(!this.state.playing)return;const s=this.state;if(now<s.holdUntil){s.last=now;s.raf=requestAnimationFrame(t=>this.loop(t));return}const dt=Math.max(0,now-s.last);s.last=now;const duration=Math.max(10,Number(this.route.animation_duration_seconds||48))*1000;s.progress=clamp(s.progress+dt*s.speed/duration,0,1);this.update(true);if(s.progress>=1){s.playing=false;this.root.querySelector('[data-a="play"]').innerHTML='▶ '+escapeHtml(this.t.play);return}s.raf=requestAnimationFrame(t=>this.loop(t))}
  replay(){cancelAnimationFrame(this.state.raf);this.state.playing=false;this.state.progress=0;this.state.reached.clear();this.state.holdUntil=0;this.root.querySelector('[data-a="play"]').innerHTML='▶ '+escapeHtml(this.t.play);this.update(false);this.fit()}
  fit(){if(!this.state.points.length)return;if(!this.state.map)return;const b=new maplibregl.LngLatBounds();this.state.points.forEach(p=>b.extend([p.lon,p.lat]));this.state.follow=false;this.root.querySelector('[data-a="follow"]')?.classList.remove('is-on');this.state.map.fitBounds(b,{padding:window.innerWidth<700?44:70,pitch:this.state.is3D?36:0,bearing:this.state.is3D?-18:0,duration:700})}
+ applyBaseLayerMode(){
+  const map=this.state.map;
+  if(!map)return;
+  if(map.getLayer('imagery'))map.setLayoutProperty('imagery','visibility',this.state.topo?'visible':'none');
+  if(map.getLayer('osm'))map.setLayoutProperty('osm','visibility',this.state.topo?'none':'visible');
+  if(map.getLayer('terrain-hillshade'))map.setLayoutProperty('terrain-hillshade','visibility',this.state.topo?'visible':'none');
+ }
+ applyTerrainModel(){
+  const map=this.state.map;
+  if(!map)return;
+  try{
+   if(this.state.is3D&&map.getSource('terrain-dem')){
+    map.setTerrain({source:'terrain-dem',exaggeration:1.28});
+   }else{
+    map.setTerrain(null);
+   }
+  }catch(err){console.warn('3D terrain unavailable',err)}
+ }
  updateModeButtons(){
   const terrainBtn=this.root.querySelector('[data-a="terrain"]');
   const viewBtn=this.root.querySelector('[data-a="view"]');
@@ -202,9 +235,9 @@ class RouteAnimation{
  }
  toggleTerrain(){
   this.state.topo=!this.state.topo;
-  if(this.state.map?.getLayer('topo')){
-   this.state.map.setLayoutProperty('topo','visibility',this.state.topo?'visible':'none');
-   this.state.map.setLayoutProperty('osm','visibility',this.state.topo?'none':'visible');
+  if(this.state.map){
+   this.applyBaseLayerMode();
+   this.applyTerrainModel();
   }
   if(this.state.fallback){
    this.mapEl.classList.toggle('is-terrain',this.state.topo);
@@ -214,7 +247,8 @@ class RouteAnimation{
  toggleView(){
   this.state.is3D=!this.state.is3D;
   if(this.state.map){
-   this.state.map.easeTo({pitch:this.state.is3D?48:0,bearing:this.state.is3D?-18:0,duration:500});
+   this.applyTerrainModel();
+   this.state.map.easeTo({pitch:this.state.is3D?62:0,bearing:this.state.is3D?-18:0,duration:650});
   }
   if(this.state.fallback){
    this.mapEl.classList.toggle('is-3d',this.state.is3D);
