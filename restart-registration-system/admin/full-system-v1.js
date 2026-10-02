@@ -411,6 +411,16 @@ async function deleteSponsor(id){
 
 renderRegistrations=async function(){
   await baseRenderRegistrations();
+  const{data:moneyRows}=await db.from('restart_registrations').select('merchandise_amount_thb,total_amount_thb').eq('event_id',state.event.id);
+  const merchTotal=(moneyRows||[]).reduce((s,x)=>s+Number(x.merchandise_amount_thb||0),0);
+  const stats=document.getElementById('regStats');
+  if(stats){
+    const cards=[...stats.querySelectorAll('.paybox')];
+    const last=cards[cards.length-1];
+    if(last?.querySelector('small'))last.querySelector('small').textContent='ยอดรวมสมัคร + เสื้อ';
+    const merch=document.createElement('div');merch.className='paybox';merch.innerHTML='<small>ยอดเสื้อซื้อเพิ่ม</small><div class="price">฿'+money(merchTotal)+'</div>';
+    if(last)stats.insertBefore(merch,last);else stats.append(merch);
+  }
   if((state.event.feature_flags||{}).export===false){
     [...document.querySelectorAll('#content button')].filter(b=>/Export CSV/i.test(b.textContent)).forEach(b=>b.remove());
   }
@@ -421,7 +431,7 @@ showRegistrationDetail=async function(id){
   if(error)return Swal.fire('โหลดรายละเอียดไม่ได้',error.message,'error');
   const ps=(r.restart_participants||[]).sort((a,b)=>a.runner_index-b.runner_index),bs=r.restart_beneficiaries||[],fs=(r.restart_followers||[]).sort((a,b)=>a.follower_index-b.follower_index),ms=r.restart_merch_order_items||[];
   const html='<div style="text-align:left"><p><b>'+esc(r.registration_code)+'</b> · '+registrationTypeText(r.registration_type)+(r.group_name?' · '+esc(r.group_name):'')+'</p>'+
-    '<div class="paybox"><b>ยอด</b><div>ก่อนส่วนลด ฿'+money(r.subtotal_amount_thb)+' · ส่วนลด ฿'+money(r.discount_amount_thb)+' · สุทธิ ฿'+money(r.total_amount_thb)+'</div></div>'+
+    '<div class="paybox"><b>สรุปยอด</b><div>ค่าสมัครก่อนส่วนลด ฿'+money(r.subtotal_amount_thb)+' · ส่วนลด ฿'+money(r.discount_amount_thb)+' · ค่าสมัครสุทธิ ฿'+money(Math.max(0,Number(r.subtotal_amount_thb||0)-Number(r.discount_amount_thb||0)))+'</div><div style="margin-top:5px">เสื้อซื้อเพิ่ม ฿'+money(r.merchandise_amount_thb||0)+' · <b>รวมทั้งสิ้น ฿'+money(r.total_amount_thb)+'</b></div></div>'+
     ps.map(p=>'<div class="paybox" style="margin:8px 0"><b>ผู้แข่งขัน '+p.runner_index+' · '+esc((p.first_name||'')+' '+(p.last_name||''))+'</b><div class="muted">ID/Passport: '+esc(p.id_document||'—')+' · โทร: '+esc(p.phone||'—')+' · เสื้อ: '+esc(p.shirt_size||'—')+'</div>'+(bs.filter(b=>b.runner_index===p.runner_index).length?'<div style="margin-top:6px"><small>ผู้รับผลประโยชน์: '+esc(bs.filter(b=>b.runner_index===p.runner_index).map(b=>b.full_name+' '+b.percentage+'%').join(', '))+'</small></div>':'')+'</div>').join('')+
     (fs.length?'<div class="paybox"><b>ผู้ติดตาม '+fs.length+' คน</b>'+fs.map(f=>'<div>'+f.follower_index+'. '+esc(f.full_name)+' · '+esc(f.id_document||'—')+' · '+esc(f.phone||'')+'</div>').join('')+'</div>':'')+
     (ms.length?'<div class="paybox"><b>เสื้อซื้อเพิ่ม · ฿'+money(r.merchandise_amount_thb||0)+'</b>'+ms.map(m=>'<div>'+esc(t(m.product_name_snapshot)||m.product_code_snapshot||'เสื้อ')+' · '+esc(m.size_label_snapshot)+' × '+m.qty+' · ฿'+money(m.total_price_thb)+' · '+merchStatusText(m.status)+'</div>').join('')+'</div>':'')+
