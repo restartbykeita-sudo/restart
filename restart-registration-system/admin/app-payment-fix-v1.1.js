@@ -173,22 +173,21 @@ async function deleteEvent(){
 }
 
 function renderFeatures(){
-  const f=state.event.feature_flags||{},min=Math.max(2,Number(f.team_min_members||3)),max=Math.max(min,Number(f.team_max_members||20));
+  const f=state.event.feature_flags||{},teamCount=Math.max(2,Math.min(100,Number(f.team_members_count||f.team_min_members||3)));
   const groupSettings='<div class="paybox" style="margin-top:16px"><h3>ตั้งค่าการสมัครคู่ / ทีม</h3><div class="grid2">'+
     '<label>สมัครคู่<small class="muted">เมื่อเปิด ระบบจะบังคับผู้แข่งขัน 2 คนต่อใบสมัคร</small><input value="2 คน" disabled></label>'+
+    '<label>จำนวนสมาชิกต่อทีม<small class="muted">Admin เป็นผู้กำหนด · ผู้สมัครเปลี่ยนจำนวนเองไม่ได้</small><input id="teamMembersCount" type="number" min="2" max="100" value="'+teamCount+'"></label>'+
     '<label>ชื่อทีมบังคับหรือไม่<select id="teamNameRequired"><option value="true" '+(f.team_name_required===false?'':'selected')+'>บังคับชื่อทีม</option><option value="false" '+(f.team_name_required===false?'selected':'')+'>ไม่บังคับ</option></select></label>'+
-    '<label>ทีมขั้นต่ำ<input id="teamMinMembers" type="number" min="2" max="100" value="'+min+'"></label>'+
-    '<label>ทีมสูงสุด<input id="teamMaxMembers" type="number" min="2" max="100" value="'+max+'"></label>'+
-    '</div><p class="muted" style="margin-top:10px">กติกา Package: ถ้า runner_count มากกว่า 1 ระบบจะบังคับจำนวนผู้แข่งขันให้ตรง Package · REPLACE = ราคาทั้งใบสมัคร/ทั้งคู่/ทั้งทีม · ADD = ราคารุ่น × จำนวนผู้แข่งขัน + ราคา Package เพิ่ม 1 ครั้ง</p></div>';
+    '</div><p class="muted" style="margin-top:10px">เมื่อเปิดสมัครทีม ระบบจะสร้างฟอร์มสมาชิกตามจำนวนที่กำหนดนี้พอดี และฝั่ง Server จะไม่รับใบสมัครที่จำนวนสมาชิกไม่ตรง · Package ที่ใช้กับทีมต้องตั้ง runner_count ให้เท่ากับจำนวนสมาชิกต่อทีม</p></div>';
   document.getElementById('content').innerHTML=card('เปิด / ปิดฟังก์ชัน','<p class="muted">ทุก Event ตั้งค่าแยกกันได้</p><div class="toggle-grid">'+Object.entries(featureLabels).map(([k,l])=>'<label class="toggle"><span>'+l+'</span><input type="checkbox" data-feature="'+k+'" '+(f[k]?'checked':'')+'></label>').join('')+'</div>'+groupSettings,'<button class="btn soft" onclick="setAllFeatures(true)">เปิดทั้งหมด</button><button class="btn soft" onclick="setAllFeatures(false)">ปิดทั้งหมด</button><button class="btn primary" onclick="saveFeatures()">บันทึก</button>')
 }
 function setAllFeatures(v){document.querySelectorAll('[data-feature]').forEach(x=>x.checked=v)}
 async function saveFeatures(){
   const f={...state.event.feature_flags};document.querySelectorAll('[data-feature]').forEach(x=>f[x.dataset.feature]=x.checked);
-  const min=Math.max(2,Number(teamMinMembers.value||3)),max=Math.min(100,Math.max(min,Number(teamMaxMembers.value||20)));
-  f.team_min_members=min;f.team_max_members=max;f.team_name_required=teamNameRequired.value!=='false';
+  const teamCount=Math.max(2,Math.min(100,Number(teamMembersCount.value||3)));
+  f.team_members_count=teamCount;delete f.team_min_members;delete f.team_max_members;f.team_name_required=teamNameRequired.value!=='false';
   const{data,error}=await db.from('restart_events').update({feature_flags:f}).eq('id',state.event.id).select().single();
-  if(error)return Swal.fire('บันทึกไม่สำเร็จ',error.message,'error');state.event=data;state.events=state.events.map(x=>x.id===data.id?data:x);Swal.fire({icon:'success',title:'บันทึกฟังก์ชันแล้ว',timer:1000,showConfirmButton:false});renderFeatures()
+  if(error)return Swal.fire('บันทึกไม่สำเร็จ',error.message,'error');state.event=data;state.events=state.events.map(x=>x.id===data.id?data:x);Swal.fire({icon:'success',title:'บันทึกฟังก์ชันแล้ว',text:'ทีมละ '+teamCount+' คน',timer:1200,showConfirmButton:false});renderFeatures()
 }
 async function renderCategories(){
   document.getElementById('content').innerHTML=card('รุ่นการแข่งขัน & ราคา','<p class="muted">ข้อมูลระยะ ราคา เวลา Start และ Cutoff จะถูกนำไปแสดงในหน้า Preview Event อัตโนมัติ</p><div id="catBox">กำลังโหลด…</div>','<button class="btn primary" onclick="categoryDialog()">+ เพิ่มรุ่น</button>');
