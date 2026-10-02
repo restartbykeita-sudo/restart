@@ -132,3 +132,9 @@ html[data-ui-theme="dark"] .rr-route-summary>div,html[data-ui-theme="dark"] .rr-
   transform:none!important
 }
 .rr-route-player button:disabled:hover{transform:none!important}
+/* Real 2.5D satellite hillshade + overview control v1.4 */
+.rr-fallback-hillshade{display:none;pointer-events:none}
+.rr-route-map.is-svg-fallback.is-terrain .rr-fallback-hillshade{display:block}
+.rr-route-map.is-svg-fallback.is-terrain .rr-fallback-satellite{display:block}
+.rr-route-map.is-svg-fallback.is-terrain .rr-fallback-grid{display:none}
+.rr-route-player [hidden]{display:none!important}
