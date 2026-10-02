@@ -465,6 +465,7 @@ declare
   v_schedule_total numeric := 0;
   v_bene_total numeric;
   v_bene_ids text[];
+  v_all_bene_ids text[] := array[]::text[];
   v_runner_id text;
   v_runner_ids text[] := array[]::text[];
   v_follower_id text;
@@ -585,8 +586,27 @@ begin
          (select count(distinct x) from unnest(v_bene_ids) x where x is not null) then
         raise exception 'DUPLICATE_BENEFICIARY_ID';
       end if;
+      if v_bene_ids is not null then
+        v_all_bene_ids := v_all_bene_ids || coalesce(
+          array(select x from unnest(v_bene_ids) x where x is not null),
+          array[]::text[]
+        );
+      end if;
     end if;
   end loop;
+
+  if coalesce((v_flags->>'insurance')::boolean,false) then
+    if exists(
+      select 1 from unnest(v_all_bene_ids) b
+      where b = any(v_runner_ids)
+    ) then
+      raise exception 'BENEFICIARY_ID_SAME_AS_RUNNER';
+    end if;
+    if (select count(*) from unnest(v_all_bene_ids) x) <>
+       (select count(distinct x) from unnest(v_all_bene_ids) x) then
+      raise exception 'DUPLICATE_BENEFICIARY_ID';
+    end if;
+  end if;
 
   v_quote:=private.restart_compute_quote(
     v_event_id,v_category_id,v_package_id,v_registration_type,v_runner_count,
@@ -620,19 +640,21 @@ begin
     if nullif(trim(coalesce(v_follower->>'full_name','')),'') is null then raise exception 'FOLLOWER_NAME_REQUIRED'; end if;
     v_follower_id:=private.restart_normalize_id(v_follower->>'id_document');
     if v_follower_id is null then raise exception 'FOLLOWER_ID_REQUIRED'; end if;
-    if v_follower_id=any(v_runner_ids) or v_follower_id=any(v_follower_ids) then raise exception 'DUPLICATE_FOLLOWER_ID'; end if;
+    if v_follower_id=any(v_runner_ids) or v_follower_id=any(v_follower_ids) or v_follower_id=any(v_all_bene_ids) then raise exception 'DUPLICATE_FOLLOWER_ID'; end if;
     v_follower_ids:=array_append(v_follower_ids,v_follower_id);
   end loop;
 
-  if coalesce((v_flags->>'capacity')::boolean,false) and v_event.capacity is not null then
-    select count(*) into v_existing_count
-    from public.restart_participants p
-    join public.restart_registrations r on r.id=p.registration_id
-    where p.event_id=v_event_id and r.status<>'CANCELLED';
+  if coalesce((v_flags->>'capacity')::boolean,false) then
+    if v_event.capacity is not null then
+      select count(*) into v_existing_count
+      from public.restart_participants p
+      join public.restart_registrations r on r.id=p.registration_id
+      where p.event_id=v_event_id and r.status<>'CANCELLED';
 
-    if v_existing_count + v_runner_count > v_event.capacity then
-      if coalesce((v_flags->>'waitlist')::boolean,false) then raise exception 'WAITLIST_AVAILABLE'; end if;
-      raise exception 'EVENT_CAPACITY_EXCEEDED';
+      if v_existing_count + v_runner_count > v_event.capacity then
+        if coalesce((v_flags->>'waitlist')::boolean,false) then raise exception 'WAITLIST_AVAILABLE'; end if;
+        raise exception 'EVENT_CAPACITY_EXCEEDED';
+      end if;
     end if;
 
     if v_category_id is not null and v_category.capacity is not null then
@@ -640,6 +662,7 @@ begin
       from public.restart_participants p
       join public.restart_registrations r on r.id=p.registration_id
       where p.event_id=v_event_id and r.category_id=v_category_id and r.status<>'CANCELLED';
+
       if v_existing_category_count + v_runner_count > v_category.capacity then
         if coalesce((v_flags->>'waitlist')::boolean,false) then raise exception 'WAITLIST_AVAILABLE'; end if;
         raise exception 'CATEGORY_CAPACITY_EXCEEDED';
@@ -985,6 +1008,8 @@ declare
   idx integer;
   new_id text;
   beneficiaries jsonb;
+  bene_ids text[];
+  all_runners jsonb;
   b jsonb;
 begin
   reg_id:=private.restart_authorize_registration(p_event_slug,p_registration_code,p_id_document,true);
@@ -1022,6 +1047,20 @@ begin
       emergency_relation=coalesce(nullif(trim(p_payload->>'emergency_relation'),''),p.emergency_relation)
     where p.registration_id=reg_id and p.runner_index=idx;
 
+    if r.category_id is not null then
+      select coalesce(jsonb_agg(jsonb_build_object(
+        'birth_date',p.birth_date,
+        'gender',p.gender
+      ) order by p.runner_index),'[]'::jsonb)
+      into all_runners
+      from public.restart_participants p
+      where p.registration_id=reg_id;
+
+      if not private.restart_category_eligible(r.category_id,all_runners,e.event_date_start) then
+        raise exception 'CATEGORY_NOT_ELIGIBLE';
+      end if;
+    end if;
+
     insert into public.restart_registration_audit(registration_id,action,actor,data)
     values(reg_id,'EDITED','PUBLIC',jsonb_build_object('runner_index',idx));
     return jsonb_build_object('ok',true,'status',r.status);
@@ -1057,9 +1096,44 @@ begin
       emergency_relation=nullif(trim(p_payload->>'emergency_relation'),'')
     where p.registration_id=reg_id and p.runner_index=idx;
 
+    if r.category_id is not null then
+      select coalesce(jsonb_agg(jsonb_build_object(
+        'birth_date',p.birth_date,
+        'gender',p.gender
+      ) order by p.runner_index),'[]'::jsonb)
+      into all_runners
+      from public.restart_participants p
+      where p.registration_id=reg_id;
+
+      if not private.restart_category_eligible(r.category_id,all_runners,e.event_date_start) then
+        raise exception 'CATEGORY_NOT_ELIGIBLE';
+      end if;
+    end if;
+
     if coalesce((e.feature_flags->>'insurance')::boolean,false) then
-      delete from public.restart_beneficiaries where registration_id=reg_id and runner_index=idx;
       beneficiaries:=coalesce(p_payload->'beneficiaries','[]'::jsonb);
+
+      select array_agg(private.restart_normalize_id(x->>'id_document'))
+      into bene_ids
+      from jsonb_array_elements(beneficiaries) x;
+
+      if bene_ids is not null and
+         (select count(*) from unnest(bene_ids) x where x is not null) <>
+         (select count(distinct x) from unnest(bene_ids) x where x is not null) then
+        raise exception 'DUPLICATE_BENEFICIARY_ID';
+      end if;
+
+      if bene_ids is not null and exists(
+        select 1
+        from public.restart_participants p3
+        where p3.registration_id=reg_id
+          and p3.id_normalized is not null
+          and p3.id_normalized = any(bene_ids)
+      ) then
+        raise exception 'BENEFICIARY_ID_SAME_AS_RUNNER';
+      end if;
+
+      delete from public.restart_beneficiaries where registration_id=reg_id and runner_index=idx;
       if coalesce((e.feature_flags->>'beneficiary_total_100')::boolean,true)
          and abs(coalesce((select sum((x->>'percentage')::numeric) from jsonb_array_elements(beneficiaries)x),0)-100)>0.001 then
         raise exception 'BENEFICIARY_TOTAL_MUST_BE_100';
