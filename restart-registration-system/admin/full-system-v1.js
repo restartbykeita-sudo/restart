@@ -3,6 +3,7 @@ const baseRender=render;
 const baseRenderFeatures=renderFeatures;
 const baseRenderShowcase=renderShowcase;
 const baseRenderRegistrations=renderRegistrations;
+const baseSaveFeatures=saveFeatures;
 
 function addFullNav(){
   const nav=document.getElementById('nav');if(!nav||nav.querySelector('[data-tab="marketing"]'))return;
@@ -41,6 +42,29 @@ renderFeatures=function(){
   root.append(wrap);
   document.getElementById('saveFullSystemSettings').onclick=saveFullSystemSettings;
   wrap.querySelectorAll('[data-translate-lang]').forEach(b=>b.onclick=()=>translationDialog(b.dataset.translateLang));
+};
+
+saveFeatures=async function(){
+  const getFlag=k=>document.querySelector('[data-feature="'+k+'"]');
+  const competition=getFlag('competition_categories');
+  const autoCategory=getFlag('auto_category');
+  const selfSelect=getFlag('self_select_category');
+  const fullPayment=getFlag('full_payment');
+  const installments=getFlag('installments');
+  const waitlist=getFlag('waitlist');
+  const capacity=getFlag('capacity');
+
+  if(competition?.checked&&selfSelect&&!selfSelect.checked&&autoCategory&&!autoCategory.checked){
+    autoCategory.checked=true;
+  }
+  if(fullPayment&&installments&&!fullPayment.checked&&!installments.checked){
+    fullPayment.checked=true;
+  }
+  if(waitlist?.checked&&capacity&&!capacity.checked){
+    capacity.checked=true;
+  }
+
+  return baseSaveFeatures();
 };
 
 async function saveFullSystemSettings(){
