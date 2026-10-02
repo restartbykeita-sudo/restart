@@ -58,20 +58,48 @@ async function collectEventSlipPaths(eventId){
   const out=[];(data||[]).forEach(r=>(r.restart_payment_schedule||[]).forEach(s=>(s.restart_payment_attempts||[]).forEach(a=>{if(a.slip_path)out.push(a.slip_path)})));
   return[...new Set(out)];
 }
+async function listStorageFilesRecursive(bucketName,prefix){
+  const bucket=db.storage.from(bucketName),files=[];
+  async function walk(path){
+    let offset=0;
+    while(true){
+      const{data,error}=await bucket.list(path,{limit:1000,offset,sortBy:{column:'name',order:'asc'}});
+      if(error)throw error;
+      const items=data||[];
+      for(const item of items){
+        if(!item?.name||item.name==='.emptyFolderPlaceholder')continue;
+        const full=path?path+'/'+item.name:item.name;
+        if(item.id===null)await walk(full);
+        else files.push(full);
+      }
+      if(items.length<1000)break;
+      offset+=items.length;
+    }
+  }
+  await walk(prefix);
+  return files;
+}
+async function removeStorageFiles(bucketName,paths,label,warnings){
+  const unique=[...new Set((paths||[]).filter(Boolean))];
+  for(let i=0;i<unique.length;i+=1000){
+    const chunk=unique.slice(i,i+1000);
+    const{error}=await db.storage.from(bucketName).remove(chunk);
+    if(error){warnings.push(label+': '+error.message);return}
+  }
+}
 async function cleanupEventStorage(eventId,slipPaths=[]){
   const warnings=[];
   try{
-    const bucket=db.storage.from('restart-event-media');
-    const{data,error}=await bucket.list(eventId,{limit:1000,sortBy:{column:'name',order:'asc'}});
-    if(error)warnings.push('Logo/Banner: '+error.message);
-    else{
-      const paths=(data||[]).filter(x=>x.name&&x.name!=='.emptyFolderPlaceholder').map(x=>eventId+'/'+x.name);
-      if(paths.length){const{error:rmError}=await bucket.remove(paths);if(rmError)warnings.push('Logo/Banner: '+rmError.message)}
-    }
-  }catch(e){warnings.push('Logo/Banner: '+(e.message||e))}
+    const mediaPaths=await listStorageFilesRecursive('restart-event-media',eventId);
+    await removeStorageFiles('restart-event-media',mediaPaths,'รูป Event / Logo / Banner / รูป CP',warnings);
+  }catch(e){warnings.push('รูป Event / Logo / Banner / รูป CP: '+(e.message||e))}
   try{
-    if(slipPaths.length){const{error}=await db.storage.from('restart-slips').remove(slipPaths);if(error)warnings.push('สลิป: '+error.message)}
-  }catch(e){warnings.push('สลิป: '+(e.message||e))}
+    const routePaths=await listStorageFilesRecursive('restart-route-files',eventId);
+    await removeStorageFiles('restart-route-files',routePaths,'ไฟล์ GPX Route',warnings);
+  }catch(e){warnings.push('ไฟล์ GPX Route: '+(e.message||e))}
+  try{
+    await removeStorageFiles('restart-slips',slipPaths,'สลิปชำระเงิน',warnings);
+  }catch(e){warnings.push('สลิปชำระเงิน: '+(e.message||e))}
   return warnings;
 }
 async function deleteEvent(){
