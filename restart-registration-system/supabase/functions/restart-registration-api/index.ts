@@ -178,6 +178,7 @@ async function notifyNewRegistration(args: {
   paymentMode: string;
   firstDue: number;
   slipPath: string | null;
+  merchandise?: Array<Record<string, unknown>>;
 }) {
   if (!asBool(args.flags, 'notifications', false)) return;
   const eventId = text(args.event.id);
@@ -192,6 +193,10 @@ async function notifyNewRegistration(args: {
   const categoryName = displayLabel(args.category?.name) || '-';
   const packageName = displayLabel(args.pkg?.name) || '-';
   const paymentText = args.paymentMode === 'INSTALLMENT' ? 'ผ่อนชำระ' : 'ชำระเต็มจำนวน';
+  const merchLines=(args.merchandise||[]).map(m =>
+    '• '+telegramEscape(displayLabel(m.product_name_snapshot)||text(m.product_code_snapshot)||'เสื้อ')+
+    ' · '+telegramEscape(text(m.size_label_snapshot))+' × '+Number(m.qty||0)
+  ).join('\n');
   const now = new Intl.DateTimeFormat('th-TH', {
     timeZone: 'Asia/Bangkok', dateStyle: 'medium', timeStyle: 'short',
   }).format(new Date());
@@ -204,6 +209,7 @@ async function notifyNewRegistration(args: {
     '🏷 <b>รุ่น:</b> ' + telegramEscape(categoryName) + '\n' +
     '📦 <b>Package:</b> ' + telegramEscape(packageName) + '\n' +
     '💰 <b>ยอดรวม:</b> ฿' + moneyTHB(args.total) + '\n' +
+    (merchLines ? '👕 <b>เสื้อซื้อเพิ่ม</b>\n' + merchLines + '\n' : '') +
     '💳 <b>การชำระ:</b> ' + paymentText + '\n' +
     '🧾 <b>ยอดงวดแรก:</b> ฿' + moneyTHB(args.firstDue) + '\n' +
     '📎 <b>สลิป:</b> ' + (args.slipPath ? 'แนบแล้ว · รอตรวจสอบ' : 'ไม่มีสลิป') + '\n' +
@@ -635,14 +641,17 @@ async function fullSystemRpc(req: Request, origin: string, action: string) {
 
   if (action === 'price-quote') {
     const q = body || {};
-    result = await db.rpc('restart_price_quote', {
-      p_event_id: text(q.event_id),
-      p_category_id: text(q.category_id) || null,
-      p_package_id: text(q.package_id) || null,
-      p_registration_type: text(q.registration_type || 'SINGLE'),
-      p_runner_count: Number(q.runner_count || 1),
-      p_discount_code: text(q.discount_code) || null,
-      p_runners: Array.isArray(q.runners) ? q.runners : [],
+    result = await db.rpc('restart_price_quote_full', {
+      p_payload: {
+        event_id: text(q.event_id),
+        category_id: text(q.category_id) || null,
+        package_id: text(q.package_id) || null,
+        registration_type: text(q.registration_type || 'SINGLE'),
+        runner_count: Number(q.runner_count || 1),
+        discount_code: text(q.discount_code) || null,
+        runners: Array.isArray(q.runners) ? q.runners : [],
+        merch_items: Array.isArray(q.merch_items) ? q.merch_items : [],
+      },
     });
   } else if (action === 'create-registration') {
     result = await db.rpc('restart_create_registration', { p_payload: body.payload || {} });
@@ -684,7 +693,7 @@ async function fullSystemRpc(req: Request, origin: string, action: string) {
         ? text(body?.slip_path)
         : '';
     if (slipPath) await db.storage.from('restart-slips').remove([slipPath]).catch(() => {});
-    const knownStatus = /NOT_FOUND|DISABLED|REQUIRED|INVALID|MISMATCH|EXCEEDED|CLOSED|NOT_OPEN|ALREADY|WRONG|DUPLICATE|FULL|WAITLIST|ELIGIBLE|PAID|PENDING|LIMIT/.test(text(result.error.message)) ? 409 : 400;
+    const knownStatus = /NOT_FOUND|DISABLED|REQUIRED|INVALID|MISMATCH|EXCEEDED|CLOSED|NOT_OPEN|ALREADY|WRONG|DUPLICATE|FULL|WAITLIST|ELIGIBLE|PAID|PENDING|LIMIT|SHIRT/.test(text(result.error.message)) ? 409 : 400;
     fail(knownStatus, text(result.error.message || 'ทำรายการไม่สำเร็จ'));
   }
   if (action === 'create-registration' && result.data?.id && result.data?.registration_code) {
@@ -726,13 +735,14 @@ async function notifyRegistrationRecord(registrationId: string, registrationCode
   if (!claimed.data) return { ok: true, already_sent: true };
 
   try {
-    const [participants, category, pkg, schedules] = await Promise.all([
+    const [participants, category, pkg, schedules, merchandise] = await Promise.all([
       db.from('restart_participants').select('first_name,last_name').eq('registration_id', registrationId).order('runner_index'),
       reg.category_id ? db.from('restart_race_categories').select('name').eq('id', reg.category_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
       reg.package_id ? db.from('restart_packages').select('name').eq('id', reg.package_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
       db.from('restart_payment_schedule').select('id,amount_due_thb').eq('registration_id', registrationId).order('installment_no').limit(1),
+      db.from('restart_merch_order_items').select('product_name_snapshot,product_code_snapshot,size_label_snapshot,qty').eq('registration_id', registrationId).neq('status','CANCELLED').order('created_at'),
     ]);
-    if (participants.error || category.error || pkg.error || schedules.error) throw new Error('โหลดข้อมูลแจ้งเตือนไม่สำเร็จ');
+    if (participants.error || category.error || pkg.error || schedules.error || merchandise.error) throw new Error('โหลดข้อมูลแจ้งเตือนไม่สำเร็จ');
 
     const firstScheduleId = schedules.data?.[0]?.id || null;
     const firstDue = Number(schedules.data?.[0]?.amount_due_thb || 0);
@@ -752,6 +762,7 @@ async function notifyRegistrationRecord(registrationId: string, registrationCode
       paymentMode: String(reg.payment_mode || 'FULL'),
       firstDue,
       slipPath,
+      merchandise: (merchandise.data || []) as Array<Record<string, unknown>>,
     });
     return { ok: true };
   } catch (error) {
