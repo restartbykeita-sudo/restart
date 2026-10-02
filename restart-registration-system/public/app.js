@@ -470,7 +470,7 @@ function collectRunner(i){
 }
 function registrationErrorMessage(err){
   const s=String(err?.message||err||'');
-  const map={PAIR_REGISTRATION_DISABLED:'Event นี้ไม่ได้เปิดสมัครคู่',PAIR_REQUIRES_TWO_RUNNERS:'สมัครคู่ต้องมีผู้แข่งขัน 2 คน',TEAM_REGISTRATION_DISABLED:'Event นี้ไม่ได้เปิดสมัครทีม',TEAM_SIZE_INVALID:'จำนวนสมาชิกทีมไม่ถูกต้อง',TEAM_NAME_REQUIRED:'กรุณาระบุชื่อทีม',PACKAGE_RUNNER_COUNT_MISMATCH:'จำนวนผู้แข่งขันไม่ตรงกับ Package',DUPLICATE_RUNNER_ID:'เลขบัตรประชาชน / Passport ของผู้แข่งขันในใบสมัครซ้ำกัน',RUNNER_ALREADY_REGISTERED:'มีผู้แข่งขันคนนี้สมัคร Event นี้แล้ว',EVENT_CAPACITY_EXCEEDED:'จำนวนผู้สมัครเต็มหรือจำนวนที่เหลือไม่พอสำหรับคู่/ทีมนี้',PRICE_MISMATCH:'ยอดชำระไม่ตรงกับราคาที่ระบบคำนวณ',BENEFICIARY_TOTAL_MUST_BE_100:'ผู้รับผลประโยชน์ของผู้แข่งขันแต่ละคนต้องรวม 100%'};
+  const map={PAIR_REGISTRATION_DISABLED:'Event นี้ไม่ได้เปิดสมัครคู่',PAIR_REQUIRES_TWO_RUNNERS:'สมัครคู่ต้องมีผู้แข่งขัน 2 คน',TEAM_REGISTRATION_DISABLED:'Event นี้ไม่ได้เปิดสมัครทีม',TEAM_SIZE_INVALID:'จำนวนสมาชิกทีมไม่ถูกต้อง',TEAM_NAME_REQUIRED:'กรุณาระบุชื่อทีม',PACKAGE_RUNNER_COUNT_MISMATCH:'จำนวนผู้แข่งขันไม่ตรงกับ Package',DUPLICATE_RUNNER_ID:'เลขบัตรประชาชน / Passport ของผู้แข่งขันในใบสมัครซ้ำกัน',RUNNER_ALREADY_REGISTERED:'มีผู้แข่งขันคนนี้สมัคร Event นี้แล้ว',EVENT_CAPACITY_EXCEEDED:'จำนวนผู้สมัครเต็มหรือจำนวนที่เหลือไม่พอสำหรับคู่/ทีมนี้',PRICE_MISMATCH:'ยอดชำระไม่ตรงกับราคาที่ระบบคำนวณ',BENEFICIARY_TOTAL_MUST_BE_100:'ผู้รับผลประโยชน์ของผู้แข่งขันแต่ละคนต้องรวม 100%',BENEFICIARY_ID_SAME_AS_RUNNER:'เลขบัตร/Passport ผู้รับผลประโยชน์ห้ามซ้ำกับผู้แข่งขันในใบสมัคร',DUPLICATE_BENEFICIARY_ID:'เลขบัตร/Passport ผู้รับผลประโยชน์ห้ามซ้ำกันในใบสมัคร'};
   const k=Object.keys(map).find(k=>s.includes(k));return k?map[k]:s
 }
 async function submit(e){e.preventDefault();try{
@@ -480,7 +480,7 @@ async function submit(e){e.preventDefault();try{
   if(type==='TEAM'){const lim=teamLimits();if(count<lim.min||count>lim.max)throw new Error('จำนวนสมาชิกทีมไม่ถูกต้อง');if(flags.team_name_required!==false&&!val('groupName'))throw new Error('กรุณาระบุชื่อทีม')}
   const pkg=P.find(x=>x.id===(byId('packageSel')?.value||''));if(pkg&&Number(pkg.runner_count||1)>1&&Number(pkg.runner_count)!==count)throw new Error('จำนวนผู้แข่งขันไม่ตรงกับ Package');
   const runners=Array.from({length:count},(_,x)=>collectRunner(x+1));
-  const ids=runners.map(r=>r.id_normalized).filter(Boolean);if(new Set(ids).size!==ids.length)throw new Error('เลขบัตรประชาชน / Passport ของผู้แข่งขันห้ามซ้ำกัน');
+  const ids=runners.map(r=>r.id_normalized).filter(Boolean);if(new Set(ids).size!==ids.length)throw new Error('เลขบัตรประชาชน / Passport ของผู้แข่งขันห้ามซ้ำกัน');const beneIds=runners.flatMap(r=>(r.beneficiaries||[]).map(b=>String(b.id_document||'').replace(/[^a-z0-9]/gi,'').toUpperCase()).filter(Boolean));if(new Set(beneIds).size!==beneIds.length)throw new Error('เลขบัตรประชาชน / Passport ของผู้รับผลประโยชน์ห้ามซ้ำกันในใบสมัคร');if(beneIds.some(x=>ids.includes(x)))throw new Error('เลขบัตรประชาชน / Passport ผู้รับผลประโยชน์ห้ามซ้ำกับผู้แข่งขันในใบสมัคร');
   if(flags.insurance){for(let i=1;i<=count;i++){const sum=sumBene(i);if(flags.beneficiary_total_100!==false&&Math.abs(sum-100)>.001)throw new Error('ผู้รับผลประโยชน์ของผู้แข่งขันคนที่ '+i+' ต้องรวม 100%')}}
   Swal.fire({title:'กำลังส่งใบสมัคร…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
   const uid=crypto.randomUUID();let slip=null,slipInput=byId('slipFile');
