@@ -79,7 +79,7 @@ class RouteAnimation{
   const description=(this.route.description&&typeof this.route.description==='object'?(this.route.description[this.lang]||this.route.description.th||this.route.description.en):this.route.description)||'';
   const linked=(this.route.restart_route_categories||[]).map(x=>x.restart_race_categories).filter(Boolean);
   const chips=linked.length?'<div class="rr-route-cats">'+linked.map(c=>'<span>'+escapeHtml((c.name&&typeof c.name==='object'?(c.name[this.lang]||c.name.th||c.name.en):c.name)||'')+(c.distance_km!=null?' · '+c.distance_km+' km':'')+'</span>').join('')+'</div>':'';
-  this.root.innerHTML='<div class="rr-route-head"><div><span class="preview-section-kicker">GPX · ANIMATED COURSE</span><h2>'+escapeHtml(name)+'</h2>'+(description?'<p class="rr-route-description">'+escapeHtml(description)+'</p>':'')+chips+'</div><a class="rr-route-download" href="'+escapeHtml(this.route.gpx_url)+'" target="_blank" rel="noopener">GPX ↗</a></div>'+
+  this.root.innerHTML='<div class="rr-route-head"><div><span class="preview-section-kicker">GPX · ANIMATED COURSE</span><h2>'+escapeHtml(name)+'</h2>'+(description?'<p class="rr-route-description">'+escapeHtml(description)+'</p>':'')+chips+'</div><a class="rr-route-download" href="'+escapeHtml(this.route.gpx_url)+'" download rel="noopener">Download GPX</a></div>'+
   '<div class="rr-route-stage"><div class="rr-route-map"></div><div class="rr-route-loading">'+escapeHtml(t.loading)+'</div><div class="rr-route-toast" hidden></div>'+
   '<div class="rr-route-stats">'+
    '<div><span>'+escapeHtml(t.position)+'</span><b data-v="position">0.00 '+escapeHtml(t.km)+'</b></div>'+
