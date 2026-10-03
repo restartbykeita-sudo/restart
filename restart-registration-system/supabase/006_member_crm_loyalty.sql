@@ -59,6 +59,9 @@ alter table public.restart_store_orders
   add column if not exists points_redeemed integer not null default 0 check(points_redeemed>=0),
   add column if not exists points_discount_thb numeric not null default 0 check(points_discount_thb>=0);
 
+alter table public.restart_waitlist
+  add column if not exists member_user_id uuid references auth.users(id) on delete set null;
+
 alter table public.restart_stores
   add column if not exists points_redemption_enabled boolean not null default false,
   add column if not exists points_per_thb integer not null default 1 check(points_per_thb>=1),
@@ -75,6 +78,7 @@ create index if not exists restart_member_points_created_by_idx on public.restar
 create index if not exists restart_registrations_member_user_idx on public.restart_registrations(member_user_id,created_at desc);
 create index if not exists restart_participants_member_user_idx on public.restart_participants(member_user_id);
 create index if not exists restart_store_orders_member_user_idx on public.restart_store_orders(member_user_id,created_at desc);
+create index if not exists restart_waitlist_member_user_idx on public.restart_waitlist(member_user_id,created_at desc);
 
 alter table public.restart_member_profiles enable row level security;
 alter table public.restart_member_points_ledger enable row level security;
@@ -1557,6 +1561,7 @@ for each row execute function private.restart_refund_store_points();
 -- Member binding is performed inside restart_create_registration so profile sync
 -- and points remain atomic with registration creation.
 -- Profile sync uses COALESCE so Event-hidden fields never erase master CRM data.
+-- Waitlist also requires and stores the authenticated Member ID.
 CREATE OR REPLACE FUNCTION private.restart_compute_quote(p_event_id uuid, p_category_id uuid, p_package_id uuid, p_registration_type text, p_runner_count integer, p_discount_code text, p_runners jsonb)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -1735,7 +1740,57 @@ begin
 end;
 $function$;
 
--- restart_sync_registration_member already defined above; kept single canonical definition.
+CREATE OR REPLACE FUNCTION private.restart_sync_registration_member()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'private', 'auth'
+AS $function$
+declare
+  p public.restart_participants%rowtype;
+begin
+  if new.member_user_id is null then return new; end if;
+
+  if new.member_runner_index is null or new.member_runner_index<1 or new.member_runner_index>new.runner_count then
+    new.member_runner_index:=coalesce(new.contact_runner_index,1);
+  end if;
+
+  update public.restart_participants
+  set member_user_id=case when runner_index=new.member_runner_index then new.member_user_id else null end
+  where registration_id=new.id;
+
+  select * into p
+  from public.restart_participants
+  where registration_id=new.id and runner_index=new.member_runner_index
+  limit 1;
+
+  if found then
+    insert into public.restart_member_profiles(
+      user_id,email,title,first_name,last_name,birth_date,address,phone,blood_group,
+      emergency_contact_name,emergency_phone,emergency_relation,updated_at
+    )
+    select
+      new.member_user_id,u.email,p.title,p.first_name,p.last_name,p.birth_date,p.address,p.phone,p.blood_group,
+      p.emergency_contact_name,p.emergency_phone,p.emergency_relation,now()
+    from auth.users u where u.id=new.member_user_id
+    on conflict(user_id) do update set
+      email=coalesce(excluded.email,restart_member_profiles.email),
+      title=coalesce(excluded.title,restart_member_profiles.title),
+      first_name=coalesce(excluded.first_name,restart_member_profiles.first_name),
+      last_name=coalesce(excluded.last_name,restart_member_profiles.last_name),
+      birth_date=coalesce(excluded.birth_date,restart_member_profiles.birth_date),
+      address=coalesce(excluded.address,restart_member_profiles.address),
+      phone=coalesce(excluded.phone,restart_member_profiles.phone),
+      blood_group=coalesce(excluded.blood_group,restart_member_profiles.blood_group),
+      emergency_contact_name=coalesce(excluded.emergency_contact_name,restart_member_profiles.emergency_contact_name),
+      emergency_phone=coalesce(excluded.emergency_phone,restart_member_profiles.emergency_phone),
+      emergency_relation=coalesce(excluded.emergency_relation,restart_member_profiles.emergency_relation),
+      updated_at=now();
+  end if;
+
+  return new;
+end;
+$function$;
 
 CREATE OR REPLACE FUNCTION public.restart_create_registration(p_payload jsonb)
  RETURNS jsonb
@@ -2274,6 +2329,7 @@ declare
   e public.restart_events%rowtype;
   flags jsonb;
   v_event_id uuid:=nullif(p_payload->>'event_id','')::uuid;
+  member_user_id uuid:=nullif(p_payload->>'member_user_id','')::uuid;
   runners jsonb:=coalesce(p_payload->'runners','[]'::jsonb);
   runner_count integer:=jsonb_array_length(coalesce(p_payload->'runners','[]'::jsonb));
   reg_type text:=upper(coalesce(nullif(p_payload->>'registration_type',''),'SINGLE'));
@@ -2284,6 +2340,7 @@ declare
   pos integer;
   team_size integer;
 begin
+  if member_user_id is null then raise exception 'MEMBER_USER_REQUIRED'; end if;
   select * into e from public.restart_events where id=v_event_id;
   if not found then raise exception 'EVENT_NOT_FOUND'; end if;
   flags:=coalesce(e.feature_flags,'{}'::jsonb);
@@ -2314,10 +2371,10 @@ begin
   if contact_id is null then raise exception 'CONTACT_ID_REQUIRED'; end if;
 
   insert into public.restart_waitlist(
-    event_id,category_id,package_id,registration_type,group_name,runner_count,
+    event_id,member_user_id,category_id,package_id,registration_type,group_name,runner_count,
     contact_name,contact_phone,contact_id_normalized,payload,status
   ) values(
-    v_event_id,
+    v_event_id,member_user_id,
     nullif(p_payload->>'category_id','')::uuid,
     nullif(p_payload->>'package_id','')::uuid,
     reg_type,nullif(trim(coalesce(p_payload->>'group_name','')),''),runner_count,
@@ -2329,6 +2386,7 @@ begin
   )
   on conflict (event_id,contact_id_normalized) where status in ('WAITING','INVITED')
   do update set
+    member_user_id=excluded.member_user_id,
     category_id=excluded.category_id,
     package_id=excluded.package_id,
     registration_type=excluded.registration_type,
