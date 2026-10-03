@@ -493,17 +493,17 @@ begin
       p.emergency_contact_name,p.emergency_phone,p.emergency_relation,now()
     from auth.users u where u.id=new.member_user_id
     on conflict(user_id) do update set
-      email=excluded.email,
-      title=excluded.title,
-      first_name=excluded.first_name,
-      last_name=excluded.last_name,
-      birth_date=excluded.birth_date,
-      address=excluded.address,
-      phone=excluded.phone,
-      blood_group=excluded.blood_group,
-      emergency_contact_name=excluded.emergency_contact_name,
-      emergency_phone=excluded.emergency_phone,
-      emergency_relation=excluded.emergency_relation,
+      email=coalesce(excluded.email,restart_member_profiles.email),
+      title=coalesce(excluded.title,restart_member_profiles.title),
+      first_name=coalesce(excluded.first_name,restart_member_profiles.first_name),
+      last_name=coalesce(excluded.last_name,restart_member_profiles.last_name),
+      birth_date=coalesce(excluded.birth_date,restart_member_profiles.birth_date),
+      address=coalesce(excluded.address,restart_member_profiles.address),
+      phone=coalesce(excluded.phone,restart_member_profiles.phone),
+      blood_group=coalesce(excluded.blood_group,restart_member_profiles.blood_group),
+      emergency_contact_name=coalesce(excluded.emergency_contact_name,restart_member_profiles.emergency_contact_name),
+      emergency_phone=coalesce(excluded.emergency_phone,restart_member_profiles.emergency_phone),
+      emergency_relation=coalesce(excluded.emergency_relation,restart_member_profiles.emergency_relation),
       updated_at=now();
   end if;
 
@@ -1769,17 +1769,17 @@ begin
       p.emergency_contact_name,p.emergency_phone,p.emergency_relation,now()
     from auth.users u where u.id=new.member_user_id
     on conflict(user_id) do update set
-      email=excluded.email,
-      title=excluded.title,
-      first_name=excluded.first_name,
-      last_name=excluded.last_name,
-      birth_date=excluded.birth_date,
-      address=excluded.address,
-      phone=excluded.phone,
-      blood_group=excluded.blood_group,
-      emergency_contact_name=excluded.emergency_contact_name,
-      emergency_phone=excluded.emergency_phone,
-      emergency_relation=excluded.emergency_relation,
+      email=coalesce(excluded.email,restart_member_profiles.email),
+      title=coalesce(excluded.title,restart_member_profiles.title),
+      first_name=coalesce(excluded.first_name,restart_member_profiles.first_name),
+      last_name=coalesce(excluded.last_name,restart_member_profiles.last_name),
+      birth_date=coalesce(excluded.birth_date,restart_member_profiles.birth_date),
+      address=coalesce(excluded.address,restart_member_profiles.address),
+      phone=coalesce(excluded.phone,restart_member_profiles.phone),
+      blood_group=coalesce(excluded.blood_group,restart_member_profiles.blood_group),
+      emergency_contact_name=coalesce(excluded.emergency_contact_name,restart_member_profiles.emergency_contact_name),
+      emergency_phone=coalesce(excluded.emergency_phone,restart_member_profiles.emergency_phone),
+      emergency_relation=coalesce(excluded.emergency_relation,restart_member_profiles.emergency_relation),
       updated_at=now();
   end if;
 
