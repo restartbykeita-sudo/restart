@@ -67,8 +67,17 @@ async function loadMember(){
   }
   const old=document.getElementById('memberNavLink');if(old)old.remove();renderGate()
 }
-const observer=new MutationObserver(()=>{renderGate();setTimeout(applyMemberProfile,0)});
-const start=()=>{injectMemberNav();observer.observe(document.getElementById('app')||document.body,{childList:true,subtree:true});document.addEventListener('change',ev=>{if(ev.target?.id==='contactRunner')setTimeout(applyMemberProfile,0)});loadMember()};
+const observer=new MutationObserver(()=>{
+  injectMemberNav();
+  const form=document.getElementById('regForm');
+  if(form&&!document.getElementById('memberRegistrationGate'))renderGate();
+  if(form)setTimeout(applyMemberProfile,0)
+});
+const start=()=>{
+  injectMemberNav();
+  observer.observe(document.getElementById('app')||document.body,{childList:true,subtree:true});
+  loadMember()
+};
 memberDb.auth.onAuthStateChange((_event,session)=>{MEMBER_SESSION=session||null;loadMember()});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
