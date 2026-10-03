@@ -728,12 +728,6 @@ async function fullSystemRpc(req: Request, origin: string, action: string) {
     result = await db.rpc('restart_create_store_order', {
       p_payload: payload,
     });
-    if (!result.error && member && result.data?.id) {
-      await db.from('restart_store_orders').update({
-        member_user_id: member.id,
-        updated_at: new Date().toISOString(),
-      }).eq('id', result.data.id);
-    }
   } else if (action === 'store-lookup') {
     result = await db.rpc('restart_lookup_store_order', {
       p_event_slug: text(body.event_slug),
@@ -769,7 +763,13 @@ async function fullSystemRpc(req: Request, origin: string, action: string) {
     if (text(payload.registration_type).toUpperCase() !== 'SINGLE') payload.contact_runner_index = 1;
     result = await db.rpc('restart_create_registration', { p_payload: payload });
   } else if (action === 'join-waitlist') {
-    result = await db.rpc('restart_join_waitlist', { p_payload: body.payload || {} });
+    const member = await requireMember(req);
+    const payload = { ...(body.payload || {}) };
+    delete payload.member_user_id;
+    payload.member_user_id = member.id;
+    payload.member_runner_index = 1;
+    if (text(payload.registration_type).toUpperCase() !== 'SINGLE') payload.contact_runner_index = 1;
+    result = await db.rpc('restart_join_waitlist', { p_payload: payload });
   } else if (action === 'next-payment-lookup') {
     result = await db.rpc('restart_lookup_next_payment', {
       p_event_slug: text(body.event_slug),
