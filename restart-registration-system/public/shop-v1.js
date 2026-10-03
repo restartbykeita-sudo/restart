@@ -35,6 +35,7 @@ function productMinPrice(p){
 function renderStoreDirectory(){
   document.title=(tr(E?.name)||'RESTART')+' '+RestartI18n.t('ร้านค้าทั้งหมด');
   const back=byId('backEvent');back.href='./?event='+encodeURIComponent(E.slug);back.textContent=RestartI18n.t('กลับ Event');
+  back.dataset.ui='กลับ Event';
   const lookup=byId('orderLookupBtn');if(lookup)lookup.style.display='none';
   app.innerHTML=
     RestartI18n.t('<section class="rr-card store-hero"><div><div class="muted"></div><h2>เลือกร้านค้า</h2><div class="muted">')+esc(tr(E.name)||'Event')+'</div></div><div><span class="badge ok">'+STORES.length+RestartI18n.t(' ร้าน</span></div></section>')+
@@ -57,6 +58,7 @@ function render(){
   document.title=(tr(SETTINGS?.store_name)||tr(E?.name)||'RESTART')+' '+RestartI18n.t('ร้านค้า');
   byId('backEvent').href='shop.html?event='+encodeURIComponent(E.slug);
   byId('backEvent').textContent=RestartI18n.t('ร้านค้าทั้งหมด');
+  byId('backEvent').dataset.ui='ร้านค้าทั้งหมด';
   if(byId('orderLookupBtn'))byId('orderLookupBtn').style.display='';
   const productId=new URLSearchParams(location.search).get('product');
   if(productId){

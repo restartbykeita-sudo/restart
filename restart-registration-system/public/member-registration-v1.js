@@ -8,6 +8,7 @@ function injectMemberNav(){
   let a=document.getElementById('memberNavLink');
   if(!a){a=document.createElement('a');a.id='memberNavLink';host.prepend(a)}
   a.className=MEMBER_SESSION?'btn soft':'btn primary';
+  a.dataset.ui=MEMBER_SESSION?'ข้อมูลส่วนตัว / แต้มของฉัน':'เข้าสู่ระบบนักแข่ง';
   a.href=MEMBER_SESSION?'member.html':memberUrl();
   a.textContent=MEMBER_SESSION?RestartI18n.t('ข้อมูลส่วนตัว / แต้มของฉัน'):RestartI18n.t('เข้าสู่ระบบนักแข่ง')
 }

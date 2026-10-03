@@ -58,14 +58,14 @@ async function forgotPassword(){
   if(!r.isConfirmed)return;
   const redirectTo=memberPageUrl()+'?recovery=1';
   const{error}=await db.auth.resetPasswordForEmail(r.value.trim(),{redirectTo});
-  if(error)return Swal.fire(RestartI18n.t('ส่ง Email ไม่สำเร็จ'),error.message,'error');
+  if(error)return Swal.fire(RestartI18n.t('ส่ง Email ไม่สำเร็จ'),RestartI18n.t(error.message),'error');
   Swal.fire({icon:'success',title:RestartI18n.t('ส่ง Email แล้ว'),text:RestartI18n.t('เปิดลิงก์ใน Email เพื่อตั้งรหัสผ่านใหม่')})
 }
 async function promptNewPassword(){
   const r=await Swal.fire({title:RestartI18n.t('ตั้งรหัสผ่านใหม่'),html:RestartI18n.t('<div style="text-align:left"><label>รหัสผ่านใหม่<input id="newPassword" type="password" minlength="8" class="swal2-input" style="margin:0" autocomplete="new-password"></label><label>ยืนยันรหัสผ่าน<input id="newPassword2" type="password" minlength="8" class="swal2-input" style="margin:0" autocomplete="new-password"></label></div>'),allowOutsideClick:false,allowEscapeKey:false,confirmButtonText:RestartI18n.t('บันทึกรหัสผ่าน'),preConfirm:()=>{const a=newPassword.value,b=newPassword2.value;if(a.length<8)return Swal.showValidationMessage(RestartI18n.t('รหัสผ่านต้องอย่างน้อย 8 ตัวอักษร'));if(a!==b)return Swal.showValidationMessage(RestartI18n.t('รหัสผ่านไม่ตรงกัน'));return a}});
   if(!r.isConfirmed)return;
   const{error}=await db.auth.updateUser({password:r.value});
-  if(error)return Swal.fire(RestartI18n.t('เปลี่ยนรหัสผ่านไม่สำเร็จ'),error.message,'error');
+  if(error)return Swal.fire(RestartI18n.t('เปลี่ยนรหัสผ่านไม่สำเร็จ'),RestartI18n.t(error.message),'error');
   history.replaceState(null,'',memberPageUrl());
   await Swal.fire({icon:'success',title:RestartI18n.t('เปลี่ยนรหัสผ่านแล้ว')});
   const{data:{session}}=await db.auth.getSession();if(session?.user)renderMember(session.user);else renderAuth()
@@ -91,9 +91,9 @@ async function doLogin(){
     const msg=String(error.message||'');
     if(/email.*confirm|confirm.*email/i.test(msg)){
       const r=await Swal.fire({icon:'warning',title:RestartI18n.t('Email ยังไม่ได้ยืนยัน'),text:RestartI18n.t('กรุณายืนยัน Email ก่อนเข้าสู่ระบบ'),showDenyButton:true,denyButtonText:RestartI18n.t('ส่ง Email ยืนยันอีกครั้ง'),confirmButtonText:RestartI18n.t('ตกลง')});
-      if(r.isDenied){try{await resendSignupEmail(email)}catch(e){Swal.fire(RestartI18n.t('ส่ง Email ไม่สำเร็จ'),e.message||String(e),'error')}}return
+      if(r.isDenied){try{await resendSignupEmail(email)}catch(e){Swal.fire(RestartI18n.t('ส่ง Email ไม่สำเร็จ'),RestartI18n.t(e.message||String(e)),'error')}}return
     }
-    return Swal.fire(RestartI18n.t('เข้าสู่ระบบไม่สำเร็จ'),msg,'error')
+    return Swal.fire(RestartI18n.t('เข้าสู่ระบบไม่สำเร็จ'),RestartI18n.t(msg),'error')
   }
   const ret=returnUrl()||new URL('./',location.href).href;return location.replace(ret);
   Swal.close();renderMember(data.user)
@@ -113,9 +113,9 @@ async function doSignup(){
       const ret=returnUrl()||new URL('./',location.href).href;return location.replace(ret);
     }
     const confirm=await Swal.fire({icon:'success',title:RestartI18n.t('สร้างบัญชีแล้ว'),html:RestartI18n.t('กรุณาตรวจ <b>')+esc(email)+RestartI18n.t('</b> เพื่อยืนยันบัญชี'),showDenyButton:true,denyButtonText:RestartI18n.t('ส่ง Email ยืนยันอีกครั้ง'),confirmButtonText:RestartI18n.t('เข้าใจแล้ว')});
-    if(confirm.isDenied){try{await resendSignupEmail(email)}catch(e){await Swal.fire(RestartI18n.t('ส่ง Email ไม่สำเร็จ'),e.message||String(e),'error')}}
+    if(confirm.isDenied){try{await resendSignupEmail(email)}catch(e){await Swal.fire(RestartI18n.t('ส่ง Email ไม่สำเร็จ'),RestartI18n.t(e.message||String(e)),'error')}}
     renderAuth()
-  }catch(e){Swal.fire(RestartI18n.t('สมัครสมาชิกไม่สำเร็จ'),e.message||String(e),'error')}
+  }catch(e){Swal.fire(RestartI18n.t('สมัครสมาชิกไม่สำเร็จ'),RestartI18n.t(e.message||String(e)),'error')}
 }
 async function ensureProfile(user){
   const{data,error}=await db.from('restart_member_profiles').select('*').eq('user_id',user.id).maybeSingle();
@@ -150,7 +150,7 @@ async function editProfile(profile,user){
   const r=await Swal.fire({title:RestartI18n.t('แก้ไขข้อมูลสมาชิก'),width:860,showCancelButton:true,confirmButtonText:RestartI18n.t('บันทึก'),html:'<div style="text-align:left">'+profileFields('ep',profile)+'</div>',didOpen:()=>bindAge('ep'),preConfirm:()=>{try{return validateProfile(collectProfile('ep'))}catch(e){return Swal.showValidationMessage(e.message)}}});
   if(!r.isConfirmed)return;
   const{error}=await db.from('restart_member_profiles').update({...r.value,email:user.email||null,updated_at:new Date().toISOString()}).eq('user_id',user.id);
-  if(error)return Swal.fire(RestartI18n.t('บันทึกไม่สำเร็จ'),error.message,'error');
+  if(error)return Swal.fire(RestartI18n.t('บันทึกไม่สำเร็จ'),RestartI18n.t(error.message),'error');
   Swal.fire({icon:'success',title:RestartI18n.t('บันทึกข้อมูลแล้ว'),timer:900,showConfirmButton:false});renderMember(user)
 }
 RestartI18n.mount();

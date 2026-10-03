@@ -3016,6 +3016,27 @@ const CATALOG={
     "zh": "观景点",
     "ja": "展望地点",
     "ru": "Обзорная точка"
+  },
+  "Invalid login credentials": {
+    "th": "อีเมลหรือรหัสผ่านไม่ถูกต้อง",
+    "en": "Incorrect email or password",
+    "zh": "邮箱或密码错误",
+    "ja": "メールアドレスまたはパスワードが違います",
+    "ru": "Неверная почта или пароль"
+  },
+  "User already registered": {
+    "th": "อีเมลนี้มีบัญชีแล้ว",
+    "en": "This email already has an account",
+    "zh": "此邮箱已注册",
+    "ja": "このメールアドレスは登録済みです",
+    "ru": "Аккаунт с этой почтой уже существует"
+  },
+  "Email rate limit exceeded": {
+    "th": "ส่งอีเมลบ่อยเกินไป กรุณารอสักครู่",
+    "en": "Too many emails. Please wait and try again.",
+    "zh": "发送邮件过于频繁，请稍后重试。",
+    "ja": "メールの送信回数が多すぎます。しばらくお待ちください。",
+    "ru": "Слишком много писем. Подождите и повторите."
   }
 };
 (()=>{
@@ -3073,6 +3094,7 @@ function restore(root,draft){
  const controls=[...root.querySelectorAll('input,select,textarea')];
  draft.controls.forEach((saved,i)=>{
   const el=saved.id?document.getElementById(saved.id):controls[i];if(!el||el.type!==saved.type)return;
+  if(saved.id==='teamSize')return;
   if(el.type==='file'){if(saved.files?.length)el.files=saved.files}
   else{el.value=saved.value;el.checked=saved.checked}
   if(saved.touched)el.dataset.memberTouched=saved.touched;
