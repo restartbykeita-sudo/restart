@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="icon" type="image/png" href="../assets/restart-logo-correct.png">
+  <title>RESTART Store</title>
+  <link rel="stylesheet" href="../assets/app.css?v=1.17.1-qrfix">
+  <link rel="stylesheet" href="shop-v1.css?v=1">
+</head>
+<body class="public-registration">
+<div class="rr-shell">
+  <header class="rr-top">
+    <div class="rr-brand with-logo">
+      <img class="rr-main-logo header" src="../assets/restart-logo-correct.png" alt="RESTART">
+      <div><h1>RESTART STORE</h1><small>Event Merchandise</small></div>
+    </div>
+    <div class="rr-public-actions">
+      <a id="backEvent" class="btn soft" href="./">กลับ Event</a>
+      <button id="orderLookupBtn" class="btn soft" type="button">เช็กออเดอร์</button>
+    </div>
+  </header>
+  <main class="rr-wrap" id="shopApp"><section class="rr-card rr-empty">กำลังโหลดร้านค้า…</section></main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="../assets/config.js?v=1.2.0"></script>
+<script src="shop-v1.js?v=1"></script>
+</body>
+</html>
