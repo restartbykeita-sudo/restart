@@ -8,7 +8,7 @@ function injectMemberNav(){
   const a=document.createElement('a');a.id='memberNavLink';a.className='btn soft';a.href='member.html';a.textContent=MEMBER_SESSION?'Member Card':'สมาชิก / Login';host.prepend(a)
 }
 function profileAge(v){if(!v)return'';const d=new Date(v+'T00:00:00'),ref=(typeof E!=='undefined'&&E?.event_date_start)?new Date(E.event_date_start+'T00:00:00'):new Date();let y=ref.getFullYear()-d.getFullYear();const m=ref.getMonth()-d.getMonth();if(m<0||(m===0&&ref.getDate()<d.getDate()))y--;return Math.max(0,y)}
-function ownerIndex(){return Math.max(1,Number(document.getElementById('contactRunner')?.value||1))}
+function ownerIndex(){return 1}
 function setValue(id,value){
   const el=document.getElementById(id);if(!el||value==null||value==='')return;
   if(el.dataset.memberTouched==='1')return;
