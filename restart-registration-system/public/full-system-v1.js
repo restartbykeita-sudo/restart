@@ -17,6 +17,7 @@ let FULL_LIST_TRANSLATIONS={};
 let SHIRT_PRODUCTS=[];
 let SHIRT_VARIANTS=[];
 let quoteSeq=0;
+let registrationSubmitting=false;
 
 function fullFlags(){return E?.feature_flags||{}}
 function normalizeId(v){return String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'')}
@@ -306,30 +307,41 @@ function bindFormQuoteListeners(){
   });
 }
 let quoteTimer=null;
-function debouncedQuote(){clearTimeout(quoteTimer);quoteTimer=setTimeout(()=>refreshPrice(),350)}
+function debouncedQuote(){if(registrationSubmitting)return;clearTimeout(quoteTimer);quoteTimer=setTimeout(()=>refreshPrice(),350)}
 
-function quoteReady(){
+function quoteReadinessError(){
   const f=fullFlags(),count=registrationRunnerCount(),type=registrationType();
-  let runners=[];try{runners=Array.from({length:count},(_,i)=>collectRunner(i+1))}catch(e){return false}
+  let runners=[];try{runners=Array.from({length:count},(_,i)=>collectRunner(i+1))}catch(e){return RestartI18n.t('กรุณากรอกข้อมูลให้ครบ')}
   const eligibilityRunners=type==='SINGLE'?runners:runners.slice(0,1);
+  const missing=field=>RestartI18n.t('กรุณากรอกข้อมูลให้ครบ')+': '+RestartI18n.t(field);
   if(f.competition_categories!==false){
     const cid=byId('categorySel')?.value||'';
     if(cid){
-      const cat=C.find(x=>x.id===cid);if(!cat)return false;
-      if((cat.min_age!=null||cat.max_age!=null)&&eligibilityRunners.some(r=>!r.birth_date))return false;
-      if(['MALE','FEMALE'].includes(String(cat.gender_rule||''))&&eligibilityRunners.some(r=>!r.gender))return false;
+      const cat=C.find(x=>x.id===cid);if(!cat)return RestartI18n.t('กรุณาเลือกรุ่นการแข่งขัน');
+      if((cat.min_age!=null||cat.max_age!=null)&&eligibilityRunners.some(r=>!r.birth_date))return missing('วันเกิด');
+      if(['MALE','FEMALE'].includes(String(cat.gender_rule||''))&&eligibilityRunners.some(r=>!r.gender))return missing('เพศ');
     }else if(f.auto_category){
       const needsBirth=C.some(cat=>cat.min_age!=null||cat.max_age!=null);
       const needsGender=C.some(cat=>['MALE','FEMALE'].includes(String(cat.gender_rule||'')));
-      if(needsBirth&&eligibilityRunners.some(r=>!r.birth_date))return false;
-      if(needsGender&&eligibilityRunners.some(r=>!r.gender))return false;
+      if(needsBirth&&eligibilityRunners.some(r=>!r.birth_date))return missing('วันเกิด');
+      if(needsGender&&eligibilityRunners.some(r=>!r.gender))return missing('เพศ');
     }else if(f.self_select_category===false&&C.length===1){
       const cat=C[0];
-      if((cat.min_age!=null||cat.max_age!=null)&&eligibilityRunners.some(r=>!r.birth_date))return false;
-      if(['MALE','FEMALE'].includes(String(cat.gender_rule||''))&&eligibilityRunners.some(r=>!r.gender))return false;
-    }else return false;
+      if((cat.min_age!=null||cat.max_age!=null)&&eligibilityRunners.some(r=>!r.birth_date))return missing('วันเกิด');
+      if(['MALE','FEMALE'].includes(String(cat.gender_rule||''))&&eligibilityRunners.some(r=>!r.gender))return missing('เพศ');
+    }else return RestartI18n.t('กรุณาเลือกรุ่นการแข่งขัน');
   }
-  return true
+  return ''
+}
+function syncEligibilityRequirements(){
+  const f=fullFlags(),selected=C.find(c=>c.id===byId('categorySel')?.value);
+  const categories=f.competition_categories===false?[]:selected?[selected]:f.auto_category?C:f.self_select_category===false&&C.length===1?C:[];
+  const needGender=categories.some(c=>['MALE','FEMALE'].includes(c.gender_rule));
+  const needBirth=categories.some(c=>c.min_age!=null||c.max_age!=null);
+  const fields=E.field_settings||{};
+  const gender=byId('gender_1'),birth=byId('birthDate_1');
+  if(gender)gender.required=needGender||!!fields.gender?.required;
+  if(birth)birth.required=needBirth||!!fields.birth_date?.required;
 }
 
 function quotePayload(){
@@ -348,7 +360,9 @@ function quotePayload(){
   };
 }
 async function getFullQuote(silent=true){
-  if(!quoteReady())return null;
+  if(silent&&registrationSubmitting)return null;
+  const readinessError=quoteReadinessError();
+  if(readinessError){if(!silent)throw new Error(readinessError);return null}
   const seq=++quoteSeq,q=quotePayload();
   let data;
   try{
@@ -358,7 +372,7 @@ async function getFullQuote(silent=true){
       discount_code:q.p_discount_code,runners:q.p_runners,merch_items:q.p_merch_items
     })
   }catch(error){if(!silent)throw error;return null}
-  if(seq!==quoteSeq)return null;
+  if(silent&&(seq!==quoteSeq||registrationSubmitting))return null;
   FULL_QUOTE=data;
   if(data?.category_id&&byId('categorySel')&&!byId('categorySel').value){
     byId('categorySel').value=data.category_id;
@@ -385,6 +399,8 @@ makeSchedule=function(){
 };
 
 refreshPrice=function(){
+  if(registrationSubmitting)return;
+  syncEligibilityRequirements();
   FULL_QUOTE=null;
   baseRefreshPrice();
   getFullQuote(true).then(q=>{
@@ -438,7 +454,9 @@ async function offerWaitlist(payload){
 
 submit=async function(e){
   e.preventDefault();
+  if(registrationSubmitting)return;
   let uploadedSlip=null;
+  const submitControls=[];
   try{
     const f=fullFlags(),type=registrationType(),count=registrationRunnerCount(),runners=Array.from({length:count},(_,i)=>collectRunner(i+1)),followers=collectFollowers();
     if(type==='TEAM'&&f.team_name_required!==false&&!val('groupName'))throw new Error(RestartI18n.t('กรุณาระบุชื่อทีม'));
@@ -448,6 +466,11 @@ submit=async function(e){
     validateFullClient(runners,followers);
     if(f.pdpa&&!byId('pdpaConsent')?.checked)throw new Error(RestartI18n.t('กรุณายอมรับ PDPA / Consent'));
 
+    registrationSubmitting=true;
+    clearTimeout(quoteTimer);
+    ++quoteSeq;
+    byId('regForm')?.setAttribute('aria-busy','true');
+    byId('regForm')?.querySelectorAll('button[type=submit]').forEach(button=>{submitControls.push({button,disabled:button.disabled});button.disabled=true});
     Swal.fire({title:RestartI18n.t('กำลังตรวจราคาและส่งใบสมัคร…'),allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
     const quote=await getFullQuote(false);if(!quote)throw new Error(RestartI18n.t('คำนวณราคาไม่ได้'));
     FULL_QUOTE=quote;
@@ -482,6 +505,10 @@ submit=async function(e){
     Swal.fire({icon:'success',title:RestartI18n.t('สมัครสำเร็จ'),html:RestartI18n.t('เลขที่สมัคร <b>')+esc(data.registration_code)+RestartI18n.t('</b><br>ผู้แข่งขัน <b>')+data.runner_count+RestartI18n.t('</b> คน')+(data.follower_count?RestartI18n.t('<br>ผู้ติดตาม <b>')+data.follower_count+RestartI18n.t('</b> คน'):'')+(data.merchandise_qty?RestartI18n.t('<br>เสื้อซื้อเพิ่ม <b>')+data.merchandise_qty+RestartI18n.t('</b> ตัว · ฿')+fullMoney(data.merchandise_amount_thb):'')+RestartI18n.t('<br>ยอดสุทธิ <b>฿')+fullMoney(data.total_amount_thb)+RestartI18n.t('</b><br>สถานะ <b>')+esc(RestartI18n.status(data.status))+'</b>',confirmButtonText:RestartI18n.t('ตกลง')}).then(()=>location.reload())
   }catch(err){
     Swal.fire(RestartI18n.t('สมัครไม่สำเร็จ'),fullRegistrationError(err),'error')
+  }finally{
+    registrationSubmitting=false;
+    byId('regForm')?.removeAttribute('aria-busy');
+    submitControls.forEach(({button,disabled})=>button.disabled=disabled);
   }
 };
 
