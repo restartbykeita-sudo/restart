@@ -114,7 +114,11 @@ create index if not exists restart_store_orders_status_idx on public.restart_sto
 create index if not exists restart_store_orders_phone_idx on public.restart_store_orders(event_id,phone);
 create index if not exists restart_store_order_items_order_idx on public.restart_store_order_items(order_id);
 create index if not exists restart_store_order_items_variant_idx on public.restart_store_order_items(variant_id);
+create index if not exists restart_store_order_items_event_idx on public.restart_store_order_items(event_id);
+create index if not exists restart_store_order_items_product_idx on public.restart_store_order_items(product_id);
+create index if not exists restart_store_orders_payment_method_idx on public.restart_store_orders(payment_method_id);
 create index if not exists restart_store_payments_order_idx on public.restart_store_payments(order_id,created_at desc);
+create index if not exists restart_store_payments_reviewed_by_idx on public.restart_store_payments(reviewed_by);
 
 alter table public.restart_store_settings enable row level security;
 alter table public.restart_store_orders enable row level security;
@@ -276,7 +280,6 @@ $function$;
 CREATE OR REPLACE FUNCTION public.restart_admin_review_store_payment(p_payment_id uuid, p_decision text, p_note text DEFAULT NULL::text)
  RETURNS jsonb
  LANGUAGE plpgsql
- SECURITY DEFINER
  SET search_path TO 'public', 'private'
 AS $function$
 declare
@@ -313,7 +316,6 @@ $function$;
 CREATE OR REPLACE FUNCTION public.restart_admin_update_store_order_status(p_order_id uuid, p_status text, p_note text DEFAULT NULL::text)
  RETURNS jsonb
  LANGUAGE plpgsql
- SECURITY DEFINER
  SET search_path TO 'public', 'private'
 AS $function$
 declare
