@@ -144,7 +144,7 @@ async function openCart(){
   const pointBalance=Number(MEMBER_PROFILE?.points_balance||0);
   const pointsUi=SETTINGS?.points_redemption_enabled
     ?(MEMBER_SESSION
-      ?'<div class="paybox" style="grid-column:1/-1"><b>RESTART Points</b><div class="muted">มี '+pointBalance.toLocaleString('th-TH')+' แต้ม · '+pointsRate+' แต้ม = ส่วนลด 1 บาท'+(Number(SETTINGS?.min_redeem_points||0)>0?' · ขั้นต่ำ '+Number(SETTINGS.min_redeem_points).toLocaleString('th-TH')+' แต้ม':'')+'</div><label style="margin-top:8px">แต้มที่ต้องการใช้<input id="coPoints" type="number" min="0" step="'+pointsRate+'" max="'+pointBalance+'" value="0"></label></div>'
+      ?'<div class="paybox" style="grid-column:1/-1"><b>RESTART Points</b><div class="muted">มี '+pointBalance.toLocaleString('th-TH')+' แต้ม · '+pointsRate+' แต้ม = ส่วนลด 1 บาท'+(Number(SETTINGS?.min_redeem_points||0)>0?' · ขั้นต่ำ '+Number(SETTINGS.min_redeem_points).toLocaleString('th-TH')+' แต้ม':'')+'</div><div class="row" style="gap:8px;align-items:end;margin-top:8px"><label style="flex:1;margin:0">แต้มที่ต้องการใช้<input id="coPoints" type="number" min="0" step="'+pointsRate+'" max="'+pointBalance+'" value="0"></label><button id="useMaxPoints" class="btn sm soft" type="button">ใช้แต้มสูงสุด</button></div><div id="pointUseHint" class="muted" style="margin-top:6px"></div></div>'
       :'<div class="paybox" style="grid-column:1/-1"><b>ร้านนี้ใช้ RESTART Points ได้</b><div class="muted">เข้าสู่ระบบสมาชิกเพื่อใช้คะแนนเป็นส่วนลด</div><a class="btn sm soft" href="member.html?return='+encodeURIComponent(location.href)+'">Login สมาชิก</a></div>')
     :'';
   const r=await Swal.fire({title:'ตะกร้า / Checkout',width:880,showCancelButton:true,confirmButtonText:'ไปชำระเงิน',
@@ -153,6 +153,7 @@ async function openCart(){
       document.querySelectorAll('[data-cart-qty]').forEach(i=>i.onchange=()=>{const q=Math.max(0,Math.floor(Number(i.value||0)));if(q)CART.set(i.dataset.cartQty,q);else CART.delete(i.dataset.cartQty);updateCheckoutQuote()});
       coDelivery.onchange=()=>{coAddressWrap.style.display=coDelivery.value==='DELIVERY'?'block':'none';updateCheckoutQuote()};
       byId('coPoints')?.addEventListener('input',updateCheckoutQuote);
+      byId('useMaxPoints')?.addEventListener('click',()=>{const p=byId('coPoints');if(p){p.value=String(pointBalance);updateCheckoutQuote()}});
       updateCheckoutQuote()
     },
     preConfirm:async()=>{
@@ -163,7 +164,7 @@ async function openCart(){
     }});
   if(r.isConfirmed)openPayment(r.value)
 }
-async function updateCheckoutQuote(){try{const points=Math.max(0,Math.floor(Number(byId('coPoints')?.value||0))),q=await storeQuote(coDelivery.value,points);coQuote.innerHTML='สินค้า ฿'+money(q.subtotal_amount_thb)+(Number(q.shipping_fee_thb)?' · ค่าส่ง ฿'+money(q.shipping_fee_thb):'')+(Number(q.points_discount_thb)>0?' · แต้ม <b>-฿'+money(q.points_discount_thb)+'</b> ('+Number(q.points_redeemed).toLocaleString('th-TH')+' แต้ม)':'')+' · <b>รวม ฿'+money(q.total_amount_thb)+'</b>'}catch(e){coQuote.textContent=e.message}}
+async function updateCheckoutQuote(){try{const input=byId('coPoints'),points=Math.max(0,Math.floor(Number(input?.value||0))),q=await storeQuote(coDelivery.value,points),actual=Number(q.points_redeemed||0);if(input&&points>0&&actual!==points)input.value=String(actual);const hint=byId('pointUseHint');if(hint)hint.textContent=actual>0?'ใช้จริง '+actual.toLocaleString('th-TH')+' แต้ม · ลด ฿'+money(q.points_discount_thb):'';coQuote.innerHTML='สินค้า ฿'+money(q.subtotal_amount_thb)+(Number(q.shipping_fee_thb)?' · ค่าส่ง ฿'+money(q.shipping_fee_thb):'')+(Number(q.points_discount_thb)>0?' · แต้ม <b>-฿'+money(q.points_discount_thb)+'</b> ('+actual.toLocaleString('th-TH')+' แต้ม)':'')+' · <b>รวม ฿'+money(q.total_amount_thb)+'</b>'}catch(e){coQuote.textContent=e.message}}
 function storeQuote(delivery,points=0){return api('store-quote',{event_id:E.id,store_slug:STORE.slug,items:cartItems(),delivery_method:delivery,points_to_redeem:Math.max(0,Math.floor(Number(points||0)))})}
 function methodCard(m,i,total){
   const pp=m.kind==='PROMPTPAY';
