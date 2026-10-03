@@ -654,12 +654,14 @@ async function fullSystemRpc(req: Request, origin: string, action: string) {
   } else if (action === 'store-lookup') {
     result = await db.rpc('restart_lookup_store_order', {
       p_event_slug: text(body.event_slug),
+      p_store_slug: text(body.store_slug),
       p_order_code: text(body.order_code),
       p_phone: text(body.phone),
     });
   } else if (action === 'store-submit-payment') {
     result = await db.rpc('restart_submit_store_payment', {
       p_event_slug: text(body.event_slug),
+      p_store_slug: text(body.store_slug),
       p_order_code: text(body.order_code),
       p_phone: text(body.phone),
       p_slip_path: text(body.slip_path),
