@@ -64,9 +64,14 @@ function renderStoreSettings(s){
 async function saveStoreSettings(){
   const row={event_id:state.event.id,store_name:{th:storeName.value.trim(),en:storeName.value.trim()},is_open:storeOpen.value==='true',pickup_enabled:storePickup.value==='true',delivery_enabled:storeDelivery.value==='true',shipping_fee_thb:Number(storeShipping.value||0),pickup_note:{th:storePickupNote.value.trim()},terms:{th:storeTerms.value.trim()},updated_at:new Date().toISOString()};
   if(!row.pickup_enabled&&!row.delivery_enabled)return Swal.fire('ต้องเปิดวิธีรับสินค้าอย่างน้อย 1 แบบ','','warning');
-  const{error}=await db.from('restart_store_settings').upsert(row,{onConflict:'event_id'});
-  if(error)return Swal.fire('บันทึกไม่ได้',error.message,'error');
-  Swal.fire({icon:'success',title:'บันทึกหน้าร้านแล้ว',timer:900,showConfirmButton:false});renderStoreAdmin()
+  Swal.fire({title:'กำลังบันทึกหน้าร้าน…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
+  const flags={...(state.event.feature_flags||{}),storefront:row.is_open};
+  const{error:se}=await db.from('restart_store_settings').upsert(row,{onConflict:'event_id'});
+  if(se)return Swal.fire('บันทึกไม่ได้',se.message,'error');
+  const{error:ee}=await db.from('restart_events').update({feature_flags:flags}).eq('id',state.event.id);
+  if(ee)return Swal.fire('เปิด/ปิดร้านไม่สำเร็จ',ee.message,'error');
+  state.event.feature_flags=flags;
+  Swal.fire({icon:'success',title:row.is_open?'เปิดร้านแล้ว':'ปิดร้านแล้ว',timer:1000,showConfirmButton:false});renderStoreAdmin()
 }
 function renderStoreProducts(products){
   const totalStock=products.flatMap(p=>p.restart_merch_variants||[]).reduce((s,v)=>s+storeAvail(v),0);
