@@ -54,6 +54,74 @@ async function requireAdmin(req: Request) {
   return user;
 }
 
+async function optionalMember(req: Request) {
+  const auth = req.headers.get('authorization') || '';
+  if (!auth.toLowerCase().startsWith('bearer ')) return null;
+  const token = auth.slice(7).trim();
+  if (!token) return null;
+  const { data, error } = await db.auth.getUser(token);
+  if (error || !data?.user) return null;
+  return data.user;
+}
+
+async function requireMember(req: Request) {
+  const user = await optionalMember(req);
+  if (!user) fail(401, 'กรุณาเข้าสู่ระบบสมาชิกก่อนทำรายการ');
+  return user;
+}
+
+function cleanProfile(input: Record<string, unknown>) {
+  const blood = text(input.blood_group).toUpperCase();
+  if (blood && !['A','B','AB','O','UNKNOWN'].includes(blood)) fail(400, 'กรุ๊ปเลือดไม่ถูกต้อง');
+  const birth = text(input.birth_date);
+  if (birth && !/^\d{4}-\d{2}-\d{2}$/.test(birth)) fail(400, 'วันเกิดไม่ถูกต้อง');
+  const out = {
+    title: text(input.title) || null,
+    first_name: text(input.first_name) || null,
+    last_name: text(input.last_name) || null,
+    birth_date: birth || null,
+    address: text(input.address) || null,
+    phone: text(input.phone) || null,
+    blood_group: blood || null,
+    emergency_contact_name: text(input.emergency_contact_name) || null,
+    emergency_phone: text(input.emergency_phone) || null,
+    emergency_relation: text(input.emergency_relation) || null,
+  };
+  if (!out.title || !out.first_name || !out.last_name || !out.birth_date || !out.address || !out.phone ||
+      !out.blood_group || !out.emergency_contact_name || !out.emergency_phone || !out.emergency_relation) {
+    fail(400, 'กรุณากรอกข้อมูลสมาชิกให้ครบ');
+  }
+  return out;
+}
+
+async function completeMemberSignup(req: Request, origin: string) {
+  await limit(req, 'member-complete-signup', 5);
+  const body = await req.json();
+  const userId = text(body.user_id);
+  const signupToken = text(body.signup_token);
+  if (!/^[0-9a-f-]{36}$/i.test(userId) || signupToken.length < 24) fail(400, 'ข้อมูลสมัครสมาชิกไม่ถูกต้อง');
+
+  const { data: userData, error: userError } = await db.auth.admin.getUserById(userId);
+  const user = userData?.user;
+  if (userError || !user) fail(404, 'ไม่พบบัญชีสมาชิก');
+  if (text(user.user_metadata?.restart_signup_token) !== signupToken) fail(403, 'Token สมัครสมาชิกไม่ถูกต้อง');
+
+  const profile = cleanProfile((body.profile || {}) as Record<string, unknown>);
+  const { data: saved, error: saveError } = await db.from('restart_member_profiles').upsert({
+    user_id: user.id,
+    email: user.email || null,
+    ...profile,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'user_id' }).select('member_code,user_id').single();
+  if (saveError) fail(503, 'บันทึกข้อมูลสมาชิกไม่สำเร็จ');
+
+  const metadata = { ...(user.user_metadata || {}) };
+  delete metadata.restart_signup_token;
+  await db.auth.admin.updateUserById(user.id, { user_metadata: metadata }).catch(() => {});
+
+  return json({ ok: true, member_code: saved.member_code }, 201, origin);
+}
+
 function validateTelegramChatId(value: string) {
   return /^-?\d{2,30}$/.test(value) || /^@[A-Za-z0-9_]{5,64}$/.test(value);
 }
@@ -638,19 +706,34 @@ async function fullSystemRpc(req: Request, origin: string, action: string) {
     'store-create-order': 6,
     'store-lookup': 12,
     'store-submit-payment': 8,
+    'member-complete-signup': 5,
   };
   await limit(req, action, limits[action] || 8);
   const body = await req.json();
   let result: { data: any; error: any };
 
   if (action === 'store-quote') {
+    const member = await optionalMember(req);
+    const payload = { ...(body || {}) };
+    delete payload.member_user_id;
+    if (member) payload.member_user_id = member.id;
     result = await db.rpc('restart_store_quote', {
-      p_payload: body || {},
+      p_payload: payload,
     });
   } else if (action === 'store-create-order') {
+    const member = await optionalMember(req);
+    const payload = { ...(body?.payload || {}) };
+    delete payload.member_user_id;
+    if (member) payload.member_user_id = member.id;
     result = await db.rpc('restart_create_store_order', {
-      p_payload: body?.payload || {},
+      p_payload: payload,
     });
+    if (!result.error && member && result.data?.id) {
+      await db.from('restart_store_orders').update({
+        member_user_id: member.id,
+        updated_at: new Date().toISOString(),
+      }).eq('id', result.data.id);
+    }
   } else if (action === 'store-lookup') {
     result = await db.rpc('restart_lookup_store_order', {
       p_event_slug: text(body.event_slug),
@@ -678,7 +761,21 @@ async function fullSystemRpc(req: Request, origin: string, action: string) {
       p_runners: Array.isArray(q.runners) ? q.runners : [],
     });
   } else if (action === 'create-registration') {
-    result = await db.rpc('restart_create_registration', { p_payload: body.payload || {} });
+    const member = await requireMember(req);
+    const payload = { ...(body.payload || {}) };
+    delete payload.member_user_id;
+    result = await db.rpc('restart_create_registration', { p_payload: payload });
+    if (!result.error && result.data?.id) {
+      const memberRunnerIndex = Math.max(1, Number(payload.member_runner_index || payload.contact_runner_index || 1));
+      const linked = await db.from('restart_registrations').update({
+        member_user_id: member.id,
+        member_runner_index: memberRunnerIndex,
+        updated_at: new Date().toISOString(),
+      }).eq('id', result.data.id).select('id').maybeSingle();
+      if (linked.error || !linked.data) {
+        fail(503, 'เชื่อมใบสมัครกับสมาชิกไม่สำเร็จ');
+      }
+    }
   } else if (action === 'join-waitlist') {
     result = await db.rpc('restart_join_waitlist', { p_payload: body.payload || {} });
   } else if (action === 'next-payment-lookup') {
@@ -698,6 +795,8 @@ async function fullSystemRpc(req: Request, origin: string, action: string) {
       p_registration_code: text(body.registration_code),
       p_id_document: text(body.id_document),
     });
+  } else if (action === 'member-complete-signup') {
+    return await completeMemberSignup(req, origin);
   } else if (action === 'manage-action') {
     result = await db.rpc('restart_manage_registration_action', {
       p_event_slug: text(body.event_slug),
@@ -865,7 +964,7 @@ Deno.serve(async (req) => {
     if (action === 'lookup' && req.method === 'POST') return await registrationLookup(req, origin);
     if (action === 'submit-payment' && req.method === 'POST') return await submitNextPayment(req, origin);
     if (action === 'notify-registration' && req.method === 'POST') return await notifyRegistrationById(req, origin);
-    if (['price-quote','create-registration','join-waitlist','next-payment-lookup','next-payment-submit','manage-lookup','manage-action','store-quote','store-create-order','store-lookup','store-submit-payment'].includes(action) && req.method === 'POST') return await fullSystemRpc(req, origin, action);
+    if (['price-quote','create-registration','join-waitlist','next-payment-lookup','next-payment-submit','manage-lookup','manage-action','store-quote','store-create-order','store-lookup','store-submit-payment','member-complete-signup'].includes(action) && req.method === 'POST') return await fullSystemRpc(req, origin, action);
     if (action === 'upload-slip' && req.method === 'POST') return await publicSlipUpload(req, origin);
     if (action === 'telegram-settings' && req.method === 'POST') return await telegramSettingsGet(req, origin);
     if (action === 'telegram-settings-save' && req.method === 'POST') return await telegramSettingsSave(req, origin);
