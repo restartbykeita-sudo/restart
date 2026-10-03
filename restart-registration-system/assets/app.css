@@ -188,6 +188,7 @@ html[data-ui-theme="dark"] .public-registration .langbar button.active{backgroun
   white-space:normal;overflow-wrap:anywhere;
   min-height:44px;border-radius:14px;padding:11px 16px;font-weight:820;transition:.18s ease
 }
+.public-registration .btn[hidden]{display:none!important}
 .public-registration .btn:hover{transform:translateY(-1px)}
 .public-registration .btn.primary{
   background:linear-gradient(135deg,var(--primary),color-mix(in srgb,var(--primary) 72%,#ef6e9f));
