@@ -87,6 +87,8 @@ html[data-ui-theme="dark"] .public-registration .rr-top{box-shadow:0 1px 0 rgba(
 .public-registration .rr-brand small{font-size:11px;letter-spacing:.08em;text-transform:uppercase}
 .public-registration .rr-main-logo.header{width:72px;max-width:18vw}
 .public-registration .rr-public-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;min-width:0}
+.public-registration .rr-public-actions>.btn,
+.public-registration .rr-public-actions>.theme-toggle{flex:0 0 auto}
 .public-registration .theme-toggle{
   display:inline-flex;align-items:center;justify-content:center;gap:7px;
   min-height:38px;padding:8px 12px;border:1px solid var(--line);border-radius:999px;
@@ -181,6 +183,9 @@ html[data-ui-theme="dark"] .public-registration .langbar button.active{backgroun
   border-radius:18px;padding:18px;margin-top:14px;background:var(--surface-2)
 }
 .public-registration .btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-width:0;max-width:100%;line-height:1.4;text-align:center;text-decoration:none;
+  white-space:normal;overflow-wrap:anywhere;
   min-height:44px;border-radius:14px;padding:11px 16px;font-weight:820;transition:.18s ease
 }
 .public-registration .btn:hover{transform:translateY(-1px)}
@@ -760,7 +765,7 @@ html[data-ui-theme="dark"] .event-count{color:rgba(255,255,255,.07)}
 .preview-hero-meta>div:last-child{border-right:0}
 .preview-hero-meta span{display:block;font-size:9px;font-weight:850;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.50)}
 .preview-hero-meta b{display:block;margin-top:5px;font-size:13px;line-height:1.35;color:#fff}
-.preview-hero-actions{display:flex;gap:10px;margin-top:22px}
+.preview-hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
 .preview-register-btn{
   display:inline-flex;align-items:center;justify-content:center;gap:16px;
   min-height:52px;padding:13px 20px;border-radius:15px;text-decoration:none;
@@ -923,4 +928,11 @@ html{scroll-behavior:smooth}
 @media(max-width:620px){
   .preview-hero-actions{flex-direction:column;align-items:stretch}
   .preview-register-btn,.preview-route-btn{width:100%;min-height:50px}
+}
+
+/* Keep athlete header controls on separate rows on narrow screens. */
+@media(max-width:920px){
+  .public-registration .rr-top{flex-wrap:wrap}
+  .public-registration .rr-public-actions{width:100%;max-width:100%;flex-wrap:wrap}
+  .public-registration .langbar{flex:1 1 100%;width:100%;max-width:100%;flex-wrap:wrap;overflow:visible}
 }
