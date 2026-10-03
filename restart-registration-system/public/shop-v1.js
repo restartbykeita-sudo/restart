@@ -6,10 +6,14 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&
 const money=v=>Number(v||0).toLocaleString('th-TH',{maximumFractionDigits:2});
 const tr=v=>typeof v==='string'?v:(v?.[LANG]||v?.th||v?.en||Object.values(v||{})[0]||'');
 const byId=id=>document.getElementById(id);
-function api(action,body={}){
-  return fetch(RESTART_REG_CONFIG.SUPABASE_URL+'/functions/v1/restart-registration-api?action='+encodeURIComponent(action),{
-    method:'POST',headers:{'content-type':'application/json','apikey':RESTART_REG_CONFIG.SUPABASE_PUBLISHABLE_KEY},body:JSON.stringify(body)
-  }).then(async r=>{const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||('HTTP '+r.status));return d})
+async function api(action,body={}){
+  const{data:{session}}=await db.auth.getSession();
+  const headers={'content-type':'application/json','apikey':RESTART_REG_CONFIG.SUPABASE_PUBLISHABLE_KEY};
+  if(session?.access_token)headers.authorization='Bearer '+session.access_token;
+  const r=await fetch(RESTART_REG_CONFIG.SUPABASE_URL+'/functions/v1/restart-registration-api?action='+encodeURIComponent(action),{
+    method:'POST',headers,body:JSON.stringify(body)
+  });
+  const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||('HTTP '+r.status));return d
 }
 function variantPrice(p,v){return Number(v.price_override_thb??(Number(p.price_thb||0)+Number(v.price_adjustment_thb||0)))}
 function optionText(v){
@@ -178,7 +182,8 @@ async function openPayment(co){
 }
 async function uploadSlip(file){
   const form=new FormData();form.append('event_slug',E.slug);form.append('purpose','store');form.append('slip',file);
-  const res=await fetch(RESTART_REG_CONFIG.SUPABASE_URL+'/functions/v1/restart-registration-api?action=upload-slip',{method:'POST',headers:{apikey:RESTART_REG_CONFIG.SUPABASE_PUBLISHABLE_KEY},body:form});
+  const{data:{session}}=await db.auth.getSession();const headers={apikey:RESTART_REG_CONFIG.SUPABASE_PUBLISHABLE_KEY};if(session?.access_token)headers.authorization='Bearer '+session.access_token;
+  const res=await fetch(RESTART_REG_CONFIG.SUPABASE_URL+'/functions/v1/restart-registration-api?action=upload-slip',{method:'POST',headers,body:form});
   const d=await res.json().catch(()=>({}));if(!res.ok)throw new Error(d.error||('HTTP '+res.status));return d.path
 }
 async function lookupOrder(){
