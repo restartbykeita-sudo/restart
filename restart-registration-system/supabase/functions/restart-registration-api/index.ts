@@ -634,24 +634,46 @@ async function fullSystemRpc(req: Request, origin: string, action: string) {
     'manage-lookup': 10,
     'manage-action': 8,
     'price-quote': 20,
+    'store-quote': 20,
+    'store-create-order': 6,
+    'store-lookup': 12,
+    'store-submit-payment': 8,
   };
   await limit(req, action, limits[action] || 8);
   const body = await req.json();
   let result: { data: any; error: any };
 
-  if (action === 'price-quote') {
+  if (action === 'store-quote') {
+    result = await db.rpc('restart_store_quote', {
+      p_payload: body || {},
+    });
+  } else if (action === 'store-create-order') {
+    result = await db.rpc('restart_create_store_order', {
+      p_payload: body?.payload || {},
+    });
+  } else if (action === 'store-lookup') {
+    result = await db.rpc('restart_lookup_store_order', {
+      p_event_slug: text(body.event_slug),
+      p_order_code: text(body.order_code),
+      p_phone: text(body.phone),
+    });
+  } else if (action === 'store-submit-payment') {
+    result = await db.rpc('restart_submit_store_payment', {
+      p_event_slug: text(body.event_slug),
+      p_order_code: text(body.order_code),
+      p_phone: text(body.phone),
+      p_slip_path: text(body.slip_path),
+    });
+  } else if (action === 'price-quote') {
     const q = body || {};
-    result = await db.rpc('restart_price_quote_full', {
-      p_payload: {
-        event_id: text(q.event_id),
-        category_id: text(q.category_id) || null,
-        package_id: text(q.package_id) || null,
-        registration_type: text(q.registration_type || 'SINGLE'),
-        runner_count: Number(q.runner_count || 1),
-        discount_code: text(q.discount_code) || null,
-        runners: Array.isArray(q.runners) ? q.runners : [],
-        merch_items: Array.isArray(q.merch_items) ? q.merch_items : [],
-      },
+    result = await db.rpc('restart_price_quote', {
+      p_event_id: text(q.event_id),
+      p_category_id: text(q.category_id) || null,
+      p_package_id: text(q.package_id) || null,
+      p_registration_type: text(q.registration_type || 'SINGLE'),
+      p_runner_count: Number(q.runner_count || 1),
+      p_discount_code: text(q.discount_code) || null,
+      p_runners: Array.isArray(q.runners) ? q.runners : [],
     });
   } else if (action === 'create-registration') {
     result = await db.rpc('restart_create_registration', { p_payload: body.payload || {} });
@@ -689,11 +711,13 @@ async function fullSystemRpc(req: Request, origin: string, action: string) {
   if (result.error) {
     const slipPath = action === 'create-registration'
       ? text(body?.payload?.slip_path)
-      : action === 'next-payment-submit'
-        ? text(body?.slip_path)
-        : '';
+      : action === 'store-create-order'
+        ? text(body?.payload?.slip_path)
+        : action === 'next-payment-submit' || action === 'store-submit-payment'
+          ? text(body?.slip_path)
+          : '';
     if (slipPath) await db.storage.from('restart-slips').remove([slipPath]).catch(() => {});
-    const knownStatus = /NOT_FOUND|DISABLED|REQUIRED|INVALID|MISMATCH|EXCEEDED|CLOSED|NOT_OPEN|ALREADY|WRONG|DUPLICATE|FULL|WAITLIST|ELIGIBLE|PAID|PENDING|LIMIT|SHIRT/.test(text(result.error.message)) ? 409 : 400;
+    const knownStatus = /NOT_FOUND|DISABLED|REQUIRED|INVALID|MISMATCH|EXCEEDED|CLOSED|NOT_OPEN|ALREADY|WRONG|DUPLICATE|FULL|WAITLIST|ELIGIBLE|PAID|PENDING|LIMIT|SHIRT|STORE|PICKUP|DELIVERY/.test(text(result.error.message)) ? 409 : 400;
     fail(knownStatus, text(result.error.message || 'ทำรายการไม่สำเร็จ'));
   }
   if (action === 'create-registration' && result.data?.id && result.data?.registration_code) {
@@ -839,7 +863,7 @@ Deno.serve(async (req) => {
     if (action === 'lookup' && req.method === 'POST') return await registrationLookup(req, origin);
     if (action === 'submit-payment' && req.method === 'POST') return await submitNextPayment(req, origin);
     if (action === 'notify-registration' && req.method === 'POST') return await notifyRegistrationById(req, origin);
-    if (['price-quote','create-registration','join-waitlist','next-payment-lookup','next-payment-submit','manage-lookup','manage-action'].includes(action) && req.method === 'POST') return await fullSystemRpc(req, origin, action);
+    if (['price-quote','create-registration','join-waitlist','next-payment-lookup','next-payment-submit','manage-lookup','manage-action','store-quote','store-create-order','store-lookup','store-submit-payment'].includes(action) && req.method === 'POST') return await fullSystemRpc(req, origin, action);
     if (action === 'upload-slip' && req.method === 'POST') return await publicSlipUpload(req, origin);
     if (action === 'telegram-settings' && req.method === 'POST') return await telegramSettingsGet(req, origin);
     if (action === 'telegram-settings-save' && req.method === 'POST') return await telegramSettingsSave(req, origin);
