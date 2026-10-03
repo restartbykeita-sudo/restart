@@ -44,6 +44,14 @@ const dict={th:{apply:'สมัครแข่งขัน',choose:'เลื�
 const D=()=>dict[lang]||dict.en;const byId=id=>document.getElementById(id);const val=id=>(byId(id)?.value||'').trim();const baseFieldAliases=new Set(['title','prefix','first_name','last_name','birth_date','age','gender','id_document','phone','blood_group','shirt_size','address','emergency_contact_name','emergency_phone','emergency_relation']);const baseMeta=(...keys)=>F.find(f=>keys.includes(f.field_key))||null;const optionTags=(meta,fallback=[])=>{const opts=meta?.options?.length?meta.options:fallback;return opts.map(o=>{const value=typeof o==='object'?(o.value??tr(o.label||o)):o;const label=typeof o==='object'?tr(o.label||o):o;return '<option value="'+esc(value)+'">'+esc(label)+'</option>'}).join('')};const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));const tr=v=>typeof v==='object'?(v?.[lang]||v?.en||v?.th||Object.values(v||{})[0]||''):v||'';const money=v=>Number(v||0).toLocaleString(undefined,{maximumFractionDigits:2});
 function langs(){const ls=E?.languages||['th','en','zh','ja','ru'];langbar.innerHTML=ls.map(x=>'<button class="'+(x===lang?'active':'')+'" data-l="'+x+'">'+x.toUpperCase()+'</button>').join('');langbar.onclick=e=>{const b=e.target.closest('[data-l]');if(!b)return;lang=b.dataset.l;localStorage.setItem('restart_lang',lang);if(registerMode&&E?.status==='OPEN')render();else renderEventPreview()}}
 async function init(){
+  const {data:{session},error:sessionError}=await db.auth.getSession();
+  if(sessionError)throw sessionError;
+  if(!session?.user){
+    const loginUrl=new URL('member.html',location.href);
+    loginUrl.searchParams.set('return',location.href);
+    location.replace(loginUrl.href);
+    return;
+  }
   initThemeToggle();
   if(!slug)return listEvents();
   const{data:e,error}=await db.from('restart_events').select('*').eq('slug',slug).maybeSingle();

@@ -1,9 +1,9 @@
-<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RESTART Registration System</title><link rel="stylesheet" href="assets/app.css?v=1.10.0"></head><body>
-<div class="rr-shell"><main class="rr-wrap" style="max-width:860px;padding-top:8vh">
-<section class="hero" style="text-align:center"><img class="rr-main-logo landing" src="assets/restart-logo-correct.png?v=20261001-10" alt="RESTART"><h1 style="margin:0">RESTART Registration System</h1><div>สมัครงานวิ่ง · บัญชีสมาชิก · CRM และสะสมแต้ม</div></section>
-<section class="rr-card" style="margin-top:18px"><div class="grid2">
-<a class="paybox" href="public/member.html" style="text-decoration:none;color:inherit"><h2>สมาชิก / Login</h2><p class="muted">สมัครสมาชิก เข้าสู่ระบบ แก้ไขข้อมูลส่วนตัว ดูบัตรสมาชิก ประวัติสมัครงานวิ่ง และแต้มสะสม</p><span class="btn primary">เข้าสู่ระบบ / สมัครสมาชิก</span></a>
-<a class="paybox" href="admin/members.html" style="text-decoration:none;color:inherit"><h2>สมาชิก CRM</h2><p class="muted">สำหรับแอดมิน: ค้นหาสมาชิก ดูประวัติการเข้าร่วมงานและคำสั่งซื้อ พร้อมจัดการแต้มสะสม</p><span class="btn soft">เปิดระบบ CRM</span></a>
-<a class="paybox" href="admin/" style="text-decoration:none;color:inherit"><h2>Admin</h2><p class="muted">สร้าง Event, รุ่นการแข่งขัน, ราคา, Package, ผ่อน, Payment, Form, Theme และตรวจสลิป</p><span class="btn primary">เข้าสู่ Admin</span></a>
-<a class="paybox" href="public/" style="text-decoration:none;color:inherit"><h2>หน้ารับสมัคร</h2><p class="muted">เลือก Event และเปิดหน้าสมัครสำหรับผู้เข้าร่วมการแข่งขัน</p><span class="btn soft">เปิดหน้ารับสมัคร</span></a>
-</div></section></main></div></body></html>
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RESTART · เข้าสู่ระบบนักแข่ง</title><script>
+const eventsUrl=new URL('public/',location.href);
+eventsUrl.search=location.search;
+eventsUrl.hash=location.hash;
+const loginUrl=new URL('public/member.html',location.href);
+loginUrl.searchParams.set('return',eventsUrl.href);
+location.replace(loginUrl.href);
+</script></head><body><p>กำลังเปิดหน้าเข้าสู่ระบบนักแข่ง…</p><a href="public/member.html">เข้าสู่ระบบนักแข่ง</a></body></html>

@@ -32,7 +32,13 @@ function collectProfile(prefix=''){
   return{title:v('Title'),first_name:v('First'),last_name:v('Last'),birth_date:v('Birth'),phone:v('Phone'),blood_group:v('Blood'),address:v('Address'),emergency_contact_name:v('EmergencyName'),emergency_phone:v('EmergencyPhone'),emergency_relation:v('EmergencyRelation')}
 }
 function validateProfile(p){for(const [k,v] of Object.entries(p))if(!v)throw new Error('กรุณากรอกข้อมูลสมาชิกให้ครบ');return p}
-function returnUrl(){const q=new URLSearchParams(location.search).get('return');return q&&q.startsWith(location.origin)?q:null}
+function returnUrl(){
+  const q=new URLSearchParams(location.search).get('return');if(!q)return null;
+  try{
+    const target=new URL(q,location.href),base=new URL('./',location.href);
+    return target.origin===location.origin&&target.pathname.startsWith(base.pathname)&&target.pathname!==location.pathname?target.href:null;
+  }catch{return null}
+}
 function memberPageUrl(){return location.origin+location.pathname}
 async function resendSignupEmail(email){
   if(!email)return;
@@ -59,13 +65,14 @@ async function promptNewPassword(){
   const{data:{session}}=await db.auth.getSession();if(session?.user)renderMember(session.user);else renderAuth()
 }
 async function renderAuth(){
+  document.getElementById('memberEventsLink').hidden=true;
   logoutBtn.hidden=true;
   app.innerHTML='<section class="member-auth-grid">'+
-    '<div class="rr-card"><div class="member-login-tabs"><button id="tabLogin" class="btn soft active">เข้าสู่ระบบ</button><button id="tabSignup" class="btn soft">สมัครสมาชิก</button></div><div id="authPanel"></div></div>'+
-    '<div class="member-card-hero"><div class="member-card-code">RESTART MEMBER</div><div class="member-card-name">สมัครครั้งเดียว<br>ใช้ข้อมูลได้ทุก Event</div><p>โปรไฟล์กลางจะเติมข้อมูลในฟอร์มสมัครให้อัตโนมัติ แก้ในฟอร์มได้ และบันทึกกลับมาใช้ครั้งต่อไป</p><div class="member-stat-grid"><div><b>CRM</b><div>ประวัติสมาชิก</div></div><div><b>POINTS</b><div>สะสมจาก Event</div></div><div><b>STORE</b><div>ใช้แต้มเป็นส่วนลด</div></div></div></div>'+
+    '<div class="rr-card"><div class="member-login-tabs"><button id="tabLogin" class="btn soft active">เข้าสู่ระบบ</button><button id="tabSignup" class="btn soft">สมัครนักแข่งใหม่</button></div><div id="authPanel"></div></div>'+
+    '<div class="member-card-hero"><div class="member-card-code">RESTART · นักแข่ง</div><div class="member-card-name">สมัครครั้งเดียว<br>ใช้ข้อมูลได้ทุก Event</div><p>โปรไฟล์กลางจะเติมข้อมูลในฟอร์มสมัครให้อัตโนมัติ แก้ในฟอร์มได้ และบันทึกกลับมาใช้ครั้งต่อไป</p><div class="member-stat-grid"><div><b>1</b><div>เข้าสู่ระบบนักแข่ง</div></div><div><b>2</b><div>เลือกงานวิ่ง</div></div><div><b>3</b><div>สมัครแข่ง</div></div></div><p>ดูและแก้ไขข้อมูลส่วนตัว ตรวจสอบประวัติสมัครแข่งและแต้มของตัวเองได้ในบัญชีนักแข่ง</p></div>'+
   '</section>';
-  const login=()=>{tabLogin.classList.add('active');tabSignup.classList.remove('active');authPanel.innerHTML='<h2>เข้าสู่ระบบสมาชิก</h2><label>Email<input id="loginEmail" type="email" autocomplete="email"></label><label>Password<input id="loginPassword" type="password" autocomplete="current-password"></label><button id="loginBtn" class="btn primary" style="width:100%;margin-top:12px">เข้าสู่ระบบ</button><button id="forgotBtn" class="btn soft" type="button" style="width:100%;margin-top:8px">ลืมรหัสผ่าน</button>';loginBtn.onclick=doLogin;forgotBtn.onclick=forgotPassword};
-  const signup=()=>{tabSignup.classList.add('active');tabLogin.classList.remove('active');authPanel.innerHTML='<h2>สมัครสมาชิก RESTART</h2><div class="member-profile-grid"><label class="wide">Email สำหรับ Login<input id="suEmail" type="email" required autocomplete="email"></label><label class="wide">Password <small class="muted">อย่างน้อย 8 ตัวอักษร</small><input id="suPassword" type="password" minlength="8" required autocomplete="new-password"></label></div>'+profileFields('su')+'<div class="member-form-note">Email ใช้สำหรับเข้าสู่ระบบ ส่วนข้อมูลส่วนตัวเก็บใน Member Profile และไม่ใส่ข้อมูลสุขภาพไว้ใน Auth token</div><button id="signupBtn" class="btn primary" style="width:100%;margin-top:14px">สร้างบัญชีสมาชิก</button>';bindAge('su');signupBtn.onclick=doSignup};
+  const login=()=>{tabLogin.classList.add('active');tabSignup.classList.remove('active');authPanel.innerHTML='<h2>เข้าสู่ระบบนักแข่ง</h2><label>Email<input id="loginEmail" type="email" autocomplete="email"></label><label>Password<input id="loginPassword" type="password" autocomplete="current-password"></label><button id="loginBtn" class="btn primary" style="width:100%;margin-top:12px">เข้าสู่ระบบ</button><button id="forgotBtn" class="btn soft" type="button" style="width:100%;margin-top:8px">ลืมรหัสผ่าน</button>';loginBtn.onclick=doLogin;forgotBtn.onclick=forgotPassword};
+  const signup=()=>{tabSignup.classList.add('active');tabLogin.classList.remove('active');authPanel.innerHTML='<h2>สมัครบัญชีนักแข่ง</h2><div class="member-profile-grid"><label class="wide">Email สำหรับ Login<input id="suEmail" type="email" required autocomplete="email"></label><label class="wide">Password <small class="muted">อย่างน้อย 8 ตัวอักษร</small><input id="suPassword" type="password" minlength="8" required autocomplete="new-password"></label></div>'+profileFields('su')+'<div class="member-form-note">ใช้อีเมลนี้เข้าสู่ระบบครั้งต่อไป ข้อมูลส่วนตัวจะเติมให้อัตโนมัติเมื่อสมัครแข่ง และแก้ไขได้</div><button id="signupBtn" class="btn primary" style="width:100%;margin-top:14px">สร้างบัญชีสมาชิก</button>';bindAge('su');signupBtn.onclick=doSignup};
   tabLogin.onclick=login;tabSignup.onclick=signup;login()
 }
 async function doLogin(){
@@ -81,7 +88,7 @@ async function doLogin(){
     }
     return Swal.fire('เข้าสู่ระบบไม่สำเร็จ',msg,'error')
   }
-  const ret=returnUrl();if(ret)return location.href=ret;
+  const ret=returnUrl()||new URL('./',location.href).href;return location.replace(ret);
   Swal.close();renderMember(data.user)
 }
 async function doSignup(){
@@ -96,7 +103,7 @@ async function doSignup(){
     if(error)throw error;if(!data.user)throw new Error('สร้างบัญชีไม่สำเร็จ');
     const saved=await api('member-complete-signup',{user_id:data.user.id,signup_token:token,profile});
     if(data.session){
-      const ret=returnUrl();if(ret)return location.href=ret;
+      const ret=returnUrl()||new URL('./',location.href).href;return location.replace(ret);
       await Swal.fire({icon:'success',title:'สมัครสมาชิกสำเร็จ',html:'รหัสสมาชิก <b>'+esc(saved.member_code)+'</b>'});return renderMember(data.user)
     }
     const confirm=await Swal.fire({icon:'success',title:'สร้างบัญชีแล้ว',html:'กรุณาตรวจ <b>'+esc(email)+'</b> เพื่อยืนยันบัญชี<br><small>หากกดลิงก์แล้วไม่ได้กลับมาหน้านี้ ให้เปิดหน้า Member แล้ว Login ได้ตามปกติ</small>',showDenyButton:true,denyButtonText:'ส่ง Email ยืนยันอีกครั้ง',confirmButtonText:'เข้าใจแล้ว'});
@@ -112,6 +119,7 @@ async function ensureProfile(user){
   if(ie)throw ie;return made
 }
 async function renderMember(user){
+  document.getElementById('memberEventsLink').hidden=false;
   logoutBtn.hidden=false;
   let profile;try{profile=await ensureProfile(user)}catch(e){return app.innerHTML='<section class="rr-card rr-empty">'+esc(e.message)+'</section>'}
   const [regs,ledger,orders,waitlist]=await Promise.all([
@@ -123,10 +131,11 @@ async function renderMember(user){
   const regRows=regs.data||[],pointRows=ledger.data||[],orderRows=orders.data||[],waitRows=waitlist.data||[];
   const full=[profile.title==='mr'?'นาย':profile.title==='ms'?'นางสาว':profile.title==='mrs'?'นาง':'',profile.first_name,profile.last_name].filter(Boolean).join(' ')||'RESTART Member';
   app.innerHTML=
+    '<section class="rr-card"><h2 style="margin:0 0 12px">ข้อมูลส่วนตัว / แต้มของฉัน</h2><nav class="row" aria-label="บัญชีนักแข่ง" style="gap:8px;flex-wrap:wrap"><a class="btn soft" href="#myProfile">ข้อมูลส่วนตัว</a><a class="btn soft" href="#myPoints">แต้มของฉัน</a><a class="btn soft" href="#myRegistrations">ประวัติสมัครแข่ง</a><a class="btn primary" href="./">เลือกงานวิ่ง / สมัครแข่ง</a></nav></section>'+
     '<section class="member-card-hero"><div class="member-card-code">'+esc(profile.member_code)+'</div><div class="member-card-name">'+esc(full)+'</div><div class="member-points">'+Number(profile.points_balance||0).toLocaleString('th-TH')+' <small>POINTS</small></div><div class="member-stat-grid"><div><small>อายุ</small><div class="member-age">'+(profile.birth_date?ageFromBirth(profile.birth_date)+' ปี':'—')+'</div></div><div><small>Event ที่สมัคร</small><div class="member-age">'+regRows.length+'</div></div><div><small>Waitlist</small><div class="member-age">'+waitRows.filter(x=>['WAITING','INVITED'].includes(x.status)).length+'</div></div><div><small>ออเดอร์ร้านค้า</small><div class="member-age">'+orderRows.length+'</div></div></div></section>'+
-    '<section class="rr-card"><div class="member-section-head"><div><h2 style="margin:0">ข้อมูลสมาชิก</h2><div class="muted">แก้ครั้งเดียว ใช้เป็นข้อมูลตั้งต้นในฟอร์มสมัครครั้งต่อไป</div></div><button id="editProfileBtn" class="btn primary">แก้ไขข้อมูล</button></div><div class="member-profile-grid"><div><small>ชื่อ</small><div><b>'+esc(full)+'</b></div></div><div><small>วันเกิด / อายุ</small><div>'+fmtDate(profile.birth_date)+' · '+(profile.birth_date?ageFromBirth(profile.birth_date)+' ปี':'—')+'</div></div><div><small>โทรศัพท์</small><div>'+esc(profile.phone||'—')+'</div></div><div><small>กรุ๊ปเลือด</small><div>'+esc(profile.blood_group||'—')+'</div></div><div class="wide"><small>ที่อยู่</small><div>'+esc(profile.address||'—')+'</div></div><div><small>ผู้ติดต่อฉุกเฉิน</small><div>'+esc(profile.emergency_contact_name||'—')+'</div></div><div><small>เบอร์ฉุกเฉิน</small><div>'+esc(profile.emergency_phone||'—')+'</div></div><div><small>ความสัมพันธ์</small><div>'+esc(profile.emergency_relation||'—')+'</div></div></div></section>'+
-    '<section class="rr-card"><div class="member-section-head"><div><h2 style="margin:0">ประวัติ Event</h2><div class="muted">ใบสมัครที่เชื่อมกับบัญชีนี้</div></div></div><div class="member-history">'+(regRows.length?regRows.map(r=>'<div class="member-history-row"><div><b>'+esc(r.restart_events?.name||'Event')+'</b><div class="muted">'+esc(r.registration_code)+' · '+esc(r.registration_type)+(r.group_name?' · '+esc(r.group_name):'')+'<br>'+fmtDate(r.restart_events?.event_date_start)+'</div></div><div style="text-align:right"><b>'+esc(r.status)+'</b><div>฿'+money(r.total_amount_thb)+'</div></div></div>').join(''):'<div class="rr-empty">ยังไม่มีประวัติสมัคร Event</div>')+'</div></section>'+    '<section class="rr-card"><div class="member-section-head"><div><h2 style="margin:0">Waiting List</h2><div class="muted">รายการรอคิวที่เชื่อมกับ Member ID นี้</div></div></div><div class="member-history">'+(waitRows.length?waitRows.map(w=>'<div class="member-history-row"><div><b>'+esc(w.restart_events?.name||'Event')+'</b><div class="muted">'+esc(w.registration_type)+(w.group_name?' · '+esc(w.group_name):'')+' · '+Number(w.runner_count||1)+' คน<br>เข้าคิว '+new Date(w.created_at).toLocaleString('th-TH')+'</div></div><div style="text-align:right"><b>'+esc(w.status)+'</b><div>'+fmtDate(w.restart_events?.event_date_start)+'</div></div></div>').join(''):'<div class="rr-empty">ยังไม่มีรายการ Waiting List</div>')+'</div></section>'+
-    '<section class="rr-card"><div class="member-section-head"><div><h2 style="margin:0">คะแนนสะสม</h2><div class="muted">ตรวจสอบที่มาของแต้มย้อนหลังได้</div></div></div><div class="member-history">'+(pointRows.length?pointRows.map(x=>'<div class="member-history-row"><div><b>'+esc(x.description||x.transaction_type)+'</b><div class="muted">'+new Date(x.created_at).toLocaleString('th-TH')+'</div></div><div class="'+(x.points>0?'member-ledger-positive':'member-ledger-negative')+'">'+(x.points>0?'+':'')+x.points+'</div></div>').join(''):'<div class="rr-empty">ยังไม่มีคะแนนสะสม</div>')+'</div></section>'+
+    '<section id="myProfile" class="rr-card" style="scroll-margin-top:100px"><div class="member-section-head"><div><h2 style="margin:0">ข้อมูลส่วนตัว</h2><div class="muted">แก้ครั้งเดียว ใช้เป็นข้อมูลตั้งต้นในฟอร์มสมัครครั้งต่อไป</div></div><button id="editProfileBtn" class="btn primary">แก้ไขข้อมูล</button></div><div class="member-profile-grid"><div><small>ชื่อ</small><div><b>'+esc(full)+'</b></div></div><div><small>วันเกิด / อายุ</small><div>'+fmtDate(profile.birth_date)+' · '+(profile.birth_date?ageFromBirth(profile.birth_date)+' ปี':'—')+'</div></div><div><small>โทรศัพท์</small><div>'+esc(profile.phone||'—')+'</div></div><div><small>กรุ๊ปเลือด</small><div>'+esc(profile.blood_group||'—')+'</div></div><div class="wide"><small>ที่อยู่</small><div>'+esc(profile.address||'—')+'</div></div><div><small>ผู้ติดต่อฉุกเฉิน</small><div>'+esc(profile.emergency_contact_name||'—')+'</div></div><div><small>เบอร์ฉุกเฉิน</small><div>'+esc(profile.emergency_phone||'—')+'</div></div><div><small>ความสัมพันธ์</small><div>'+esc(profile.emergency_relation||'—')+'</div></div></div></section>'+
+    '<section id="myRegistrations" class="rr-card" style="scroll-margin-top:100px"><div class="member-section-head"><div><h2 style="margin:0">ประวัติสมัครแข่ง</h2><div class="muted">ใบสมัครที่เชื่อมกับบัญชีนี้</div></div></div><div class="member-history">'+(regRows.length?regRows.map(r=>'<div class="member-history-row"><div><b>'+esc(r.restart_events?.name||'Event')+'</b><div class="muted">'+esc(r.registration_code)+' · '+esc(r.registration_type)+(r.group_name?' · '+esc(r.group_name):'')+'<br>'+fmtDate(r.restart_events?.event_date_start)+'</div></div><div style="text-align:right"><b>'+esc(r.status)+'</b><div>฿'+money(r.total_amount_thb)+'</div></div></div>').join(''):'<div class="rr-empty">ยังไม่มีประวัติสมัคร Event</div>')+'</div></section>'+    '<section class="rr-card"><div class="member-section-head"><div><h2 style="margin:0">Waiting List</h2><div class="muted">รายการรอคิวที่เชื่อมกับ Member ID นี้</div></div></div><div class="member-history">'+(waitRows.length?waitRows.map(w=>'<div class="member-history-row"><div><b>'+esc(w.restart_events?.name||'Event')+'</b><div class="muted">'+esc(w.registration_type)+(w.group_name?' · '+esc(w.group_name):'')+' · '+Number(w.runner_count||1)+' คน<br>เข้าคิว '+new Date(w.created_at).toLocaleString('th-TH')+'</div></div><div style="text-align:right"><b>'+esc(w.status)+'</b><div>'+fmtDate(w.restart_events?.event_date_start)+'</div></div></div>').join(''):'<div class="rr-empty">ยังไม่มีรายการ Waiting List</div>')+'</div></section>'+
+    '<section id="myPoints" class="rr-card" style="scroll-margin-top:100px"><div class="member-section-head"><div><h2 style="margin:0">แต้มของฉัน</h2><div class="muted">ตรวจสอบที่มาของแต้มย้อนหลังได้</div></div></div><div class="member-history">'+(pointRows.length?pointRows.map(x=>'<div class="member-history-row"><div><b>'+esc(x.description||x.transaction_type)+'</b><div class="muted">'+new Date(x.created_at).toLocaleString('th-TH')+'</div></div><div class="'+(x.points>0?'member-ledger-positive':'member-ledger-negative')+'">'+(x.points>0?'+':'')+x.points+'</div></div>').join(''):'<div class="rr-empty">ยังไม่มีคะแนนสะสม</div>')+'</div></section>'+
     '<section class="rr-card"><div class="member-section-head"><div><h2 style="margin:0">ประวัติร้านค้า</h2><div class="muted">ออเดอร์ที่ซื้อด้วย Member ID นี้</div></div></div><div class="member-history">'+(orderRows.length?orderRows.map(o=>{const sn=o.restart_stores?.name||{},store=sn.th||sn.en||o.restart_stores?.slug||'ร้านค้า';return '<div class="member-history-row"><div><b>'+esc(store)+'</b><div class="muted">'+esc(o.order_code)+' · '+new Date(o.created_at).toLocaleString('th-TH')+(Number(o.points_redeemed)>0?'<br>ใช้ '+Number(o.points_redeemed).toLocaleString('th-TH')+' Points · ลด ฿'+money(o.points_discount_thb):'')+'</div></div><div style="text-align:right"><b>'+esc(o.status)+'</b><div>฿'+money(o.total_amount_thb)+'</div></div></div>'}).join(''):'<div class="rr-empty">ยังไม่มีประวัติซื้อสินค้า</div>')+'</div></section>';
   editProfileBtn.onclick=()=>editProfile(profile,user)
 }
@@ -151,7 +160,7 @@ db.auth.onAuthStateChange((event,session)=>{
   if(session?.user){
     if(new URLSearchParams(location.search).get('recovery')==='1'&&!recoveryPromptOpen){
       recoveryPromptOpen=true;await promptNewPassword().finally(()=>{recoveryPromptOpen=false})
-    }else renderMember(session.user)
+    }else{const ret=returnUrl();if(ret)location.replace(ret);else renderMember(session.user)}
   }else renderAuth()
 })()
 })();

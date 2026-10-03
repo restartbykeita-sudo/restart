@@ -9,7 +9,7 @@ function injectMemberNav(){
   if(!a){a=document.createElement('a');a.id='memberNavLink';host.prepend(a)}
   a.className=MEMBER_SESSION?'btn soft':'btn primary';
   a.href=MEMBER_SESSION?'member.html':memberUrl();
-  a.textContent=MEMBER_SESSION?'Member Card':'สมาชิก / Login'
+  a.textContent=MEMBER_SESSION?'ข้อมูลส่วนตัว / แต้มของฉัน':'เข้าสู่ระบบนักแข่ง'
 }
 function profileAge(v){if(!v)return'';const d=new Date(v+'T00:00:00'),ref=(typeof E!=='undefined'&&E?.event_date_start)?new Date(E.event_date_start+'T00:00:00'):new Date();let y=ref.getFullYear()-d.getFullYear();const m=ref.getMonth()-d.getMonth();if(m<0||(m===0&&ref.getDate()<d.getDate()))y--;return Math.max(0,y)}
 function ownerIndex(){return 1}
@@ -55,12 +55,12 @@ function renderGate(){
   if(!gate){gate=document.createElement('section');gate.id='memberRegistrationGate';gate.className='rr-card';form.prepend(gate)}
   const submit=form.querySelector('button[type=submit]');
   if(!MEMBER_SESSION){
-    gate.innerHTML='<div class="row space" style="gap:12px;flex-wrap:wrap"><div><h3 style="margin:0">เข้าสู่ระบบสมาชิกก่อนสมัคร</h3><div class="muted">สมัครสมาชิกครั้งเดียว ระบบจะเติมข้อมูลส่วนตัวให้ทุก Event และสะสมคะแนน RESTART Points</div></div><a class="btn primary" href="'+e(memberUrl())+'">Login / สมัครสมาชิก</a></div>';
+    gate.innerHTML='<div class="row space" style="gap:12px;flex-wrap:wrap"><div><h3 style="margin:0">เข้าสู่ระบบนักแข่งก่อนสมัคร</h3><div class="muted">สมัครสมาชิกครั้งเดียว ระบบจะเติมข้อมูลส่วนตัวให้ทุก Event และสะสมคะแนน RESTART Points</div></div><a class="btn primary" href="'+e(memberUrl())+'">เข้าสู่ระบบ / สมัครนักแข่ง</a></div>';
     if(submit){submit.disabled=true;submit.title='กรุณาเข้าสู่ระบบสมาชิกก่อน'}
     return
   }
   const name=[MEMBER_PROFILE?.first_name,MEMBER_PROFILE?.last_name].filter(Boolean).join(' ');
-  gate.innerHTML='<div class="row space" style="gap:12px;flex-wrap:wrap"><div><div class="muted">MEMBER</div><h3 style="margin:2px 0">'+e(name||MEMBER_SESSION.user.email||'RESTART Member')+'</h3><div class="muted">'+e(MEMBER_PROFILE?.member_code||'')+' · '+Number(MEMBER_PROFILE?.points_balance||0).toLocaleString('th-TH')+' Points</div></div><a class="btn soft" href="member.html">ดู Member Card</a></div><div class="paybox" style="margin-top:10px">ข้อมูลของเจ้าของบัญชีจะเติมอัตโนมัติ แต่แก้ใน Form ได้ เมื่อสมัครสำเร็จข้อมูลที่แก้จะบันทึกกลับ Member Profile</div>';
+  gate.innerHTML='<div class="row space" style="gap:12px;flex-wrap:wrap"><div><div class="muted">MEMBER</div><h3 style="margin:2px 0">'+e(name||MEMBER_SESSION.user.email||'RESTART Member')+'</h3><div class="muted">'+e(MEMBER_PROFILE?.member_code||'')+' · '+Number(MEMBER_PROFILE?.points_balance||0).toLocaleString('th-TH')+' Points</div></div><a class="btn soft" href="member.html">ข้อมูลส่วนตัว / แต้มของฉัน</a></div><div class="paybox" style="margin-top:10px">ข้อมูลของเจ้าของบัญชีจะเติมอัตโนมัติ แต่แก้ใน Form ได้ เมื่อสมัครสำเร็จข้อมูลที่แก้จะบันทึกกลับ Member Profile</div>';
   if(submit){submit.disabled=false;submit.title=''}
   setTimeout(applyMemberProfile,0)
 }
