@@ -79,24 +79,55 @@ function renderStoreProducts(products){
       products.map(p=>'<tr><td><div class="row" style="gap:10px">'+(p.image_url?'<img src="'+esc(p.image_url)+'" style="width:64px;height:64px;object-fit:cover;border-radius:10px">':'')+'<div><b>'+esc(storeTr(p.name)||p.code)+'</b><div class="muted">'+esc(p.code)+'<br>'+esc(storeTr(p.description))+'</div></div></div></td><td>'+esc(p.category||'—')+'</td><td>'+((p.restart_merch_variants||[]).sort((a,b)=>a.sort_order-b.sort_order).map(v=>'<div><b>'+esc(storeOptionText(v))+'</b> · ฿'+money(storePrice(p,v))+' · เหลือ '+storeAvail(v)+'/'+v.stock_qty+(storeTr(v.badge)?' · <span class="badge">'+esc(storeTr(v.badge))+'</span>':'')+'</div>').join('')||'—')+'</td><td><span class="badge '+(p.is_active?'ok':'')+'">'+(p.is_active?'เปิดขาย':'ปิด')+'</span></td><td><button class="btn sm soft" onclick="storeProductDialog(\''+p.id+'\')">แก้ไข</button> <button class="btn sm danger" onclick="archiveStoreProduct(\''+p.id+'\')">'+(p.is_active?'ปิดขาย':'ลบ')+'</button></td></tr>').join('')+
       '</tbody></table></div>':'<div class="rr-empty">ยังไม่มีสินค้า · กด “+ เพิ่มสินค้า”</div>')
 }
-function parseStoreOptions(text){
-  const out={};String(text||'').split(',').map(x=>x.trim()).filter(Boolean).forEach(piece=>{
-    const i=piece.indexOf('=');if(i<1)out['ตัวเลือก']=piece;else out[piece.slice(0,i).trim()]=piece.slice(i+1).trim()
-  });return out
+function storeChoiceSeed(v){
+  const label=storeTr(v?.variant_name)||storeOptionText(v)||'มาตรฐาน';
+  return {label,sku:v?.sku||'',price:Number(v?storePrice({price_thb:0},v):0),stock:Number(v?.stock_qty||0),badge:storeTr(v?.badge)||''}
 }
-function parseStoreVariants(txt){
-  const rows=[],seen=new Set();
-  String(txt||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean).forEach((line,i)=>{
-    const p=line.split('|').map(x=>x.trim()),options=parseStoreOptions(p[0]),label=Object.values(options).filter(Boolean).join(' / ')||p[0]||'มาตรฐาน',sku=p[1]||null,price=Number(p[2]||0),stock=Number(p[3]||0),badge=p[4]||'';
-    if(!Number.isFinite(price)||price<0)throw new Error('ราคาบรรทัด '+(i+1)+' ไม่ถูกต้อง');
-    if(!Number.isInteger(stock)||stock<0)throw new Error('สต๊อกบรรทัด '+(i+1)+' ไม่ถูกต้อง');
-    const key=(sku||JSON.stringify(options)).toUpperCase();if(seen.has(key))throw new Error('ตัวเลือกหรือ SKU ซ้ำ บรรทัด '+(i+1));seen.add(key);
-    rows.push({label,option_values:options,sku,price_override_thb:price,stock_qty:stock,badge:badge?{th:badge,en:badge}:{},sort_order:i})
+function storeChoiceRowHtml(row={}){
+  const label=esc(row.label||''),sku=esc(row.sku||''),price=Number(row.price||0),stock=Number(row.stock||0),badge=esc(row.badge||'');
+  return '<div class="store-choice-row" style="border:1px solid rgba(127,127,127,.25);border-radius:14px;padding:12px;margin-top:10px;background:rgba(127,127,127,.04)">'+
+    '<div class="grid2" style="gap:10px">'+
+      '<label style="grid-column:1/-1"><b>ชื่อช้อยท์</b><input data-choice="label" class="swal2-input" style="margin:0" value="'+label+'" placeholder="เช่น สีขาว / สีดำ Limited / ดำ ไซส์ M"></label>'+
+      '<label>ราคาขาย (บาท)<input data-choice="price" type="number" min="0" step="0.01" class="swal2-input" style="margin:0" value="'+price+'"></label>'+
+      '<label>สต๊อก<input data-choice="stock" type="number" min="0" step="1" class="swal2-input" style="margin:0" value="'+stock+'"></label>'+
+      '<label>SKU <small class="muted">(ไม่บังคับ)</small><input data-choice="sku" class="swal2-input" style="margin:0" value="'+sku+'" placeholder="เช่น BAG-WHITE"></label>'+
+      '<label>ป้าย <small class="muted">(ไม่บังคับ)</small><input data-choice="badge" class="swal2-input" style="margin:0" value="'+badge+'" placeholder="เช่น LIMITED / NEW"></label>'+
+    '</div>'+
+    '<div class="row" style="justify-content:flex-end;margin-top:8px"><button type="button" class="btn sm danger" data-choice-remove>ลบช้อยท์นี้</button></div>'+
+  '</div>'
+}
+function addStoreChoiceRow(seed={}){
+  const list=document.getElementById('spVariantList');if(!list)return;
+  const wrap=document.createElement('div');wrap.innerHTML=storeChoiceRowHtml(seed);
+  const row=wrap.firstElementChild;list.appendChild(row);
+  row.querySelector('[data-choice-remove]').onclick=()=>{
+    if(list.querySelectorAll('.store-choice-row').length<=1){
+      Swal.fire({icon:'info',title:'ต้องมีอย่างน้อย 1 ช้อยท์',timer:1200,showConfirmButton:false});return
+    }
+    row.remove()
+  }
+}
+function initStoreChoiceBuilder(vars=[]){
+  const list=document.getElementById('spVariantList');if(!list)return;
+  list.innerHTML='';
+  const seeds=(vars||[]).sort((a,b)=>a.sort_order-b.sort_order).map(storeChoiceSeed);
+  (seeds.length?seeds:[{label:'มาตรฐาน',price:0,stock:0,sku:'',badge:''}]).forEach(addStoreChoiceRow);
+  document.getElementById('spAddChoice').onclick=()=>addStoreChoiceRow({label:'',price:0,stock:0,sku:'',badge:''})
+}
+function collectStoreChoiceRows(){
+  const nodes=[...document.querySelectorAll('#spVariantList .store-choice-row')],rows=[],seenLabels=new Set(),seenSkus=new Set();
+  if(!nodes.length)throw new Error('กรุณาเพิ่มอย่างน้อย 1 ช้อยท์');
+  nodes.forEach((node,i)=>{
+    const val=k=>node.querySelector('[data-choice="'+k+'"]')?.value?.trim()||'';
+    const label=val('label'),sku=val('sku').toUpperCase()||null,badge=val('badge'),price=Number(val('price')||0),stock=Number(val('stock')||0);
+    if(!label)throw new Error('กรุณากรอกชื่อช้อยท์ลำดับที่ '+(i+1));
+    if(!Number.isFinite(price)||price<0)throw new Error('ราคาของ “'+label+'” ไม่ถูกต้อง');
+    if(!Number.isInteger(stock)||stock<0)throw new Error('สต๊อกของ “'+label+'” ไม่ถูกต้อง');
+    const lk=label.toLocaleUpperCase('th-TH');if(seenLabels.has(lk))throw new Error('ชื่อช้อยท์ “'+label+'” ซ้ำกัน');seenLabels.add(lk);
+    if(sku){if(seenSkus.has(sku))throw new Error('SKU “'+sku+'” ซ้ำกัน');seenSkus.add(sku)}
+    rows.push({label,option_values:{'ตัวเลือก':label},sku,price_override_thb:price,stock_qty:stock,badge:badge?{th:badge,en:badge}:{},sort_order:i})
   });
-  if(!rows.length)throw new Error('กรุณาระบุอย่างน้อย 1 ตัวเลือกสินค้า');return rows
-}
-function variantLines(vars){
-  return (vars||[]).sort((a,b)=>a.sort_order-b.sort_order).map(v=>[storeOptionText(v),v.sku||'',storePrice({price_thb:0},v),v.stock_qty||0,storeTr(v.badge)].join(' | ')).join('\n')
+  return rows
 }
 function buildOptionSchema(rows){
   const map={};rows.forEach(r=>Object.entries(r.option_values||{}).forEach(([k,v])=>{(map[k]||=new Set()).add(v)}));
@@ -105,7 +136,6 @@ function buildOptionSchema(rows){
 async function storeProductDialog(id=null){
   let p=null,vars=[];
   if(id){const{data,error}=await db.from('restart_merch_products').select('*,restart_merch_variants(*)').eq('id',id).eq('event_id',state.event.id).single();if(error)return Swal.fire('โหลดสินค้าไม่ได้',error.message,'error');p=data;vars=data.restart_merch_variants||[]}
-  const example='สี=ขาว | BAG-WHITE | 100 | 30 |\nสี=ดำ,รุ่น=Limited | BAG-BLACK-LTD | 250 | 10 | LIMITED';
   const r=await Swal.fire({title:id?'แก้ไขสินค้า':'เพิ่มสินค้า',width:940,showCancelButton:true,confirmButtonText:'บันทึก',
     html:'<div class="grid2" style="text-align:left">'+
       '<label>รหัสสินค้า<input id="spCode" class="swal2-input" style="margin:0" value="'+esc(p?.code||'')+'" placeholder="BAG-001"></label>'+
@@ -118,9 +148,10 @@ async function storeProductDialog(id=null){
       '<label>เริ่มขาย<input id="spStart" type="datetime-local" class="swal2-input" style="margin:0" value="'+(p?.sale_starts_at?localDT(p.sale_starts_at):'')+'"></label>'+
       '<label>ปิดขาย<input id="spEnd" type="datetime-local" class="swal2-input" style="margin:0" value="'+(p?.sale_ends_at?localDT(p.sale_ends_at):'')+'"></label>'+
       '<label style="grid-column:1/-1">รูปสินค้า<input id="spImage" type="file" accept="image/*" class="swal2-file" style="margin:0;width:100%"><small class="muted">แนะนำ 1200×1200 px · JPG/PNG/WebP · ไม่เกิน 2 MB</small></label>'+
-      '<label style="grid-column:1/-1"><b>ช้อยท์สินค้า</b><textarea id="spVariants" class="swal2-textarea" style="margin:0;width:100%;min-height:200px" placeholder="'+esc(example)+'">'+esc(variantLines(vars))+'</textarea><small class="muted">รูปแบบ: ตัวเลือก | SKU | ราคาขาย | สต๊อก | ป้าย เช่น “สี=ดำ,รุ่น=Limited | BAG-BLACK-LTD | 250 | 10 | LIMITED” รองรับหลายตัวเลือก เช่น สี + ไซส์ + รุ่น</small></label>'+
+      '<div style="grid-column:1/-1;border-top:1px solid rgba(127,127,127,.2);padding-top:14px"><div class="row space"><div><b>ช้อยท์สินค้า</b><div class="muted">กรอกทีละช้อยท์ ไม่ต้องใช้เครื่องหมายหรือจำรูปแบบ</div></div><button id="spAddChoice" type="button" class="btn sm soft">+ เพิ่มช้อยท์</button></div><div id="spVariantList"></div><div class="muted" style="margin-top:8px">ตัวอย่าง: ชื่อ “สีขาว” ราคา 100 สต๊อก 30 หรือ “สีดำ Limited” ราคา 250 สต๊อก 10 · SKU และป้ายเว้นว่างได้</div></div>'+
     '</div>',
-    preConfirm:()=>{try{const code=spCode.value.trim().toUpperCase(),name=spNameTh.value.trim(),rows=parseStoreVariants(spVariants.value);if(!code||!name)return Swal.showValidationMessage('กรุณากรอกรหัสและชื่อสินค้า');if(spStart.value&&spEnd.value&&new Date(spEnd.value)<=new Date(spStart.value))return Swal.showValidationMessage('เวลาปิดขายต้องอยู่หลังเวลาเปิดขาย');return{code,category:spCategory.value.trim()||null,name:{th:name,en:spNameEn.value.trim()||name},description:{th:spDesc.value.trim(),en:spDesc.value.trim()},max:Number(spMax.value||10),active:spActive.value==='true',start:spStart.value||null,end:spEnd.value||null,rows,file:spImage.files?.[0]||null}}catch(e){return Swal.showValidationMessage(e.message)}}});
+    didOpen:()=>initStoreChoiceBuilder(vars),
+    preConfirm:()=>{try{const code=spCode.value.trim().toUpperCase(),name=spNameTh.value.trim(),rows=collectStoreChoiceRows();if(!code||!name)return Swal.showValidationMessage('กรุณากรอกรหัสและชื่อสินค้า');if(spStart.value&&spEnd.value&&new Date(spEnd.value)<=new Date(spStart.value))return Swal.showValidationMessage('เวลาปิดขายต้องอยู่หลังเวลาเปิดขาย');return{code,category:spCategory.value.trim()||null,name:{th:name,en:spNameEn.value.trim()||name},description:{th:spDesc.value.trim(),en:spDesc.value.trim()},max:Number(spMax.value||10),active:spActive.value==='true',start:spStart.value||null,end:spEnd.value||null,rows,file:spImage.files?.[0]||null}}catch(e){return Swal.showValidationMessage(e.message)}}});
   if(!r.isConfirmed)return;
   let newPath=null,imageUrl=p?.image_url||null,imagePath=p?.image_storage_path||null;
   try{
