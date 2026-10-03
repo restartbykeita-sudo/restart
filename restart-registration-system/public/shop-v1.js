@@ -48,12 +48,11 @@ function render(){
   byId('cartBtn').onclick=openCart;
   renderCartMini()
 }
-function productCard(p,index){
-  const featured=index===0;
+function productCard(p){
   const min=productMinPrice(p);
   const soldOut=!VARIANTS.some(v=>v.product_id===p.id&&v.is_active&&stock(v)>0);
   const href='shop.html?event='+encodeURIComponent(E.slug)+'&product='+encodeURIComponent(p.id);
-  return '<a class="store-showcase-card '+(featured?'is-featured':'')+'" data-product-cat="'+esc(p.category||'')+'" href="'+href+'">'+
+  return '<a class="store-showcase-card" data-product-cat="'+esc(p.category||'')+'" href="'+href+'">'+
     '<div class="store-card-media '+(!p.image_url?'store-card-media-fallback':'')+'" '+(p.image_url?'style="background-image:url(\''+esc(p.image_url).replaceAll("'","%27")+'\')"':'')+'><div class="store-card-scrim"></div></div>'+
     '<div class="store-card-content">'+
       '<div class="store-card-topline"><span class="store-card-status '+(!soldOut?'is-open':'')+'">'+(soldOut?'หมด':'พร้อมจำหน่าย')+'</span>'+(tr(p.badge)?'<span class="store-card-featured">'+esc(tr(p.badge))+'</span>':'')+'</div>'+
