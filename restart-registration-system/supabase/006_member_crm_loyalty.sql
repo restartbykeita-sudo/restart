@@ -147,6 +147,88 @@ using (
   )
 );
 
+-- Consolidate member/admin SELECT policies to avoid multiple permissive-policy overhead.
+drop policy if exists restart_member_profiles_own_select on public.restart_member_profiles;
+drop policy if exists restart_member_profiles_admin_select on public.restart_member_profiles;
+drop policy if exists restart_member_profiles_select on public.restart_member_profiles;
+create policy restart_member_profiles_select
+on public.restart_member_profiles for select to authenticated
+using ((select auth.uid())=user_id or (select private.restart_is_admin()));
+
+drop policy if exists restart_member_points_own_select on public.restart_member_points_ledger;
+drop policy if exists restart_member_points_admin_select on public.restart_member_points_ledger;
+drop policy if exists restart_member_points_select on public.restart_member_points_ledger;
+create policy restart_member_points_select
+on public.restart_member_points_ledger for select to authenticated
+using ((select auth.uid())=user_id or (select private.restart_is_admin()));
+
+drop policy if exists restart_admin_all on public.restart_registrations;
+drop policy if exists restart_registrations_member_select on public.restart_registrations;
+drop policy if exists restart_registrations_select on public.restart_registrations;
+drop policy if exists restart_registrations_admin_insert on public.restart_registrations;
+drop policy if exists restart_registrations_admin_update on public.restart_registrations;
+drop policy if exists restart_registrations_admin_delete on public.restart_registrations;
+create policy restart_registrations_select
+on public.restart_registrations for select to authenticated
+using ((select private.restart_is_admin()) or (select auth.uid())=member_user_id);
+create policy restart_registrations_admin_insert
+on public.restart_registrations for insert to authenticated
+with check ((select private.restart_is_admin()));
+create policy restart_registrations_admin_update
+on public.restart_registrations for update to authenticated
+using ((select private.restart_is_admin()))
+with check ((select private.restart_is_admin()));
+create policy restart_registrations_admin_delete
+on public.restart_registrations for delete to authenticated
+using ((select private.restart_is_admin()));
+
+drop policy if exists restart_admin_all on public.restart_participants;
+drop policy if exists restart_participants_member_select on public.restart_participants;
+drop policy if exists restart_participants_select on public.restart_participants;
+drop policy if exists restart_participants_admin_insert on public.restart_participants;
+drop policy if exists restart_participants_admin_update on public.restart_participants;
+drop policy if exists restart_participants_admin_delete on public.restart_participants;
+create policy restart_participants_select
+on public.restart_participants for select to authenticated
+using (
+  (select private.restart_is_admin())
+  or member_user_id=(select auth.uid())
+  or exists(
+    select 1 from public.restart_registrations r
+    where r.id=registration_id and r.member_user_id=(select auth.uid())
+  )
+);
+create policy restart_participants_admin_insert
+on public.restart_participants for insert to authenticated
+with check ((select private.restart_is_admin()));
+create policy restart_participants_admin_update
+on public.restart_participants for update to authenticated
+using ((select private.restart_is_admin()))
+with check ((select private.restart_is_admin()));
+create policy restart_participants_admin_delete
+on public.restart_participants for delete to authenticated
+using ((select private.restart_is_admin()));
+
+drop policy if exists restart_store_orders_admin_all on public.restart_store_orders;
+drop policy if exists restart_store_orders_member_select on public.restart_store_orders;
+drop policy if exists restart_store_orders_select on public.restart_store_orders;
+drop policy if exists restart_store_orders_admin_insert on public.restart_store_orders;
+drop policy if exists restart_store_orders_admin_update on public.restart_store_orders;
+drop policy if exists restart_store_orders_admin_delete on public.restart_store_orders;
+create policy restart_store_orders_select
+on public.restart_store_orders for select to authenticated
+using ((select private.restart_is_admin()) or (select auth.uid())=member_user_id);
+create policy restart_store_orders_admin_insert
+on public.restart_store_orders for insert to authenticated
+with check ((select private.restart_is_admin()));
+create policy restart_store_orders_admin_update
+on public.restart_store_orders for update to authenticated
+using ((select private.restart_is_admin()))
+with check ((select private.restart_is_admin()));
+create policy restart_store_orders_admin_delete
+on public.restart_store_orders for delete to authenticated
+using ((select private.restart_is_admin()));
+
 update public.restart_events
 set field_settings=jsonb_set(
   coalesce(field_settings,'{}'::jsonb),
