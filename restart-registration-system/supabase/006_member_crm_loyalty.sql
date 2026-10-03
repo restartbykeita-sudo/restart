@@ -1527,6 +1527,8 @@ for each row execute function private.restart_refund_store_points();
 -- FINAL PAIR/TEAM MEMBER-OWNER RULES (2026-10-03)
 -- Runner #1 is the authenticated Member owner and primary contact.
 -- PAIR/TEAM runner #2+ are intentionally name-only.
+-- Member binding is performed inside restart_create_registration so profile sync
+-- and points remain atomic with registration creation.
 CREATE OR REPLACE FUNCTION private.restart_compute_quote(p_event_id uuid, p_category_id uuid, p_package_id uuid, p_registration_type text, p_runner_count integer, p_discount_code text, p_runners jsonb)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -1751,6 +1753,7 @@ declare
   v_registration_type text := upper(coalesce(nullif(p_payload->>'registration_type',''),'SINGLE'));
   v_group_name text := nullif(trim(coalesce(p_payload->>'group_name','')),'');
   v_contact_runner_index integer := coalesce(nullif(p_payload->>'contact_runner_index','')::integer,1);
+  v_member_user_id uuid := nullif(p_payload->>'member_user_id','')::uuid;
   v_team_size integer;
   v_existing_count integer;
   v_existing_category_count integer;
@@ -2100,6 +2103,14 @@ begin
       end loop;
     end if;
   end loop;
+
+  -- Edge injects the authenticated member_user_id. Bind it inside this transaction
+  -- after participants exist so the profile-sync trigger can copy runner #1 safely.
+  if v_member_user_id is not null then
+    update public.restart_registrations
+    set member_user_id=v_member_user_id,member_runner_index=1,updated_at=now()
+    where id=v_registration_id;
+  end if;
 
   v_runner_index:=0;
   for v_follower in select * from jsonb_array_elements(coalesce(p_payload->'followers','[]'::jsonb))
