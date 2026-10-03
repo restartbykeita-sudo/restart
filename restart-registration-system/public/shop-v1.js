@@ -1,7 +1,7 @@
 const db=supabase.createClient(RESTART_REG_CONFIG.SUPABASE_URL,RESTART_REG_CONFIG.SUPABASE_PUBLISHABLE_KEY);
 const app=document.getElementById('shopApp');
-const qs=new URLSearchParams(location.search),slug=qs.get('event');
-let E=null,SETTINGS=null,PRODUCTS=[],VARIANTS=[],METHODS=[],CART=new Map(),LANG=localStorage.getItem('restart_lang')||'th';
+const qs=new URLSearchParams(location.search),slug=qs.get('event'),storeSlug=qs.get('store');
+let E=null,STORES=[],STORE=null,SETTINGS=null,PRODUCTS=[],VARIANTS=[],METHODS=[],CART=new Map(),LANG=localStorage.getItem('restart_lang')||'th';
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const money=v=>Number(v||0).toLocaleString('th-TH',{maximumFractionDigits:2});
 const tr=v=>typeof v==='string'?v:(v?.[LANG]||v?.th||v?.en||Object.values(v||{})[0]||'');
@@ -28,14 +28,37 @@ function productMinPrice(p){
   const vs=VARIANTS.filter(v=>v.product_id===p.id&&v.is_active);
   return vs.length?Math.min(...vs.map(v=>variantPrice(p,v))):Number(p.price_thb||0)
 }
+function renderStoreDirectory(){
+  document.title=(tr(E?.name)||'RESTART')+' Stores';
+  const back=byId('backEvent');back.href='./?event='+encodeURIComponent(E.slug);back.textContent='กลับ Event';
+  const lookup=byId('orderLookupBtn');if(lookup)lookup.style.display='none';
+  app.innerHTML=
+    '<section class="rr-card store-hero"><div><div class="muted">RESTART EVENT MARKETPLACE</div><h2>เลือกร้านค้า</h2><div class="muted">'+esc(tr(E.name)||'Event')+' · แต่ละร้านแยกสินค้า ออเดอร์ และการชำระเงินออกจากกัน</div></div><div><span class="badge ok">'+STORES.length+' ร้าน</span></div></section>'+
+    (STORES.length?'<section class="store-showcase-grid">'+STORES.map(storeDirectoryCard).join('')+'</section>':'<section class="rr-card rr-empty">ยังไม่มีร้านค้าที่เปิดให้บริการ</section>');
+}
+function storeDirectoryCard(s){
+  const href='shop.html?event='+encodeURIComponent(E.slug)+'&store='+encodeURIComponent(s.slug);
+  const image=s.banner_url||s.logo_url||'';
+  const methods=[s.pickup_enabled?'รับเอง':'',s.delivery_enabled?'จัดส่ง':''].filter(Boolean).join(' · ');
+  return '<a class="store-showcase-card" href="'+href+'">'+
+    '<div class="store-card-media '+(!image?'store-card-media-fallback':'')+'" '+(image?'style="background-image:url(\''+esc(image).replaceAll("'","%27")+'\')"':'')+'><div class="store-card-scrim"></div></div>'+
+    '<div class="store-card-content"><div class="store-card-topline"><span class="store-card-status is-open">เปิดร้าน</span></div>'+
+      '<div class="store-card-copy"><div class="muted" style="color:rgba(255,255,255,.7)">ร้านค้า</div><h2>'+esc(tr(s.name)||s.slug)+'</h2>'+
+      (tr(s.description)?'<p>'+esc(tr(s.description))+'</p>':'')+
+      '<div class="store-card-meta"><span>'+esc(methods||'ดูสินค้า')+'</span><span>เข้าร้าน ↗</span></div></div></div>'+
+  '</a>'
+}
 function render(){
+  if(!STORE)return renderStoreDirectory();
   document.title=(tr(SETTINGS?.store_name)||tr(E?.name)||'RESTART')+' Store';
-  byId('backEvent').href='./?event='+encodeURIComponent(E.slug);
+  byId('backEvent').href='shop.html?event='+encodeURIComponent(E.slug);
+  byId('backEvent').textContent='ร้านค้าทั้งหมด';
+  if(byId('orderLookupBtn'))byId('orderLookupBtn').style.display='';
   const productId=new URLSearchParams(location.search).get('product');
   if(productId){
     const p=PRODUCTS.find(x=>x.id===productId);
     if(p)return renderProductDetail(p);
-    history.replaceState(null,'','shop.html?event='+encodeURIComponent(E.slug));
+    history.replaceState(null,'','shop.html?event='+encodeURIComponent(E.slug)+'&store='+encodeURIComponent(STORE.slug));
   }
   const storeName=tr(SETTINGS?.store_name)||((tr(E.name)||'Event')+' Store');
   const cats=[...new Set(PRODUCTS.map(p=>p.category).filter(Boolean))];
@@ -51,7 +74,7 @@ function render(){
 function productCard(p){
   const min=productMinPrice(p);
   const soldOut=!VARIANTS.some(v=>v.product_id===p.id&&v.is_active&&stock(v)>0);
-  const href='shop.html?event='+encodeURIComponent(E.slug)+'&product='+encodeURIComponent(p.id);
+  const href='shop.html?event='+encodeURIComponent(E.slug)+'&store='+encodeURIComponent(STORE.slug)+'&product='+encodeURIComponent(p.id);
   return '<a class="store-showcase-card" data-product-cat="'+esc(p.category||'')+'" href="'+href+'">'+
     '<div class="store-card-media '+(!p.image_url?'store-card-media-fallback':'')+'" '+(p.image_url?'style="background-image:url(\''+esc(p.image_url).replaceAll("'","%27")+'\')"':'')+'><div class="store-card-scrim"></div></div>'+
     '<div class="store-card-content">'+
@@ -65,7 +88,7 @@ function productCard(p){
 }
 function renderProductDetail(p){
   const vs=VARIANTS.filter(v=>v.product_id===p.id&&v.is_active).sort((a,b)=>a.sort_order-b.sort_order);
-  const back='shop.html?event='+encodeURIComponent(E.slug);
+  const back='shop.html?event='+encodeURIComponent(E.slug)+'&store='+encodeURIComponent(STORE.slug);
   app.innerHTML=
     '<section class="store-detail-shell">'+
       '<div class="store-detail-head"><a class="btn soft" href="'+back+'">← กลับหน้าร้าน</a><div class="muted">'+esc(p.category||p.product_type||'สินค้า')+'</div></div>'+
@@ -127,7 +150,7 @@ async function openCart(){
   if(r.isConfirmed)openPayment(r.value)
 }
 async function updateCheckoutQuote(){try{const q=await storeQuote(coDelivery.value);coQuote.innerHTML='สินค้า ฿'+money(q.subtotal_amount_thb)+(Number(q.shipping_fee_thb)?' · ค่าส่ง ฿'+money(q.shipping_fee_thb):'')+' · <b>รวม ฿'+money(q.total_amount_thb)+'</b>'}catch(e){coQuote.textContent=e.message}}
-function storeQuote(delivery){return api('store-quote',{event_id:E.id,items:cartItems(),delivery_method:delivery})}
+function storeQuote(delivery){return api('store-quote',{event_id:E.id,store_slug:STORE.slug,items:cartItems(),delivery_method:delivery})}
 function methodCard(m,i,total){
   const pp=m.kind==='PROMPTPAY';
   return '<label class="store-pay-method"><div><input type="radio" name="storePay" value="'+esc(m.id)+'" '+(i===0?'checked':'')+'> <b>'+esc(m.label||m.kind)+'</b></div>'+
@@ -147,7 +170,7 @@ async function openPayment(co){
   try{
     Swal.fire({title:'กำลังสร้างคำสั่งซื้อ…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
     if(r.value.file)slipPath=await uploadSlip(r.value.file);
-    const out=await api('store-create-order',{payload:{event_id:E.id,language:LANG,customer_name:co.name,phone:co.phone,email:co.email,delivery_method:co.delivery,delivery_address:co.address,customer_note:co.note,payment_method_id:r.value.method,slip_path:slipPath,total_amount_thb:total,items:cartItems()}});
+    const out=await api('store-create-order',{payload:{event_id:E.id,store_slug:STORE.slug,language:LANG,customer_name:co.name,phone:co.phone,email:co.email,delivery_method:co.delivery,delivery_address:co.address,customer_note:co.note,payment_method_id:r.value.method,slip_path:slipPath,total_amount_thb:total,items:cartItems()}});
     CART.clear();
     await Swal.fire({icon:'success',title:'สั่งซื้อสำเร็จ',html:'เลขออเดอร์ <b>'+esc(out.order_code)+'</b><br>ยอดรวม <b>฿'+money(out.total_amount_thb)+'</b><br>สถานะ <b>'+esc(out.status)+'</b><br><small>เก็บเลขออเดอร์ไว้สำหรับเช็กสถานะ</small>',confirmButtonText:'ตกลง'});
     render()
@@ -162,7 +185,8 @@ async function lookupOrder(){
   const r=await Swal.fire({title:'เช็กสถานะออเดอร์',showCancelButton:true,confirmButtonText:'ค้นหา',html:'<div style="text-align:left"><label>เลขออเดอร์<input id="loCode" class="swal2-input" style="margin:0" placeholder="SHOP-..."></label><label>เบอร์โทรที่ใช้สั่งซื้อ<input id="loPhone" class="swal2-input" style="margin:0"></label></div>',preConfirm:()=>{if(!loCode.value.trim()||!loPhone.value.trim())return Swal.showValidationMessage('กรุณากรอกข้อมูลให้ครบ');return{code:loCode.value.trim(),phone:loPhone.value.trim()}}});
   if(!r.isConfirmed)return;
   try{
-    const o=await api('store-lookup',{event_slug:E.slug,order_code:r.value.code,phone:r.value.phone});
+    if(!STORE)throw new Error('กรุณาเข้าร้านที่สั่งซื้อก่อน');
+    const o=await api('store-lookup',{event_slug:E.slug,store_slug:STORE.slug,order_code:r.value.code,phone:r.value.phone});
     const rows=(o.items||[]).map(i=>'<div>'+esc(tr(i.product_name))+' · '+esc(tr(i.variant_name)||Object.values(i.option_values||{}).join(' / '))+' × '+i.qty+' · ฿'+money(i.total_price_thb)+'</div>').join('');
     const canRetry=['PENDING','REJECTED'].includes(o.payment_status)&&!['CANCELLED','FULFILLED','SHIPPED'].includes(o.status);
     Swal.fire({title:esc(o.order_code),width:700,html:'<div style="text-align:left"><div class="paybox"><b>สถานะ: '+esc(statusText(o.status))+'</b><br>การชำระ: '+esc(paymentText(o.payment_status))+'</div><div class="paybox">'+rows+'</div><div class="paybox">รวม <b>฿'+money(o.total_amount_thb)+'</b></div>'+(canRetry?'<button id="retryStorePay" class="btn primary" type="button">ส่งสลิปใหม่</button>':'')+'</div>',showConfirmButton:false,showCloseButton:true,didOpen:()=>byId('retryStorePay')?.addEventListener('click',()=>retryPayment(r.value.code,r.value.phone,o.total_amount_thb))})
@@ -170,26 +194,39 @@ async function lookupOrder(){
 }
 async function retryPayment(code,phone,total){
   const r=await Swal.fire({title:'ส่งสลิปใหม่',html:'ยอด <b>฿'+money(total)+'</b><br><input id="retrySlip" type="file" accept="image/*,application/pdf" class="swal2-file" style="margin:12px 0;width:100%">',showCancelButton:true,confirmButtonText:'ส่งสลิป',preConfirm:()=>retrySlip.files?.[0]||Swal.showValidationMessage('กรุณาเลือกสลิป')});
-  if(!r.isConfirmed)return;try{Swal.fire({title:'กำลังส่ง…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});const path=await uploadSlip(r.value);await api('store-submit-payment',{event_slug:E.slug,order_code:code,phone,slip_path:path});Swal.fire({icon:'success',title:'ส่งสลิปแล้ว',text:'รอ Admin ตรวจสอบ'})}catch(e){Swal.fire('ส่งไม่สำเร็จ',e.message,'error')}
+  if(!r.isConfirmed)return;try{Swal.fire({title:'กำลังส่ง…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});const path=await uploadSlip(r.value);await api('store-submit-payment',{event_slug:E.slug,store_slug:STORE.slug,order_code:code,phone,slip_path:path});Swal.fire({icon:'success',title:'ส่งสลิปแล้ว',text:'รอ Admin ตรวจสอบ'})}catch(e){Swal.fire('ส่งไม่สำเร็จ',e.message,'error')}
 }
 function statusText(s){return({PENDING_PAYMENT:'รอชำระเงิน',PENDING_REVIEW:'รอตรวจสลิป',PAID:'ชำระแล้ว',PREPARING:'กำลังเตรียมสินค้า',READY:'พร้อมรับสินค้า',FULFILLED:'รับสินค้าแล้ว',SHIPPED:'จัดส่งแล้ว',CANCELLED:'ยกเลิก'})[s]||s}
 function paymentText(s){return({PENDING:'รอชำระ',PENDING_REVIEW:'รอตรวจ',APPROVED:'อนุมัติแล้ว',REJECTED:'สลิปไม่ผ่าน',REFUNDED:'คืนเงินแล้ว'})[s]||s}
 function promptpayPayload(id,amount,type){const digits=String(id).replace(/\D/g,'');const target=type||((digits.length===13)?'NATIONAL_ID':'PHONE');let aid=digits,tag='01';if(target==='PHONE'){aid=digits.length===10?'0066'+digits.substring(1):digits;tag='01'}else if(target==='NATIONAL_ID'){tag='02'}else if(target==='EWALLET'){tag='03'}const tlv=(i,v)=>i+String(v.length).padStart(2,'0')+v;const merchant=tlv('00','A000000677010111')+tlv(tag,aid);let p=tlv('00','01')+tlv('01','12')+tlv('29',merchant)+tlv('53','764')+(amount?tlv('54',Number(amount).toFixed(2)):'')+tlv('58','TH')+tlv('62',tlv('07','RESTART'))+'6304';const crc=s=>{let c=0xffff;for(let i=0;i<s.length;i++){c^=s.charCodeAt(i)<<8;for(let j=0;j<8;j++)c=(c&0x8000)?((c<<1)^0x1021)&0xffff:(c<<1)&0xffff}return c.toString(16).toUpperCase().padStart(4,'0')};return p+crc(p)}
 async function init(){
   if(!slug)throw new Error('ไม่พบ Event');
-  const{data:e,error:ee}=await db.from('restart_events').select('*').eq('slug',slug).maybeSingle();if(ee||!e)throw new Error('ไม่พบ Event');
+  const{data:e,error:ee}=await db.from('restart_events').select('*').eq('slug',slug).maybeSingle();
+  if(ee||!e)throw new Error('ไม่พบ Event');
   E=e;
-  const[{data:s,error:se},{data:p,error:pe},{data:m,error:me}]=await Promise.all([
-    db.from('restart_store_settings').select('*').eq('event_id',E.id).maybeSingle(),
-    db.from('restart_merch_products').select('*,restart_merch_variants(*)').eq('event_id',E.id).eq('is_active',true).order('sort_order'),
-    db.from('restart_payment_methods').select('*').eq('event_id',E.id).eq('is_enabled',true).order('sort_order')
+  if(!E.feature_flags?.storefront)throw new Error('Event นี้ยังไม่เปิดร้านค้า');
+
+  const{data:stores,error:ste}=await db.from('restart_stores').select('*').eq('event_id',E.id).eq('is_open',true).order('sort_order').order('created_at');
+  if(ste)throw ste;
+  STORES=stores||[];
+
+  if(!storeSlug){
+    STORE=null;SETTINGS=null;PRODUCTS=[];VARIANTS=[];METHODS=[];
+    return renderStoreDirectory()
+  }
+
+  STORE=STORES.find(s=>s.slug===storeSlug)||null;
+  if(!STORE)throw new Error('ไม่พบร้านค้านี้ หรือร้านค้าปิดอยู่');
+  SETTINGS={...STORE,store_name:STORE.name};
+
+  const[{data:p,error:pe},{data:m,error:me}]=await Promise.all([
+    db.from('restart_merch_products').select('*,restart_merch_variants(*)').eq('store_id',STORE.id).eq('is_active',true).order('sort_order'),
+    db.from('restart_store_payment_methods').select('*').eq('store_id',STORE.id).eq('is_enabled',true).order('sort_order')
   ]);
-  if(se||pe||me)throw (se||pe||me);
-  const storeEnabled=!!E.feature_flags?.storefront||!!s?.is_open;
-  if(!storeEnabled)throw new Error('Event นี้ยังไม่เปิดร้านค้า');
-  SETTINGS=s||{is_open:true,pickup_enabled:true,delivery_enabled:false,shipping_fee_thb:0,store_name:{th:(tr(E.name)||'Event')+' Store'}};
-  if(SETTINGS.is_open===false)throw new Error('ร้านค้าปิดชั่วคราว');
-  PRODUCTS=p||[];VARIANTS=PRODUCTS.flatMap(x=>x.restart_merch_variants||[]);METHODS=m||[];
+  if(pe||me)throw (pe||me);
+  PRODUCTS=p||[];
+  VARIANTS=PRODUCTS.flatMap(x=>x.restart_merch_variants||[]);
+  METHODS=m||[];
   render()
 }
 document.getElementById('orderLookupBtn').onclick=lookupOrder;
