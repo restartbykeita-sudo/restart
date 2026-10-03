@@ -83,6 +83,8 @@ async function requireMember(req: Request) {
 }
 
 function cleanProfile(input: Record<string, unknown>) {
+  const gender = text(input.gender).toUpperCase();
+  if (!['MALE', 'FEMALE', 'OTHER'].includes(gender)) fail(400, 'กรุณากรอกข้อมูลสมาชิกให้ครบ');
   const rawId = text(input.id_document);
   if (rawId && !/^[0-9A-Za-z\s-]+$/.test(rawId)) fail(400, 'เลขบัตรประชาชน / Passport ใช้ตัวอักษรอังกฤษและตัวเลขเท่านั้น');
   const idDocument = normalizeId(rawId);
@@ -95,6 +97,7 @@ function cleanProfile(input: Record<string, unknown>) {
     title: text(input.title) || null,
     first_name: text(input.first_name) || null,
     last_name: text(input.last_name) || null,
+    gender,
     id_document: idDocument || null,
     birth_date: birth || null,
     address: text(input.address) || null,
