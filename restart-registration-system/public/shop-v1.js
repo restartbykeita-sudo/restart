@@ -1,7 +1,7 @@
 const db=supabase.createClient(RESTART_REG_CONFIG.SUPABASE_URL,RESTART_REG_CONFIG.SUPABASE_PUBLISHABLE_KEY);
 const app=document.getElementById('shopApp');
 const qs=new URLSearchParams(location.search),slug=qs.get('event'),storeSlug=qs.get('store');
-let E=null,STORES=[],STORE=null,SETTINGS=null,PRODUCTS=[],VARIANTS=[],METHODS=[],CART=new Map(),LANG=localStorage.getItem('restart_lang')||'th';
+let E=null,STORES=[],STORE=null,SETTINGS=null,PRODUCTS=[],VARIANTS=[],METHODS=[],CART=new Map(),MEMBER_SESSION=null,MEMBER_PROFILE=null,LANG=localStorage.getItem('restart_lang')||'th';
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const money=v=>Number(v||0).toLocaleString('th-TH',{maximumFractionDigits:2});
 const tr=v=>typeof v==='string'?v:(v?.[LANG]||v?.th||v?.en||Object.values(v||{})[0]||'');
@@ -140,21 +140,31 @@ async function openCart(){
   const deliveryOptions=[];
   if(SETTINGS?.pickup_enabled!==false)deliveryOptions.push('<option value="PICKUP">รับสินค้าเอง</option>');
   if(SETTINGS?.delivery_enabled)deliveryOptions.push('<option value="DELIVERY">จัดส่ง (+฿'+money(SETTINGS.shipping_fee_thb)+')</option>');
+  const pointsRate=Math.max(1,Number(SETTINGS?.points_per_thb||1));
+  const pointBalance=Number(MEMBER_PROFILE?.points_balance||0);
+  const pointsUi=SETTINGS?.points_redemption_enabled
+    ?(MEMBER_SESSION
+      ?'<div class="paybox" style="grid-column:1/-1"><b>RESTART Points</b><div class="muted">มี '+pointBalance.toLocaleString('th-TH')+' แต้ม · '+pointsRate+' แต้ม = ส่วนลด 1 บาท'+(Number(SETTINGS?.min_redeem_points||0)>0?' · ขั้นต่ำ '+Number(SETTINGS.min_redeem_points).toLocaleString('th-TH')+' แต้ม':'')+'</div><label style="margin-top:8px">แต้มที่ต้องการใช้<input id="coPoints" type="number" min="0" step="'+pointsRate+'" max="'+pointBalance+'" value="0"></label></div>'
+      :'<div class="paybox" style="grid-column:1/-1"><b>ร้านนี้ใช้ RESTART Points ได้</b><div class="muted">เข้าสู่ระบบสมาชิกเพื่อใช้คะแนนเป็นส่วนลด</div><a class="btn sm soft" href="member.html?return='+encodeURIComponent(location.href)+'">Login สมาชิก</a></div>')
+    :'';
   const r=await Swal.fire({title:'ตะกร้า / Checkout',width:880,showCancelButton:true,confirmButtonText:'ไปชำระเงิน',
-    html:'<div style="text-align:left">'+cartRows()+'<div class="store-checkout-grid" style="margin-top:14px"><label>ชื่อ-นามสกุล<input id="coName" class="swal2-input" style="margin:0"></label><label>โทรศัพท์<input id="coPhone" class="swal2-input" style="margin:0"></label><label>Email (ถ้ามี)<input id="coEmail" class="swal2-input" style="margin:0"></label><label>วิธีรับสินค้า<select id="coDelivery" class="swal2-select" style="margin:0;width:100%">'+deliveryOptions.join('')+'</select></label><label id="coAddressWrap" style="grid-column:1/-1;display:none">ที่อยู่จัดส่ง<textarea id="coAddress" class="swal2-textarea" style="margin:0;width:100%"></textarea></label><label style="grid-column:1/-1">หมายเหตุ<textarea id="coNote" class="swal2-textarea" style="margin:0;width:100%"></textarea></label></div><div id="coQuote" class="paybox" style="margin-top:12px"></div></div>',
+    html:'<div style="text-align:left">'+cartRows()+'<div class="store-checkout-grid" style="margin-top:14px"><label>ชื่อ-นามสกุล<input id="coName" class="swal2-input" style="margin:0" value="'+esc([MEMBER_PROFILE?.first_name,MEMBER_PROFILE?.last_name].filter(Boolean).join(' '))+'"></label><label>โทรศัพท์<input id="coPhone" class="swal2-input" style="margin:0" value="'+esc(MEMBER_PROFILE?.phone||'')+'"></label><label>Email (ถ้ามี)<input id="coEmail" class="swal2-input" style="margin:0" value="'+esc(MEMBER_SESSION?.user?.email||'')+'"></label><label>วิธีรับสินค้า<select id="coDelivery" class="swal2-select" style="margin:0;width:100%">'+deliveryOptions.join('')+'</select></label><label id="coAddressWrap" style="grid-column:1/-1;display:none">ที่อยู่จัดส่ง<textarea id="coAddress" class="swal2-textarea" style="margin:0;width:100%">'+esc(MEMBER_PROFILE?.address||'')+'</textarea></label>'+pointsUi+'<label style="grid-column:1/-1">หมายเหตุ<textarea id="coNote" class="swal2-textarea" style="margin:0;width:100%"></textarea></label></div><div id="coQuote" class="paybox" style="margin-top:12px"></div></div>',
     didOpen:()=>{
       document.querySelectorAll('[data-cart-qty]').forEach(i=>i.onchange=()=>{const q=Math.max(0,Math.floor(Number(i.value||0)));if(q)CART.set(i.dataset.cartQty,q);else CART.delete(i.dataset.cartQty);updateCheckoutQuote()});
-      coDelivery.onchange=()=>{coAddressWrap.style.display=coDelivery.value==='DELIVERY'?'block':'none';updateCheckoutQuote()};updateCheckoutQuote()
+      coDelivery.onchange=()=>{coAddressWrap.style.display=coDelivery.value==='DELIVERY'?'block':'none';updateCheckoutQuote()};
+      byId('coPoints')?.addEventListener('input',updateCheckoutQuote);
+      updateCheckoutQuote()
     },
     preConfirm:async()=>{
       const name=coName.value.trim(),phone=coPhone.value.trim();if(!name||!phone)return Swal.showValidationMessage('กรุณากรอกชื่อและเบอร์โทร');
       if(coDelivery.value==='DELIVERY'&&!coAddress.value.trim())return Swal.showValidationMessage('กรุณากรอกที่อยู่จัดส่ง');
-      try{const q=await storeQuote(coDelivery.value);return{name,phone,email:coEmail.value.trim(),delivery:coDelivery.value,address:coAddress.value.trim(),note:coNote.value.trim(),quote:q}}catch(e){return Swal.showValidationMessage(e.message)}
+      const points=Math.max(0,Math.floor(Number(byId('coPoints')?.value||0)));
+      try{const q=await storeQuote(coDelivery.value,points);return{name,phone,email:coEmail.value.trim(),delivery:coDelivery.value,address:coAddress.value.trim(),note:coNote.value.trim(),quote:q}}catch(e){return Swal.showValidationMessage(e.message)}
     }});
   if(r.isConfirmed)openPayment(r.value)
 }
-async function updateCheckoutQuote(){try{const q=await storeQuote(coDelivery.value);coQuote.innerHTML='สินค้า ฿'+money(q.subtotal_amount_thb)+(Number(q.shipping_fee_thb)?' · ค่าส่ง ฿'+money(q.shipping_fee_thb):'')+' · <b>รวม ฿'+money(q.total_amount_thb)+'</b>'}catch(e){coQuote.textContent=e.message}}
-function storeQuote(delivery){return api('store-quote',{event_id:E.id,store_slug:STORE.slug,items:cartItems(),delivery_method:delivery})}
+async function updateCheckoutQuote(){try{const points=Math.max(0,Math.floor(Number(byId('coPoints')?.value||0))),q=await storeQuote(coDelivery.value,points);coQuote.innerHTML='สินค้า ฿'+money(q.subtotal_amount_thb)+(Number(q.shipping_fee_thb)?' · ค่าส่ง ฿'+money(q.shipping_fee_thb):'')+(Number(q.points_discount_thb)>0?' · แต้ม <b>-฿'+money(q.points_discount_thb)+'</b> ('+Number(q.points_redeemed).toLocaleString('th-TH')+' แต้ม)':'')+' · <b>รวม ฿'+money(q.total_amount_thb)+'</b>'}catch(e){coQuote.textContent=e.message}}
+function storeQuote(delivery,points=0){return api('store-quote',{event_id:E.id,store_slug:STORE.slug,items:cartItems(),delivery_method:delivery,points_to_redeem:Math.max(0,Math.floor(Number(points||0)))})}
 function methodCard(m,i,total){
   const pp=m.kind==='PROMPTPAY';
   return '<label class="store-pay-method"><div><input type="radio" name="storePay" value="'+esc(m.id)+'" '+(i===0?'checked':'')+'> <b>'+esc(m.label||m.kind)+'</b></div>'+
@@ -165,7 +175,7 @@ async function openPayment(co){
   const methods=METHODS.filter(m=>m.is_enabled);
   if(total>0&&!methods.length)return Swal.fire('ยังไม่มีช่องทางชำระเงิน','กรุณาติดต่อผู้จัด','error');
   const r=await Swal.fire({title:'ชำระเงิน',width:780,showCancelButton:true,confirmButtonText:'ส่งคำสั่งซื้อ',
-    html:'<div style="text-align:left"><div class="paybox">ยอดชำระ <b style="font-size:24px">฿'+money(total)+'</b></div>'+methods.map((m,i)=>methodCard(m,i,total)).join('')+(total>0?'<label style="margin-top:12px;display:block">สลิปการชำระเงิน<input id="storeSlip" type="file" accept="image/*,application/pdf" class="swal2-file" style="margin:0;width:100%"></label>':'')+'</div>',
+    html:'<div style="text-align:left"><div class="paybox">'+(Number(q.points_discount_thb)>0?'ใช้ '+Number(q.points_redeemed).toLocaleString('th-TH')+' Points · ลด ฿'+money(q.points_discount_thb)+'<br>':'')+'ยอดชำระ <b style="font-size:24px">฿'+money(total)+'</b></div>'+methods.map((m,i)=>methodCard(m,i,total)).join('')+(total>0?'<label style="margin-top:12px;display:block">สลิปการชำระเงิน<input id="storeSlip" type="file" accept="image/*,application/pdf" class="swal2-file" style="margin:0;width:100%"></label>':'')+'</div>',
     didOpen:()=>methods.forEach((m,i)=>{if(m.kind==='PROMPTPAY'&&m.qr_enabled&&m.promptpay_id&&byId('storeQr_'+i)){try{new QRCode(byId('storeQr_'+i),{text:promptpayPayload(m.promptpay_id,total,m.promptpay_type),width:220,height:220})}catch(e){}}}),
     preConfirm:()=>{const method=document.querySelector('[name=storePay]:checked')?.value||null,file=byId('storeSlip')?.files?.[0]||null;if(total>0&&!method)return Swal.showValidationMessage('กรุณาเลือกช่องทางชำระเงิน');if(total>0&&!file)return Swal.showValidationMessage('กรุณาอัปโหลดสลิป');return{method,file}}
   });
@@ -174,9 +184,9 @@ async function openPayment(co){
   try{
     Swal.fire({title:'กำลังสร้างคำสั่งซื้อ…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
     if(r.value.file)slipPath=await uploadSlip(r.value.file);
-    const out=await api('store-create-order',{payload:{event_id:E.id,store_slug:STORE.slug,language:LANG,customer_name:co.name,phone:co.phone,email:co.email,delivery_method:co.delivery,delivery_address:co.address,customer_note:co.note,payment_method_id:r.value.method,slip_path:slipPath,total_amount_thb:total,items:cartItems()}});
+    const out=await api('store-create-order',{payload:{event_id:E.id,store_slug:STORE.slug,language:LANG,customer_name:co.name,phone:co.phone,email:co.email,delivery_method:co.delivery,delivery_address:co.address,customer_note:co.note,payment_method_id:r.value.method,slip_path:slipPath,points_to_redeem:Number(q.points_redeemed||0),total_amount_thb:total,items:cartItems()}});
     CART.clear();
-    await Swal.fire({icon:'success',title:'สั่งซื้อสำเร็จ',html:'เลขออเดอร์ <b>'+esc(out.order_code)+'</b><br>ยอดรวม <b>฿'+money(out.total_amount_thb)+'</b><br>สถานะ <b>'+esc(out.status)+'</b><br><small>เก็บเลขออเดอร์ไว้สำหรับเช็กสถานะ</small>',confirmButtonText:'ตกลง'});
+    await Swal.fire({icon:'success',title:'สั่งซื้อสำเร็จ',html:'เลขออเดอร์ <b>'+esc(out.order_code)+'</b>'+(Number(out.points_redeemed)>0?'<br>ใช้แต้ม <b>'+Number(out.points_redeemed).toLocaleString('th-TH')+'</b> · ลด ฿'+money(out.points_discount_thb):'')+'<br>ยอดรวม <b>฿'+money(out.total_amount_thb)+'</b><br>สถานะ <b>'+esc(out.status)+'</b><br><small>เก็บเลขออเดอร์ไว้สำหรับเช็กสถานะ</small>',confirmButtonText:'ตกลง'});
     render()
   }catch(e){Swal.fire('สั่งซื้อไม่สำเร็จ',e.message,'error')}
 }
@@ -209,6 +219,8 @@ async function init(){
   const{data:e,error:ee}=await db.from('restart_events').select('*').eq('slug',slug).maybeSingle();
   if(ee||!e)throw new Error('ไม่พบ Event');
   E=e;
+  const{data:{session}}=await db.auth.getSession();MEMBER_SESSION=session||null;MEMBER_PROFILE=null;
+  if(session?.user){const{data:mp}=await db.from('restart_member_profiles').select('*').eq('user_id',session.user.id).maybeSingle();MEMBER_PROFILE=mp||null}
   if(!E.feature_flags?.storefront)throw new Error('Event นี้ยังไม่เปิดร้านค้า');
 
   const{data:stores,error:ste}=await db.from('restart_stores').select('*').eq('event_id',E.id).eq('is_open',true).order('sort_order').order('created_at');
