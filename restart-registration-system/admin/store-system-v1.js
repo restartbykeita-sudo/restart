@@ -138,6 +138,28 @@ function buildOptionSchema(rows){
   const map={};rows.forEach(r=>Object.entries(r.option_values||{}).forEach(([k,v])=>{(map[k]||=new Set()).add(v)}));
   return Object.entries(map).map(([key,set])=>({key,label:{th:key,en:key},values:[...set].map(v=>({key:v,label:{th:v,en:v}}))}))
 }
+function inspectStoreProductImage(file){
+  const status=document.getElementById('spImageStatus');
+  if(!status||!file)return;
+  if(file.size>2*1024*1024){
+    status.innerHTML='<span style="color:#c0392b">ไฟล์ใหญ่เกิน 2 MB</span>';
+    return
+  }
+  const url=URL.createObjectURL(file),img=new Image();
+  img.onload=()=>{
+    const ratio=img.width/img.height,target=4/5,diff=Math.abs(ratio-target)/target;
+    const minOk=img.width>=1200&&img.height>=1500;
+    const ratioOk=diff<=0.06;
+    status.innerHTML=
+      '<b>'+img.width+'×'+img.height+' px</b> · '+
+      (ratioOk?'<span style="color:#1f8f4d">สัดส่วนเหมาะสม 4:5</span>':'<span style="color:#c47a00">แนะนำสัดส่วน 4:5 (1600×2000 px)</span>')+
+      (minOk?'':' · <span style="color:#c47a00">ความละเอียดต่ำกว่าที่แนะนำ</span>');
+    URL.revokeObjectURL(url)
+  };
+  img.onerror=()=>{status.innerHTML='<span style="color:#c0392b">อ่านขนาดภาพไม่ได้</span>';URL.revokeObjectURL(url)};
+  img.src=url
+}
+
 async function storeProductDialog(id=null){
   let p=null,vars=[];
   if(id){const{data,error}=await db.from('restart_merch_products').select('*,restart_merch_variants(*)').eq('id',id).eq('event_id',state.event.id).single();if(error)return Swal.fire('โหลดสินค้าไม่ได้',error.message,'error');p=data;vars=data.restart_merch_variants||[]}
@@ -152,10 +174,16 @@ async function storeProductDialog(id=null){
       '<label>สถานะ<select id="spActive" class="swal2-select" style="margin:0;width:100%"><option value="true" '+(p?.is_active===false?'':'selected')+'>เปิดขาย</option><option value="false" '+(p?.is_active===false?'selected':'')+'>ปิดขาย</option></select></label>'+
       '<label>เริ่มขาย<input id="spStart" type="datetime-local" class="swal2-input" style="margin:0" value="'+(p?.sale_starts_at?localDT(p.sale_starts_at):'')+'"></label>'+
       '<label>ปิดขาย<input id="spEnd" type="datetime-local" class="swal2-input" style="margin:0" value="'+(p?.sale_ends_at?localDT(p.sale_ends_at):'')+'"></label>'+
-      '<label style="grid-column:1/-1">รูปสินค้า<input id="spImage" type="file" accept="image/*" class="swal2-file" style="margin:0;width:100%"><small class="muted">แนะนำ 1200×1200 px · JPG/PNG/WebP · ไม่เกิน 2 MB</small></label>'+
+      '<label style="grid-column:1/-1"><b>รูปสินค้า</b><input id="spImage" type="file" accept="image/jpeg,image/png,image/webp" class="swal2-file" style="margin:0;width:100%"><div class="paybox" style="margin-top:8px"><b>ขนาดภาพที่แนะนำ</b><div>1600×2000 px · สัดส่วน 4:5</div><small class="muted">ขั้นต่ำ 1200×1500 px · JPG/PNG/WebP · ไม่เกิน 2 MB · วางสินค้าหลักไว้กึ่งกลางภาพ เพราะการ์ดจะครอปภาพแบบ Cover</small><div id="spImageStatus" style="margin-top:6px"></div></div></label>'+
       '<div style="grid-column:1/-1;border-top:1px solid rgba(127,127,127,.2);padding-top:14px"><div class="row space"><div><b>ช้อยท์สินค้า</b><div class="muted">กรอกทีละช้อยท์ ไม่ต้องใช้เครื่องหมายหรือจำรูปแบบ</div></div><button id="spAddChoice" type="button" class="btn sm soft">+ เพิ่มช้อยท์</button></div><div id="spVariantList"></div><div class="muted" style="margin-top:8px">ตัวอย่าง: ชื่อ “สีขาว” ราคา 100 สต๊อก 30 หรือ “สีดำ Limited” ราคา 250 สต๊อก 10 · SKU และป้ายเว้นว่างได้</div></div>'+
     '</div>',
-    didOpen:()=>initStoreChoiceBuilder(vars),
+    didOpen:()=>{
+      initStoreChoiceBuilder(vars);
+      document.getElementById('spImage')?.addEventListener('change',e=>{
+        const file=e.target.files?.[0];
+        if(file)inspectStoreProductImage(file)
+      })
+    },
     preConfirm:()=>{try{const code=spCode.value.trim().toUpperCase(),name=spNameTh.value.trim(),rows=collectStoreChoiceRows();if(!code||!name)return Swal.showValidationMessage('กรุณากรอกรหัสและชื่อสินค้า');if(spStart.value&&spEnd.value&&new Date(spEnd.value)<=new Date(spStart.value))return Swal.showValidationMessage('เวลาปิดขายต้องอยู่หลังเวลาเปิดขาย');return{code,category:spCategory.value.trim()||null,name:{th:name,en:spNameEn.value.trim()||name},description:{th:spDesc.value.trim(),en:spDesc.value.trim()},max:Number(spMax.value||10),active:spActive.value==='true',start:spStart.value||null,end:spEnd.value||null,rows,file:spImage.files?.[0]||null}}catch(e){return Swal.showValidationMessage(e.message)}}});
   if(!r.isConfirmed)return;
   let newPath=null,imageUrl=p?.image_url||null,imagePath=p?.image_storage_path||null;
