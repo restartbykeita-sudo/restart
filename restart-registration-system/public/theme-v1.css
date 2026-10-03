@@ -1,0 +1,14 @@
+.public-registration .theme-toggle{flex-shrink:0;min-height:40px}
+.public-registration .theme-toggle:focus-visible{outline:2px solid var(--primary);outline-offset:3px}
+html[data-ui-theme="dark"] .public-registration .rr-card{background:var(--surface);border-color:var(--line);box-shadow:var(--lux-shadow-soft)}
+html[data-ui-theme="dark"] .public-registration .member-history-row,
+html[data-ui-theme="dark"] .public-registration .store-variant,
+html[data-ui-theme="dark"] .public-registration .store-pay-method{border-color:var(--line)}
+html[data-ui-theme="dark"] .public-registration input,
+html[data-ui-theme="dark"] .public-registration select,
+html[data-ui-theme="dark"] .public-registration textarea{background:var(--field);color:var(--text);border-color:var(--field-line)}
+html[data-ui-theme="dark"] .public-registration input::file-selector-button{background:var(--surface-2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 12px}
+html[data-ui-theme="dark"] .swal2-validation-message{background:#25212c;color:#ffc9c9}
+html[data-ui-theme="dark"] .swal2-close{color:#c7c3d0}
+html[data-ui-theme="dark"] .swal2-footer{border-color:rgba(255,255,255,.14);color:#c7c3d0}
+@media(max-width:600px){.public-registration .rr-public-actions{max-width:100%;width:100%}.public-registration .theme-label{display:inline}.public-registration .theme-toggle{min-width:0}}

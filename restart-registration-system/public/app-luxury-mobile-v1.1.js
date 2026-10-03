@@ -1,44 +1,7 @@
 const db=supabase.createClient(RESTART_REG_CONFIG.SUPABASE_URL,RESTART_REG_CONFIG.SUPABASE_PUBLISHABLE_KEY);
 const app=document.getElementById('app');const qs=new URLSearchParams(location.search);const slug=qs.get('event');const registerMode=qs.get('register')==='1';let lang=localStorage.getItem('restart_lang')||'th';let E=null,C=[],P=[],F=[],S=[],PM=[],IP=[],IS=[],SHOW=null,MEDIA=[],ROUTES=[];
-let uiTheme=localStorage.getItem('restart_ui_theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');
-function applyUiTheme(){
-  document.documentElement.dataset.uiTheme=uiTheme;
-  const b=document.getElementById('themeToggle');
-  if(!b)return;
-  const dark=uiTheme==='dark';
-  b.setAttribute('aria-pressed',String(dark));
-  const icon=b.querySelector('.theme-icon'),label=b.querySelector('.theme-label');
-  if(icon)icon.textContent=dark?'☀':'☾';
-  if(label)label.textContent=dark?RestartI18n.t('Theme Light'):RestartI18n.t('Theme Dark');
-}
-function initThemeToggle(){
-  let b=document.getElementById('themeToggle');
-  if(!b){
-    const top=document.querySelector('.rr-top');
-    if(top){
-      let actions=top.querySelector('.rr-public-actions');
-      if(!actions){
-        const lang=document.getElementById('langbar');
-        actions=document.createElement('div');
-        actions.className='rr-public-actions';
-        if(lang&&lang.parentNode===top){top.insertBefore(actions,lang);actions.appendChild(lang)}
-        else top.appendChild(actions);
-      }
-      b=document.createElement('button');
-      b.id='themeToggle';b.className='theme-toggle';b.type='button';
-      b.setAttribute('aria-label',RestartI18n.t('เปลี่ยนโหมดสี'));
-      b.innerHTML='<span class="theme-icon" aria-hidden="true">☾</span><span class="theme-label">Dark</span>';
-      actions.insertBefore(b,actions.firstChild);
-    }
-  }
-  applyUiTheme();
-  b=document.getElementById('themeToggle');
-  if(b)b.onclick=()=>{
-    uiTheme=uiTheme==='dark'?'light':'dark';
-    localStorage.setItem('restart_ui_theme',uiTheme);
-    applyUiTheme();
-  };
-}
+function applyUiTheme(){RestartTheme.apply()}
+function initThemeToggle(){RestartTheme.mount()}
 
 const dict={th:{apply:'สมัครแข่งขัน',choose:'เลือกรุ่นการแข่งขัน',package:'เลือก Package',personal:'ข้อมูลผู้สมัคร',insurance:'ผู้รับผลประโยชน์',payment:'การชำระเงิน',submit:'ส่งใบสมัคร',full:'ชำระเต็มจำนวน',install:'ผ่อนชำระ',copy:'คัดลอก',upload:'อัปโหลดสลิป',addbene:'+ เพิ่มผู้รับผลประโยชน์'},en:{apply:'Register',choose:'Competition category',package:'Package',personal:'Participant information',insurance:'Beneficiaries',payment:'Payment',submit:'Submit registration',full:'Pay in full',install:'Installments',copy:'Copy',upload:'Upload slip',addbene:'+ Add beneficiary'},zh:{apply:'报名',choose:'比赛组别',package:'套餐',personal:'参赛者信息',insurance:'受益人',payment:'付款',submit:'提交报名',full:'全额付款',install:'分期付款',copy:'复制',upload:'上传付款凭证',addbene:'+ 添加受益人'},ja:{apply:'参加申込',choose:'競技カテゴリー',package:'パッケージ',personal:'参加者情報',insurance:'受取人',payment:'支払い',submit:'申込を送信',full:'一括払い',install:'分割払い',copy:'コピー',upload:'支払証明をアップロード',addbene:'+ 受取人を追加'},ru:{apply:'Регистрация',choose:'Категория',package:'Пакет',personal:'Данные участника',insurance:'Получатели',payment:'Оплата',submit:'Отправить заявку',full:'Полная оплата',install:'Рассрочка',copy:'Копировать',upload:'Загрузить квитанцию',addbene:'+ Добавить получателя'}};
 const D=()=>dict[lang]||dict.en;const byId=id=>document.getElementById(id);const val=id=>(byId(id)?.value||'').trim();const baseFieldAliases=new Set(['title','prefix','first_name','last_name','birth_date','age','gender','id_document','phone','blood_group','shirt_size','address','emergency_contact_name','emergency_phone','emergency_relation']);const baseMeta=(...keys)=>F.find(f=>keys.includes(f.field_key))||null;const optionTags=(meta,fallback=[])=>{const opts=meta?.options?.length?meta.options:fallback;return opts.map(o=>{const value=typeof o==='object'?(o.value??tr(o.label||o)):o;const label=typeof o==='object'?tr(o.label||o):o;return '<option value="'+esc(value)+'">'+esc(label)+'</option>'}).join('')};const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));const tr=v=>typeof v==='object'?(v?.[lang]||v?.en||v?.th||Object.values(v||{})[0]||''):v||'';const money=v=>Number(v||0).toLocaleString(undefined,{maximumFractionDigits:2});
