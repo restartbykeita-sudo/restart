@@ -411,10 +411,12 @@ function validateFullClient(runners,followers){
   const f=fullFlags(),type=registrationType(),profileRunners=type==='SINGLE'?runners:runners.slice(0,1);
   runners.forEach((r,i)=>{
     if(!String(r.first_name||'').trim()||!String(r.last_name||'').trim())throw new Error(RestartI18n.t('กรุณากรอกชื่อ–นามสกุลผู้แข่งขันคนที่ ')+(i+1));
+    if(!/^[A-Z0-9]{6,30}$/.test(normalizeId(r.id_document)))throw new Error(RestartI18n.t('เลขบัตรประชาชน / Passport ต้องมี 6–30 ตัวอักษร ใช้ตัวอักษรอังกฤษและตัวเลขเท่านั้น')+' · '+(i+1));
   });
-  const ids=profileRunners.map(r=>r.id_normalized).filter(Boolean),
-        beneIds=profileRunners.flatMap(r=>(r.beneficiaries||[]).map(b=>normalizeId(b.id_document)).filter(Boolean)),
+  const ids=runners.map(r=>normalizeId(r.id_document)),
+        beneIds=runners.flatMap(r=>(r.beneficiaries||[]).map(b=>normalizeId(b.id_document))),
         fids=followers.map(x=>normalizeId(x.id_document)).filter(Boolean);
+  if(beneIds.some(id=>!/^[A-Z0-9]{6,30}$/.test(id)))throw new Error(RestartI18n.t('เลขบัตรประชาชน / Passport ต้องมี 6–30 ตัวอักษร ใช้ตัวอักษรอังกฤษและตัวเลขเท่านั้น'));
   if(new Set(ids).size!==ids.length)throw new Error(RestartI18n.t('เลขบัตร/Passport ผู้แข่งขันซ้ำกัน'));
   if(new Set(beneIds).size!==beneIds.length)throw new Error(RestartI18n.t('เลขบัตร/Passport ผู้รับผลประโยชน์ซ้ำกัน'));
   if(beneIds.some(x=>ids.includes(x)))throw new Error(RestartI18n.t('เลขผู้รับผลประโยชน์ห้ามซ้ำกับผู้แข่งขัน'));
@@ -485,6 +487,8 @@ submit=async function(e){
 
 function fullRegistrationError(err){
   const s=fullErr(err),map={
+    RUNNER_ID_INVALID:RestartI18n.t('เลขบัตรประชาชน / Passport ต้องมี 6–30 ตัวอักษร ใช้ตัวอักษรอังกฤษและตัวเลขเท่านั้น'),
+    BENEFICIARY_ID_INVALID:RestartI18n.t('เลขบัตรประชาชน / Passport ต้องมี 6–30 ตัวอักษร ใช้ตัวอักษรอังกฤษและตัวเลขเท่านั้น'),
     AUTO_CATEGORY_NOT_FOUND:RestartI18n.t('ไม่พบรุ่นการแข่งขันที่ตรงกับอายุ/เพศ'),
     CATEGORY_NOT_ELIGIBLE:RestartI18n.t('อายุหรือเพศไม่ตรงกับรุ่นการแข่งขัน'),
     DISCOUNT_CODE_INVALID:RestartI18n.t('Discount Code ไม่ถูกต้อง หมดอายุ หรือใช้ครบแล้ว'),

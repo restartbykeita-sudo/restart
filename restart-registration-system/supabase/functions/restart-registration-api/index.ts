@@ -17,6 +17,18 @@ class ApiError extends Error {
 const fail = (status: number, message: string): never => { throw new ApiError(status, message); };
 const text = (value: unknown) => String(value ?? '').trim();
 const normalizeId = (value: unknown) => text(value).toUpperCase().replace(/[^0-9A-Z]/g, '');
+function validateRegistrationIdentity(runners: Array<Record<string, unknown>>) {
+  if (!runners.length) fail(400, 'RUNNER_REQUIRED');
+  const ids = runners.map(r => normalizeId(r.id_document));
+  if (ids.some(id => !/^[A-Z0-9]{6,30}$/.test(id))) fail(400, 'RUNNER_ID_INVALID');
+  if (new Set(ids).size !== ids.length) fail(409, 'DUPLICATE_RUNNER_ID');
+  const beneficiaryIds = runners.flatMap(r =>
+    (Array.isArray(r.beneficiaries) ? r.beneficiaries as Array<Record<string, unknown>> : [])
+      .map(b => normalizeId(b.id_document)));
+  if (beneficiaryIds.some(id => !/^[A-Z0-9]{6,30}$/.test(id))) fail(400, 'BENEFICIARY_ID_INVALID');
+  if (beneficiaryIds.some(id => ids.includes(id))) fail(409, 'BENEFICIARY_ID_SAME_AS_RUNNER');
+  if (new Set(beneficiaryIds).size !== beneficiaryIds.length) fail(409, 'DUPLICATE_BENEFICIARY_ID');
+}
 const cors = (origin: string) => ({
   'access-control-allow-origin': origin || '*',
   'access-control-allow-headers': 'authorization, apikey, content-type, x-client-info',
@@ -528,6 +540,8 @@ async function register(req: Request, origin: string) {
   }
 
 
+  validateRegistrationIdentity(cleanedRunners);
+
   const ageOn = (birth: string, eventDate: string) => {
     const b = new Date(birth + 'T00:00:00Z');
     const d = new Date(eventDate + 'T00:00:00Z');
@@ -766,6 +780,7 @@ async function fullSystemRpc(req: Request, origin: string, action: string) {
     payload.member_user_id = member.id;
     payload.member_runner_index = 1;
     if (text(payload.registration_type).toUpperCase() !== 'SINGLE') payload.contact_runner_index = 1;
+    validateRegistrationIdentity(Array.isArray(payload.runners) ? payload.runners : []);
     result = await db.rpc('restart_create_registration', { p_payload: payload });
   } else if (action === 'join-waitlist') {
     const member = await requireMember(req);
@@ -774,6 +789,7 @@ async function fullSystemRpc(req: Request, origin: string, action: string) {
     payload.member_user_id = member.id;
     payload.member_runner_index = 1;
     if (text(payload.registration_type).toUpperCase() !== 'SINGLE') payload.contact_runner_index = 1;
+    validateRegistrationIdentity(Array.isArray(payload.runners) ? payload.runners : []);
     result = await db.rpc('restart_join_waitlist', { p_payload: payload });
   } else if (action === 'next-payment-lookup') {
     result = await db.rpc('restart_lookup_next_payment', {
@@ -805,6 +821,10 @@ async function fullSystemRpc(req: Request, origin: string, action: string) {
   }
 
   if (result.error) {
+    if (result.error.code === '23505') {
+      if (text(result.error.message).includes('restart_participants_event_id_id_normalized_key')) result.error.message = 'RUNNER_ALREADY_REGISTERED';
+      else if (text(result.error.message).includes('restart_beneficiaries_registration_id_normalized_key')) result.error.message = 'DUPLICATE_BENEFICIARY_ID';
+    }
     const slipPath = action === 'create-registration'
       ? text(body?.payload?.slip_path)
       : action === 'store-create-order'
