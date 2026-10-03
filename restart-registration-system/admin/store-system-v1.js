@@ -28,50 +28,170 @@ function storePaymentStatus(s){return({PENDING:'รอชำระ',PENDING_REVI
 async function renderStoreAdmin(){
   if(!needEvent())return;
   ensureStoreNav();
+
+  const{data:stores,error:ste}=await db.from('restart_stores').select('*').eq('event_id',state.event.id).order('sort_order').order('created_at');
+  if(ste)return Swal.fire('โหลดร้านค้าไม่สำเร็จ',ste.message,'error');
+  const allStores=stores||[];
+  window.__stores=allStores;
+
+  let active=allStores.find(x=>x.id===window.__storeActiveId)||allStores[0]||null;
+  window.__storeActiveId=active?.id||null;
+  window.__activeStore=active;
+
   document.getElementById('content').innerHTML=
-    card('ร้านค้า / Merchandise',
-      '<div class="row space"><div><b>ขายสินค้าแยกจากการสมัครแข่งขัน</b><div class="muted">สินค้า ตัวเลือก สต๊อก ออเดอร์ และการชำระเงินเป็นระบบร้านค้าอิสระ</div></div><a class="btn soft" target="_blank" href="../public/shop.html?event='+encodeURIComponent(state.event.slug)+'">เปิดหน้าร้าน</a></div>'+
+    card('ร้านค้า / Marketplace',
+      '<div class="row space" style="gap:12px;flex-wrap:wrap"><div><b>หลายร้านใน Event เดียว</b><div class="muted">สินค้า สต๊อก ออเดอร์ และช่องทางรับเงินแยกตามร้านอย่างอิสระ</div></div>'+
+      '<div class="row" style="gap:8px;flex-wrap:wrap"><a class="btn soft" target="_blank" href="../public/shop.html?event='+encodeURIComponent(state.event.slug)+'">เปิดหน้ารวมร้าน</a><button class="btn primary" onclick="storeShopDialog()">+ สร้างร้านใหม่</button></div></div>'+
+      '<div id="storeSelectorBox" style="margin-top:16px"></div>'+
       '<div id="storeSettingsBox" style="margin-top:16px"></div>'+
+      '<div id="storePaymentBox" style="margin-top:16px"></div>'+
       '<div id="storeStats" class="grid4" style="margin-top:16px"></div>'+
       '<div id="storeProductBox" style="margin-top:20px"></div>'+
       '<div id="storeOrderBox" style="margin-top:24px"></div>',
       '<button class="btn soft" onclick="exportStoreOrders()">Export Orders CSV</button><button class="btn primary" onclick="storeProductDialog()">+ เพิ่มสินค้า</button>'
     );
-  const[{data:settings,error:se},{data:products,error:pe},{data:orders,error:oe}]=await Promise.all([
-    db.from('restart_store_settings').select('*').eq('event_id',state.event.id).maybeSingle(),
-    db.from('restart_merch_products').select('*,restart_merch_variants(*)').eq('event_id',state.event.id).order('sort_order'),
-    db.from('restart_store_orders').select('*,restart_store_order_items(*),restart_store_payments(*)').eq('event_id',state.event.id).order('created_at',{ascending:false})
+
+  renderStoreSelector(allStores,active);
+
+  if(!active){
+    storeSettingsBox.innerHTML='<div class="rr-empty">ยังไม่มีร้านค้า · กด “+ สร้างร้านใหม่” เพื่อเริ่มต้น</div>';
+    storePaymentBox.innerHTML='';storeStats.innerHTML='';storeProductBox.innerHTML='';storeOrderBox.innerHTML='';
+    return
+  }
+
+  const[{data:products,error:pe},{data:orders,error:oe},{data:methods,error:me}]=await Promise.all([
+    db.from('restart_merch_products').select('*,restart_merch_variants(*)').eq('store_id',active.id).order('sort_order'),
+    db.from('restart_store_orders').select('*,restart_store_order_items(*),restart_store_payments(*)').eq('store_id',active.id).order('created_at',{ascending:false}),
+    db.from('restart_store_payment_methods').select('*').eq('store_id',active.id).order('sort_order')
   ]);
-  if(se||pe||oe)return Swal.fire('โหลดร้านค้าไม่สำเร็จ',(se||pe||oe).message,'error');
-  window.__storeSettings=settings||null;window.__storeProducts=products||[];window.__storeOrders=orders||[];
-  renderStoreSettings(settings);
+  if(pe||oe||me)return Swal.fire('โหลดข้อมูลร้านไม่สำเร็จ',(pe||oe||me).message,'error');
+
+  window.__storeSettings=active;
+  window.__storeProducts=products||[];
+  window.__storeOrders=orders||[];
+  window.__storePaymentMethods=methods||[];
+
+  renderStoreSettings(active);
+  renderStorePaymentMethods(methods||[]);
   renderStoreProducts(products||[]);
   renderStoreOrders(orders||[]);
 }
+function renderStoreSelector(stores,active){
+  if(!stores.length){
+    storeSelectorBox.innerHTML='<div class="paybox"><b>ยังไม่มีร้านค้า</b><div class="muted">สร้างร้านแรกก่อนเพิ่มสินค้า</div></div>';
+    return
+  }
+  const link=active?'../public/shop.html?event='+encodeURIComponent(state.event.slug)+'&store='+encodeURIComponent(active.slug):'';
+  storeSelectorBox.innerHTML=
+    '<div class="paybox"><div class="grid2">'+
+      '<label><b>ร้านที่กำลังจัดการ</b><select id="storeAdminSelect">'+stores.map(s=>'<option value="'+s.id+'" '+(active?.id===s.id?'selected':'')+'>'+esc(storeTr(s.name)||s.slug)+(s.is_open?'':' (ปิด)')+'</option>').join('')+'</select></label>'+
+      '<label><b>ลิงก์เฉพาะร้าน</b><div class="row" style="gap:8px"><input id="storeDirectLink" readonly value="'+esc(active?location.origin+location.pathname.replace(/\/admin\/$/,'/public/')+'shop.html?event='+encodeURIComponent(state.event.slug)+'&store='+encodeURIComponent(active.slug):'')+'"><a class="btn sm soft" target="_blank" href="'+esc(link)+'">เปิดร้าน</a></div></label>'+
+    '</div><div class="row" style="margin-top:10px;gap:8px;flex-wrap:wrap"><button class="btn sm soft" id="copyStoreLink">คัดลอกลิงก์ร้าน</button><button class="btn sm soft" onclick="storeShopDialog(\''+(active?.id||'')+'\')">แก้ไขข้อมูลร้าน</button><button class="btn sm danger" onclick="archiveStoreShop(\''+(active?.id||'')+'\')">ปิด/ลบร้าน</button></div></div>';
+  document.getElementById('storeAdminSelect').onchange=e=>{window.__storeActiveId=e.target.value;renderStoreAdmin()};
+  document.getElementById('copyStoreLink').onclick=async()=>{const v=document.getElementById('storeDirectLink').value;try{await navigator.clipboard.writeText(v);Swal.fire({icon:'success',title:'คัดลอกลิงก์แล้ว',timer:800,showConfirmButton:false})}catch(e){fallbackStoreCopy(v)}}
+}
+function fallbackStoreCopy(v){const t=document.createElement('textarea');t.value=v;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove();Swal.fire({icon:'success',title:'คัดลอกลิงก์แล้ว',timer:800,showConfirmButton:false})}
+function slugifyStore(v){return String(v||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')}
+async function storeShopDialog(id=null){
+  let s=id?(window.__stores||[]).find(x=>x.id===id):null;
+  if(id&&!s){const{data,error}=await db.from('restart_stores').select('*').eq('id',id).single();if(error)return Swal.fire('โหลดร้านไม่ได้',error.message,'error');s=data}
+  const r=await Swal.fire({title:id?'แก้ไขร้านค้า':'สร้างร้านใหม่',width:760,showCancelButton:true,confirmButtonText:'บันทึก',
+    html:'<div class="grid2" style="text-align:left">'+
+      '<label>ชื่อร้าน<input id="ssName" class="swal2-input" style="margin:0" value="'+esc(storeTr(s?.name)||'')+'" placeholder="เช่น RESTART Official"></label>'+
+      '<label>Slug / ลิงก์ร้าน<input id="ssSlug" class="swal2-input" style="margin:0" value="'+esc(s?.slug||'')+'" placeholder="restart-official"><small class="muted">ใช้ a-z, 0-9 และ - เท่านั้น</small></label>'+
+      '<label style="grid-column:1/-1">คำอธิบายร้าน<textarea id="ssDesc" class="swal2-textarea" style="margin:0;width:100%">'+esc(storeTr(s?.description)||'')+'</textarea></label>'+
+      '<label>สถานะ<select id="ssOpen" class="swal2-select" style="margin:0;width:100%"><option value="true" '+(s?.is_open===false?'':'selected')+'>เปิดร้าน</option><option value="false" '+(s?.is_open===false?'selected':'')+'>ปิดร้าน</option></select></label>'+
+      '<label>รับสินค้าเอง<select id="ssPickup" class="swal2-select" style="margin:0;width:100%"><option value="true" '+(s?.pickup_enabled===false?'':'selected')+'>เปิด</option><option value="false" '+(s?.pickup_enabled===false?'selected':'')+'>ปิด</option></select></label>'+
+      '<label>จัดส่ง<select id="ssDelivery" class="swal2-select" style="margin:0;width:100%"><option value="false" '+(s?.delivery_enabled?'':'selected')+'>ปิด</option><option value="true" '+(s?.delivery_enabled?'selected':'')+'>เปิด</option></select></label>'+
+      '<label>ค่าส่ง (บาท)<input id="ssShipping" type="number" min="0" step="0.01" class="swal2-input" style="margin:0" value="'+Number(s?.shipping_fee_thb||0)+'"></label>'+
+      '<label style="grid-column:1/-1">ข้อความจุดรับสินค้า<input id="ssPickupNote" class="swal2-input" style="margin:0" value="'+esc(storeTr(s?.pickup_note)||'')+'"></label>'+
+      '<label style="grid-column:1/-1">เงื่อนไข / หมายเหตุ<textarea id="ssTerms" class="swal2-textarea" style="margin:0;width:100%">'+esc(storeTr(s?.terms)||'')+'</textarea></label>'+
+    '</div>',
+    didOpen:()=>{if(!id){ssName.addEventListener('input',()=>{if(!ssSlug.dataset.touched)ssSlug.value=slugifyStore(ssName.value)});ssSlug.addEventListener('input',()=>ssSlug.dataset.touched='1')}},
+    preConfirm:()=>{const name=ssName.value.trim(),slug=ssSlug.value.trim().toLowerCase();if(!name)return Swal.showValidationMessage('กรุณากรอกชื่อร้าน');if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))return Swal.showValidationMessage('Slug ต้องใช้ a-z, 0-9 และ - เท่านั้น');const pickup=ssPickup.value==='true',delivery=ssDelivery.value==='true';if(!pickup&&!delivery)return Swal.showValidationMessage('ต้องเปิดวิธีรับสินค้าอย่างน้อย 1 แบบ');return{name,slug,description:ssDesc.value.trim(),open:ssOpen.value==='true',pickup,delivery,shipping:Number(ssShipping.value||0),pickupNote:ssPickupNote.value.trim(),terms:ssTerms.value.trim()}}});
+  if(!r.isConfirmed)return;
+  const row={event_id:state.event.id,slug:r.value.slug,name:{th:r.value.name,en:r.value.name},description:{th:r.value.description,en:r.value.description},is_open:r.value.open,pickup_enabled:r.value.pickup,delivery_enabled:r.value.delivery,shipping_fee_thb:r.value.shipping,pickup_note:{th:r.value.pickupNote},terms:{th:r.value.terms},updated_at:new Date().toISOString()};
+  let sid=id;
+  if(id){
+    const{error}=await db.from('restart_stores').update(row).eq('id',id);if(error)return Swal.fire('บันทึกร้านไม่ได้',error.message,'error')
+  }else{
+    const{data,error}=await db.from('restart_stores').insert(row).select('id').single();if(error)return Swal.fire('สร้างร้านไม่ได้',error.message,'error');sid=data.id;
+    const{data:baseMethods}=await db.from('restart_payment_methods').select('*').eq('event_id',state.event.id).eq('is_enabled',true).order('sort_order');
+    if(baseMethods?.length){
+      const copied=baseMethods.map((m,i)=>({store_id:sid,source_payment_method_id:m.id,kind:m.kind,label:m.label,bank_name:m.bank_name,account_name:m.account_name,account_number:m.account_number,promptpay_type:m.promptpay_type,promptpay_id:m.promptpay_id,qr_enabled:m.qr_enabled,is_enabled:true,sort_order:i}));
+      await db.from('restart_store_payment_methods').insert(copied)
+    }
+  }
+  const flags={...(state.event.feature_flags||{}),storefront:true};
+  await db.from('restart_events').update({feature_flags:flags}).eq('id',state.event.id);
+  state.event.feature_flags=flags;window.__storeActiveId=sid;
+  Swal.fire({icon:'success',title:id?'บันทึกร้านแล้ว':'สร้างร้านแล้ว',timer:900,showConfirmButton:false});renderStoreAdmin()
+}
+async function archiveStoreShop(id){
+  if(!id)return;
+  const[{count:pc},{count:oc}]=await Promise.all([
+    db.from('restart_merch_products').select('id',{count:'exact',head:true}).eq('store_id',id),
+    db.from('restart_store_orders').select('id',{count:'exact',head:true}).eq('store_id',id)
+  ]);
+  if(Number(pc||0)>0||Number(oc||0)>0){
+    const r=await Swal.fire({title:'ปิดร้านนี้?',text:'ร้านมีสินค้า/ประวัติออเดอร์ จึงปิดร้านแทนการลบเพื่อรักษาข้อมูล',icon:'warning',showCancelButton:true,confirmButtonText:'ปิดร้าน'});if(!r.isConfirmed)return;
+    const{error}=await db.from('restart_stores').update({is_open:false,updated_at:new Date().toISOString()}).eq('id',id);if(error)return Swal.fire('ปิดร้านไม่ได้',error.message,'error')
+  }else{
+    const r=await Swal.fire({title:'ลบร้านนี้ถาวร?',icon:'warning',showCancelButton:true,confirmButtonText:'ลบ'});if(!r.isConfirmed)return;
+    const{error}=await db.from('restart_stores').delete().eq('id',id);if(error)return Swal.fire('ลบร้านไม่ได้',error.message,'error')
+  }
+  window.__storeActiveId=null;renderStoreAdmin()
+}
 function renderStoreSettings(s){
-  const name=storeTr(s?.store_name)||((state.event.name||'Event')+' Store');
-  storeSettingsBox.innerHTML='<div class="paybox"><div class="row space"><div><b>ตั้งค่าหน้าร้าน</b><div class="muted">แยกจากเวลาเปิดรับสมัครแข่งขัน</div></div><button class="btn sm primary" id="saveStoreSettings">บันทึก</button></div><div class="grid2" style="margin-top:12px">'+
+  const name=storeTr(s?.name)||s?.slug||'ร้านค้า';
+  const direct='../public/shop.html?event='+encodeURIComponent(state.event.slug)+'&store='+encodeURIComponent(s.slug);
+  storeSettingsBox.innerHTML='<div class="paybox"><div class="row space"><div><b>'+esc(name)+'</b><div class="muted">Slug: '+esc(s.slug)+' · '+(s.is_open?'เปิดร้าน':'ปิดร้าน')+'</div></div><a class="btn sm soft" target="_blank" href="'+direct+'">เปิดลิงก์ร้าน</a></div><div class="grid2" style="margin-top:12px">'+
     '<label>ชื่อร้าน<input id="storeName" value="'+esc(name)+'"></label>'+
-    '<label>สถานะร้าน<select id="storeOpen"><option value="true" '+(s?.is_open===false?'':'selected')+'>เปิดร้าน</option><option value="false" '+(s?.is_open===false?'selected':'')+'>ปิดร้าน</option></select></label>'+
-    '<label>รับสินค้าเอง<select id="storePickup"><option value="true" '+(s?.pickup_enabled===false?'':'selected')+'>เปิด</option><option value="false" '+(s?.pickup_enabled===false?'selected':'')+'>ปิด</option></select></label>'+
-    '<label>จัดส่ง<select id="storeDelivery"><option value="false" '+(s?.delivery_enabled?'':'selected')+'>ปิด</option><option value="true" '+(s?.delivery_enabled?'selected':'')+'>เปิด</option></select></label>'+
-    '<label>ค่าส่ง (บาท)<input id="storeShipping" type="number" min="0" step="0.01" value="'+Number(s?.shipping_fee_thb||0)+'"></label>'+
-    '<label>ข้อความจุดรับสินค้า<input id="storePickupNote" value="'+esc(storeTr(s?.pickup_note))+'"></label>'+
-    '<label style="grid-column:1/-1">เงื่อนไข / หมายเหตุร้าน<textarea id="storeTerms" rows="3">'+esc(storeTr(s?.terms))+'</textarea></label>'+
-    '</div></div>';
+    '<label>สถานะร้าน<select id="storeOpen"><option value="true" '+(s.is_open?'selected':'')+'>เปิดร้าน</option><option value="false" '+(!s.is_open?'selected':'')+'>ปิดร้าน</option></select></label>'+
+    '<label>รับสินค้าเอง<select id="storePickup"><option value="true" '+(s.pickup_enabled?'selected':'')+'>เปิด</option><option value="false" '+(!s.pickup_enabled?'selected':'')+'>ปิด</option></select></label>'+
+    '<label>จัดส่ง<select id="storeDelivery"><option value="false" '+(!s.delivery_enabled?'selected':'')+'>ปิด</option><option value="true" '+(s.delivery_enabled?'selected':'')+'>เปิด</option></select></label>'+
+    '<label>ค่าส่ง (บาท)<input id="storeShipping" type="number" min="0" step="0.01" value="'+Number(s.shipping_fee_thb||0)+'"></label>'+
+    '<label>ข้อความจุดรับสินค้า<input id="storePickupNote" value="'+esc(storeTr(s.pickup_note))+'"></label>'+
+    '<label style="grid-column:1/-1">เงื่อนไข / หมายเหตุร้าน<textarea id="storeTerms" rows="3">'+esc(storeTr(s.terms))+'</textarea></label>'+
+    '</div><button class="btn sm primary" id="saveStoreSettings" style="margin-top:10px">บันทึกการตั้งค่าร้าน</button></div>';
   document.getElementById('saveStoreSettings').onclick=saveStoreSettings
 }
 async function saveStoreSettings(){
-  const row={event_id:state.event.id,store_name:{th:storeName.value.trim(),en:storeName.value.trim()},is_open:storeOpen.value==='true',pickup_enabled:storePickup.value==='true',delivery_enabled:storeDelivery.value==='true',shipping_fee_thb:Number(storeShipping.value||0),pickup_note:{th:storePickupNote.value.trim()},terms:{th:storeTerms.value.trim()},updated_at:new Date().toISOString()};
+  const s=window.__activeStore;if(!s)return Swal.fire('กรุณาเลือกร้าน','','warning');
+  const row={name:{th:storeName.value.trim(),en:storeName.value.trim()},is_open:storeOpen.value==='true',pickup_enabled:storePickup.value==='true',delivery_enabled:storeDelivery.value==='true',shipping_fee_thb:Number(storeShipping.value||0),pickup_note:{th:storePickupNote.value.trim()},terms:{th:storeTerms.value.trim()},updated_at:new Date().toISOString()};
   if(!row.pickup_enabled&&!row.delivery_enabled)return Swal.fire('ต้องเปิดวิธีรับสินค้าอย่างน้อย 1 แบบ','','warning');
-  Swal.fire({title:'กำลังบันทึกหน้าร้าน…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
-  const flags={...(state.event.feature_flags||{}),storefront:row.is_open};
-  const{error:se}=await db.from('restart_store_settings').upsert(row,{onConflict:'event_id'});
-  if(se)return Swal.fire('บันทึกไม่ได้',se.message,'error');
-  const{error:ee}=await db.from('restart_events').update({feature_flags:flags}).eq('id',state.event.id);
-  if(ee)return Swal.fire('เปิด/ปิดร้านไม่สำเร็จ',ee.message,'error');
-  state.event.feature_flags=flags;
-  Swal.fire({icon:'success',title:row.is_open?'เปิดร้านแล้ว':'ปิดร้านแล้ว',timer:1000,showConfirmButton:false});renderStoreAdmin()
+  const{error}=await db.from('restart_stores').update(row).eq('id',s.id);
+  if(error)return Swal.fire('บันทึกไม่ได้',error.message,'error');
+  Swal.fire({icon:'success',title:'บันทึกร้านแล้ว',timer:900,showConfirmButton:false});renderStoreAdmin()
+}
+function renderStorePaymentMethods(methods){
+  storePaymentBox.innerHTML='<div class="paybox"><div class="row space"><div><b>ช่องทางรับเงินของร้านนี้</b><div class="muted">แยกจากร้านอื่นอย่างอิสระ</div></div><button class="btn sm primary" onclick="storePaymentDialog()">+ เพิ่มช่องทาง</button></div>'+
+    (methods.length?'<div class="table-wrap" style="margin-top:10px"><table><thead><tr><th>ประเภท</th><th>รายละเอียด</th><th>สถานะ</th><th></th></tr></thead><tbody>'+methods.map(m=>'<tr><td>'+esc(m.kind)+'</td><td><b>'+esc(m.label||'')+'</b><div class="muted">'+esc(m.kind==='PROMPTPAY'?(m.promptpay_id||''):[m.bank_name,m.account_name,m.account_number].filter(Boolean).join(' · '))+'</div></td><td>'+(m.is_enabled?'เปิด':'ปิด')+'</td><td><button class="btn sm soft" onclick="storePaymentDialog(\''+m.id+'\')">แก้ไข</button> <button class="btn sm danger" onclick="deleteStorePayment(\''+m.id+'\')">ลบ</button></td></tr>').join('')+'</tbody></table></div>':'<div class="rr-empty">ยังไม่มีช่องทางรับเงิน</div>')+
+  '</div>'
+}
+async function storePaymentDialog(id=null){
+  const s=window.__activeStore;if(!s)return Swal.fire('กรุณาเลือกร้าน','','warning');
+  let m=id?(window.__storePaymentMethods||[]).find(x=>x.id===id):null;
+  const r=await Swal.fire({title:id?'แก้ไขช่องทางรับเงิน':'เพิ่มช่องทางรับเงิน',width:700,showCancelButton:true,confirmButtonText:'บันทึก',
+    html:'<div class="grid2" style="text-align:left">'+
+      '<label>ประเภท<select id="pmKind" class="swal2-select" style="margin:0;width:100%"><option value="PROMPTPAY" '+(m?.kind!=='BANK'?'selected':'')+'>PromptPay</option><option value="BANK" '+(m?.kind==='BANK'?'selected':'')+'>ธนาคาร</option></select></label>'+
+      '<label>ชื่อแสดง<input id="pmLabel" class="swal2-input" style="margin:0" value="'+esc(m?.label||'')+'"></label>'+
+      '<label>PromptPay ID<input id="pmPrompt" class="swal2-input" style="margin:0" value="'+esc(m?.promptpay_id||'')+'" placeholder="เบอร์โทร / เลขบัตร"></label>'+
+      '<label>ประเภท PromptPay<select id="pmPromptType" class="swal2-select" style="margin:0;width:100%"><option value="PHONE" '+(m?.promptpay_type!=='NATIONAL_ID'?'selected':'')+'>เบอร์โทร</option><option value="NATIONAL_ID" '+(m?.promptpay_type==='NATIONAL_ID'?'selected':'')+'>เลขบัตร/เลขผู้เสียภาษี</option></select></label>'+
+      '<label>ธนาคาร<input id="pmBank" class="swal2-input" style="margin:0" value="'+esc(m?.bank_name||'')+'"></label>'+
+      '<label>ชื่อบัญชี<input id="pmAccountName" class="swal2-input" style="margin:0" value="'+esc(m?.account_name||'')+'"></label>'+
+      '<label>เลขบัญชี<input id="pmAccountNo" class="swal2-input" style="margin:0" value="'+esc(m?.account_number||'')+'"></label>'+
+      '<label>สถานะ<select id="pmEnabled" class="swal2-select" style="margin:0;width:100%"><option value="true" '+(m?.is_enabled===false?'':'selected')+'>เปิด</option><option value="false" '+(m?.is_enabled===false?'selected':'')+'>ปิด</option></select></label>'+
+    '</div>',
+    preConfirm:()=>{const kind=pmKind.value,label=pmLabel.value.trim();if(kind==='PROMPTPAY'&&!pmPrompt.value.trim())return Swal.showValidationMessage('กรุณากรอก PromptPay ID');if(kind==='BANK'&&!pmAccountNo.value.trim())return Swal.showValidationMessage('กรุณากรอกเลขบัญชี');return{kind,label,prompt:pmPrompt.value.trim(),promptType:pmPromptType.value,bank:pmBank.value.trim(),accountName:pmAccountName.value.trim(),accountNo:pmAccountNo.value.trim(),enabled:pmEnabled.value==='true'}}});
+  if(!r.isConfirmed)return;
+  const row={store_id:s.id,kind:r.value.kind,label:r.value.label||null,promptpay_id:r.value.kind==='PROMPTPAY'?r.value.prompt:null,promptpay_type:r.value.kind==='PROMPTPAY'?r.value.promptType:null,bank_name:r.value.kind==='BANK'?r.value.bank:null,account_name:r.value.kind==='BANK'?r.value.accountName:null,account_number:r.value.kind==='BANK'?r.value.accountNo:null,qr_enabled:r.value.kind==='PROMPTPAY',is_enabled:r.value.enabled,updated_at:new Date().toISOString()};
+  const q=id?db.from('restart_store_payment_methods').update(row).eq('id',id):db.from('restart_store_payment_methods').insert(row);
+  const{error}=await q;if(error)return Swal.fire('บันทึกไม่ได้',error.message,'error');renderStoreAdmin()
+}
+async function deleteStorePayment(id){
+  const r=await Swal.fire({title:'ลบช่องทางรับเงินนี้?',icon:'warning',showCancelButton:true,confirmButtonText:'ลบ'});if(!r.isConfirmed)return;
+  const{error}=await db.from('restart_store_payment_methods').delete().eq('id',id);if(error)return Swal.fire('ลบไม่ได้',error.message,'error');renderStoreAdmin()
 }
 function renderStoreProducts(products){
   const totalStock=products.flatMap(p=>p.restart_merch_variants||[]).reduce((s,v)=>s+storeAvail(v),0);
@@ -162,7 +282,8 @@ function inspectStoreProductImage(file){
 
 async function storeProductDialog(id=null){
   let p=null,vars=[];
-  if(id){const{data,error}=await db.from('restart_merch_products').select('*,restart_merch_variants(*)').eq('id',id).eq('event_id',state.event.id).single();if(error)return Swal.fire('โหลดสินค้าไม่ได้',error.message,'error');p=data;vars=data.restart_merch_variants||[]}
+  const activeStore=window.__activeStore;if(!activeStore)return Swal.fire('กรุณาเลือกร้านก่อนเพิ่มสินค้า','','warning');
+  if(id){const{data,error}=await db.from('restart_merch_products').select('*,restart_merch_variants(*)').eq('id',id).eq('store_id',activeStore.id).single();if(error)return Swal.fire('โหลดสินค้าไม่ได้',error.message,'error');p=data;vars=data.restart_merch_variants||[]}
   const r=await Swal.fire({title:id?'แก้ไขสินค้า':'เพิ่มสินค้า',width:940,showCancelButton:true,confirmButtonText:'บันทึก',
     html:'<div class="grid2" style="text-align:left">'+
       '<label>รหัสสินค้า<input id="spCode" class="swal2-input" style="margin:0" value="'+esc(p?.code||'')+'" placeholder="BAG-001"></label>'+
@@ -189,9 +310,9 @@ async function storeProductDialog(id=null){
   let newPath=null,imageUrl=p?.image_url||null,imagePath=p?.image_storage_path||null;
   try{
     Swal.fire({title:'กำลังบันทึกสินค้า…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
-    if(r.value.file){if(r.value.file.size>2*1024*1024)throw new Error('รูปต้องไม่เกิน 2 MB');const ext=(r.value.file.name.split('.').pop()||'jpg').replace(/[^a-z0-9]/gi,'');newPath=state.event.id+'/store/'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.'+ext;const up=await db.storage.from('restart-event-media').upload(newPath,r.value.file,{contentType:r.value.file.type,upsert:false});if(up.error)throw up.error;imageUrl=db.storage.from('restart-event-media').getPublicUrl(newPath).data.publicUrl;imagePath=newPath}
+    if(r.value.file){if(r.value.file.size>2*1024*1024)throw new Error('รูปต้องไม่เกิน 2 MB');const ext=(r.value.file.name.split('.').pop()||'jpg').replace(/[^a-z0-9]/gi,'');newPath=state.event.id+'/store/'+activeStore.id+'/'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.'+ext;const up=await db.storage.from('restart-event-media').upload(newPath,r.value.file,{contentType:r.value.file.type,upsert:false});if(up.error)throw up.error;imageUrl=db.storage.from('restart-event-media').getPublicUrl(newPath).data.publicUrl;imagePath=newPath}
     const firstPrice=Math.min(...r.value.rows.map(x=>x.price_override_thb));
-    const row={event_id:state.event.id,code:r.value.code,category:r.value.category,product_type:'GENERAL',name:r.value.name,description:r.value.description,price_thb:firstPrice,option_schema:buildOptionSchema(r.value.rows),max_per_order:r.value.max,image_url:imageUrl,image_storage_path:imagePath,is_active:r.value.active,sale_starts_at:r.value.start?new Date(r.value.start).toISOString():null,sale_ends_at:r.value.end?new Date(r.value.end).toISOString():null,updated_at:new Date().toISOString()};
+    const row={event_id:state.event.id,store_id:activeStore.id,code:r.value.code,category:r.value.category,product_type:'GENERAL',name:r.value.name,description:r.value.description,price_thb:firstPrice,option_schema:buildOptionSchema(r.value.rows),max_per_order:r.value.max,image_url:imageUrl,image_storage_path:imagePath,is_active:r.value.active,sale_starts_at:r.value.start?new Date(r.value.start).toISOString():null,sale_ends_at:r.value.end?new Date(r.value.end).toISOString():null,updated_at:new Date().toISOString()};
     let pid=id;if(id){const{error}=await db.from('restart_merch_products').update(row).eq('id',id);if(error)throw error}else{const{data,error}=await db.from('restart_merch_products').insert(row).select('id').single();if(error)throw error;pid=data.id}
     const{data:existing,error:ee}=await db.from('restart_merch_variants').select('*').eq('product_id',pid);if(ee)throw ee;
     const bySku=new Map((existing||[]).filter(x=>x.sku).map(x=>[x.sku,x])),byOpt=new Map((existing||[]).map(x=>[JSON.stringify(x.option_values||{}),x])),keep=new Set();
@@ -245,7 +366,7 @@ function csvCellStore(v){return '"'+String(v??'').replaceAll('"','""')+'"'}
 function exportStoreOrders(){
   const orders=window.__storeOrders||[],head=['order_code','customer_name','phone','email','delivery_method','address','products','subtotal','shipping','total','payment_status','status','created_at'];
   const lines=[head.map(csvCellStore).join(',')];orders.forEach(o=>{const products=(o.restart_store_order_items||[]).map(i=>[storeTr(i.product_name_snapshot),storeTr(i.variant_name_snapshot),'x'+i.qty,'฿'+money(i.total_price_thb)].join(' | ')).join(' ; ');lines.push([o.order_code,o.customer_name,o.phone,o.email,o.delivery_method,o.delivery_address,products,o.subtotal_amount_thb,o.shipping_fee_thb,o.total_amount_thb,o.payment_status,o.status,o.created_at].map(csvCellStore).join(','))});
-  const blob=new Blob(['\ufeff'+lines.join('\n')],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(state.event.slug||'event')+'-store-orders.csv';document.body.appendChild(a);a.click();URL.revokeObjectURL(a.href);a.remove()
+  const blob=new Blob(['\ufeff'+lines.join('\n')],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(state.event.slug||'event')+'-'+(window.__activeStore?.slug||'store')+'-orders.csv';document.body.appendChild(a);a.click();URL.revokeObjectURL(a.href);a.remove()
 }
-Object.assign(window,{renderStoreAdmin,saveStoreSettings,storeProductDialog,archiveStoreProduct,storeOrderDetail,reviewStorePayment,updateStoreStatus,cancelStoreOrder,exportStoreOrders});
+Object.assign(window,{renderStoreAdmin,saveStoreSettings,storeShopDialog,archiveStoreShop,storePaymentDialog,deleteStorePayment,storeProductDialog,archiveStoreProduct,storeOrderDetail,reviewStorePayment,updateStoreStatus,cancelStoreOrder,exportStoreOrders});
 })();
