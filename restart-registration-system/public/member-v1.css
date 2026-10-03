@@ -7,7 +7,7 @@
 .member-card-name{font-size:clamp(32px,6vw,62px);line-height:1;margin:18px 0 10px;letter-spacing:-.04em}
 .member-points{font-size:clamp(42px,8vw,76px);font-weight:900;line-height:1}
 .member-points small{font-size:13px;font-weight:700;opacity:.7}
-.member-stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px}
+.member-stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:16px}
 .member-profile-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .member-profile-grid .wide{grid-column:1/-1}
 .member-section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
