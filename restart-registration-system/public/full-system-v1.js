@@ -23,9 +23,12 @@ function normalizeId(v){return String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,
 function fullMoney(v){return Number(v||0).toLocaleString('th-TH',{maximumFractionDigits:2})}
 function fullErr(err){return String(err?.message||err||'')}
 async function fullApi(action,body={}){
+  const{data:{session}}=await db.auth.getSession();
+  const headers={'content-type':'application/json','apikey':RESTART_REG_CONFIG.SUPABASE_PUBLISHABLE_KEY};
+  if(session?.access_token)headers.authorization='Bearer '+session.access_token;
   const res=await fetch(RESTART_REG_CONFIG.SUPABASE_URL+'/functions/v1/restart-registration-api?action='+encodeURIComponent(action),{
     method:'POST',
-    headers:{'content-type':'application/json','apikey':RESTART_REG_CONFIG.SUPABASE_PUBLISHABLE_KEY},
+    headers,
     body:JSON.stringify(body)
   });
   const data=await res.json().catch(()=>({}));
@@ -461,7 +464,7 @@ submit=async function(e){
 
     const payload={
       event_id:E.id,category_id:categoryId,package_id:byId('packageSel')?.value||null,
-      registration_type:type,group_name:val('groupName')||null,contact_runner_index:Number(byId('contactRunner')?.value||1),
+      registration_type:type,group_name:val('groupName')||null,contact_runner_index:Number(byId('contactRunner')?.value||1),member_runner_index:Number(byId('contactRunner')?.value||1),
       language:lang,payment_mode:document.querySelector('[name=paymode]:checked')?.value||'FULL',
       total_amount_thb:total,discount_code:byId('discountCode')?.value.trim()||null,
       pdpa_accepted:!f.pdpa||!!byId('pdpaConsent')?.checked,
@@ -503,15 +506,19 @@ function fullRegistrationError(err){
     SHIRT_SALE_NOT_OPEN:'ยังไม่ถึงเวลาเปิดขายเสื้อ',
     SHIRT_SALE_CLOSED:'ปิดขายเสื้อแล้ว',
     SHIRT_MAX_PER_REGISTRATION:'จำนวนเสื้อเกินที่ผู้จัดกำหนดต่อใบสมัคร',
-    SHIRT_OUT_OF_STOCK:'เสื้อไซส์ที่เลือกหมดหรือจำนวนคงเหลือไม่พอ'
+    SHIRT_OUT_OF_STOCK:'เสื้อไซส์ที่เลือกหมดหรือจำนวนคงเหลือไม่พอ',
+    'กรุณาเข้าสู่ระบบสมาชิกก่อนทำรายการ':'กรุณาเข้าสู่ระบบสมาชิกก่อนสมัครการแข่งขัน'
   };
   const k=Object.keys(map).find(k=>s.includes(k));return k?map[k]:registrationErrorMessage(err)
 }
 
 async function uploadPublicSlip(file,prefix='next'){
   const form=new FormData();form.append('event_slug',E.slug);form.append('purpose',prefix);form.append('slip',file);
+  const{data:{session}}=await db.auth.getSession();
+  const headers={'apikey':RESTART_REG_CONFIG.SUPABASE_PUBLISHABLE_KEY};
+  if(session?.access_token)headers.authorization='Bearer '+session.access_token;
   const res=await fetch(RESTART_REG_CONFIG.SUPABASE_URL+'/functions/v1/restart-registration-api?action=upload-slip',{
-    method:'POST',headers:{'apikey':RESTART_REG_CONFIG.SUPABASE_PUBLISHABLE_KEY},body:form
+    method:'POST',headers,body:form
   });
   const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.error||('HTTP '+res.status));
   return data.path
