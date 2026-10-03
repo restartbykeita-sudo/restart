@@ -4,8 +4,12 @@ let MEMBER_SESSION=null,MEMBER_PROFILE=null,applyQueued=false;
 const e=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 function memberUrl(){return 'member.html?return='+encodeURIComponent(location.href)}
 function injectMemberNav(){
-  const host=document.querySelector('.rr-public-actions');if(!host||document.getElementById('memberNavLink'))return;
-  const a=document.createElement('a');a.id='memberNavLink';a.className='btn soft';a.href='member.html';a.textContent=MEMBER_SESSION?'Member Card':'สมาชิก / Login';host.prepend(a)
+  const host=document.querySelector('.rr-public-actions');if(!host)return;
+  let a=document.getElementById('memberNavLink');
+  if(!a){a=document.createElement('a');a.id='memberNavLink';host.prepend(a)}
+  a.className=MEMBER_SESSION?'btn soft':'btn primary';
+  a.href=MEMBER_SESSION?'member.html':memberUrl();
+  a.textContent=MEMBER_SESSION?'Member Card':'สมาชิก / Login'
 }
 function profileAge(v){if(!v)return'';const d=new Date(v+'T00:00:00'),ref=(typeof E!=='undefined'&&E?.event_date_start)?new Date(E.event_date_start+'T00:00:00'):new Date();let y=ref.getFullYear()-d.getFullYear();const m=ref.getMonth()-d.getMonth();if(m<0||(m===0&&ref.getDate()<d.getDate()))y--;return Math.max(0,y)}
 function ownerIndex(){return 1}
@@ -65,7 +69,7 @@ async function loadMember(){
   if(session?.user){
     const{data}=await memberDb.from('restart_member_profiles').select('*').eq('user_id',session.user.id).maybeSingle();MEMBER_PROFILE=data||null
   }
-  const old=document.getElementById('memberNavLink');if(old)old.remove();renderGate()
+  injectMemberNav();renderGate()
 }
 const observer=new MutationObserver(()=>{
   injectMemberNav();
