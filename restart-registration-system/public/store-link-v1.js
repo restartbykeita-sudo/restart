@@ -7,7 +7,7 @@ function injectStoreLink(){
   const a=document.createElement('a');
   a.id='restartStoreEntry';a.className='btn primary';
   a.href='shop.html?event='+encodeURIComponent(E.slug);
-  a.textContent=lang==='th'?'ร้านค้า / ซื้อสินค้า':'Event Store';
+  a.textContent=RestartI18n.t("ร้านค้า / ซื้อสินค้า");
   const target=document.querySelector('.preview-hero-actions')||document.getElementById('registrationUtilityBar')||document.querySelector('#regForm .rr-card')||document.querySelector('.preview-final-cta');
   if(target){target.appendChild(a)}
 }

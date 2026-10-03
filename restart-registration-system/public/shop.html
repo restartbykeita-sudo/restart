@@ -7,25 +7,25 @@
   <title>RESTART Store</title>
   <link rel="stylesheet" href="../assets/app.css?v=1.17.1-qrfix">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/restartbykeita-sudo/restart@0ac6bc0ba5d48ad5dfe8757499b00f8f0fe01e27/restart-registration-system/public/shop-v1.css">
-</head>
+<link rel="stylesheet" href="i18n-v1.css?v=20261003-language-1"></head>
 <body class="public-registration">
 <div class="rr-shell">
   <header class="rr-top">
     <div class="rr-brand with-logo">
       <img class="rr-main-logo header" src="../assets/restart-logo-correct.png" alt="RESTART">
-      <div><h1>RESTART STORE</h1><small>Event Merchandise</small></div>
+      <div><h1>RESTART STORE</h1><small data-ui="Event Merchandise">Event Merchandise</small></div>
     </div>
     <div class="rr-public-actions">
-      <a id="backEvent" class="btn soft" href="./">กลับ Event</a>
-      <button id="orderLookupBtn" class="btn soft" type="button">เช็กออเดอร์</button>
+      <a id="backEvent" class="btn soft" href="./" data-ui="กลับ Event">กลับ Event</a>
+      <button id="orderLookupBtn" class="btn soft" type="button" data-ui="เช็กออเดอร์">เช็กออเดอร์</button>
     </div>
   </header>
-  <main class="rr-wrap" id="shopApp"><section class="rr-card rr-empty">กำลังโหลดร้านค้า…</section></main>
+  <main class="rr-wrap" id="shopApp"><section class="rr-card rr-empty" data-ui="กำลังโหลดร้านค้า…">กำลังโหลดร้านค้า…</section></main>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="../assets/config.js?v=1.2.0"></script>
-<script src="https://cdn.jsdelivr.net/gh/restartbykeita-sudo/restart@651b992957b95e19c24b7e420bdefb7f8245f596/restart-registration-system/public/shop-v1.js"></script>
+<script src="i18n-v1.js?v=20261003-language-1"></script><script src="../assets/config.js?v=1.2.0"></script>
+<script src="shop-v1.js?v=20261003-language-1"></script>
 </body>
 </html>

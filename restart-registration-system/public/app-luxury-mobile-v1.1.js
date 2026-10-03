@@ -9,7 +9,7 @@ function applyUiTheme(){
   b.setAttribute('aria-pressed',String(dark));
   const icon=b.querySelector('.theme-icon'),label=b.querySelector('.theme-label');
   if(icon)icon.textContent=dark?'☀':'☾';
-  if(label)label.textContent=dark?'Light':'Dark';
+  if(label)label.textContent=dark?RestartI18n.t('Theme Light'):RestartI18n.t('Theme Dark');
 }
 function initThemeToggle(){
   let b=document.getElementById('themeToggle');
@@ -26,7 +26,7 @@ function initThemeToggle(){
       }
       b=document.createElement('button');
       b.id='themeToggle';b.className='theme-toggle';b.type='button';
-      b.setAttribute('aria-label','เปลี่ยนโหมดสี');
+      b.setAttribute('aria-label',RestartI18n.t('เปลี่ยนโหมดสี'));
       b.innerHTML='<span class="theme-icon" aria-hidden="true">☾</span><span class="theme-label">Dark</span>';
       actions.insertBefore(b,actions.firstChild);
     }
@@ -42,7 +42,7 @@ function initThemeToggle(){
 
 const dict={th:{apply:'สมัครแข่งขัน',choose:'เลือกรุ่นการแข่งขัน',package:'เลือก Package',personal:'ข้อมูลผู้สมัคร',insurance:'ผู้รับผลประโยชน์',payment:'การชำระเงิน',submit:'ส่งใบสมัคร',full:'ชำระเต็มจำนวน',install:'ผ่อนชำระ',copy:'คัดลอก',upload:'อัปโหลดสลิป',addbene:'+ เพิ่มผู้รับผลประโยชน์'},en:{apply:'Register',choose:'Competition category',package:'Package',personal:'Participant information',insurance:'Beneficiaries',payment:'Payment',submit:'Submit registration',full:'Pay in full',install:'Installments',copy:'Copy',upload:'Upload slip',addbene:'+ Add beneficiary'},zh:{apply:'报名',choose:'比赛组别',package:'套餐',personal:'参赛者信息',insurance:'受益人',payment:'付款',submit:'提交报名',full:'全额付款',install:'分期付款',copy:'复制',upload:'上传付款凭证',addbene:'+ 添加受益人'},ja:{apply:'参加申込',choose:'競技カテゴリー',package:'パッケージ',personal:'参加者情報',insurance:'受取人',payment:'支払い',submit:'申込を送信',full:'一括払い',install:'分割払い',copy:'コピー',upload:'支払証明をアップロード',addbene:'+ 受取人を追加'},ru:{apply:'Регистрация',choose:'Категория',package:'Пакет',personal:'Данные участника',insurance:'Получатели',payment:'Оплата',submit:'Отправить заявку',full:'Полная оплата',install:'Рассрочка',copy:'Копировать',upload:'Загрузить квитанцию',addbene:'+ Добавить получателя'}};
 const D=()=>dict[lang]||dict.en;const byId=id=>document.getElementById(id);const val=id=>(byId(id)?.value||'').trim();const baseFieldAliases=new Set(['title','prefix','first_name','last_name','birth_date','age','gender','id_document','phone','blood_group','shirt_size','address','emergency_contact_name','emergency_phone','emergency_relation']);const baseMeta=(...keys)=>F.find(f=>keys.includes(f.field_key))||null;const optionTags=(meta,fallback=[])=>{const opts=meta?.options?.length?meta.options:fallback;return opts.map(o=>{const value=typeof o==='object'?(o.value??tr(o.label||o)):o;const label=typeof o==='object'?tr(o.label||o):o;return '<option value="'+esc(value)+'">'+esc(label)+'</option>'}).join('')};const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));const tr=v=>typeof v==='object'?(v?.[lang]||v?.en||v?.th||Object.values(v||{})[0]||''):v||'';const money=v=>Number(v||0).toLocaleString(undefined,{maximumFractionDigits:2});
-function langs(){const ls=E?.languages||['th','en','zh','ja','ru'];langbar.innerHTML=ls.map(x=>'<button class="'+(x===lang?'active':'')+'" data-l="'+x+'">'+x.toUpperCase()+'</button>').join('');langbar.onclick=e=>{const b=e.target.closest('[data-l]');if(!b)return;lang=b.dataset.l;localStorage.setItem('restart_lang',lang);if(registerMode&&E?.status==='OPEN')render();else renderEventPreview()}}
+function langs(){RestartI18n.mount()}
 async function init(){
   const {data:{session},error:sessionError}=await db.auth.getSession();
   if(sessionError)throw sessionError;
@@ -92,28 +92,14 @@ function eventDateParts(value){
     year:new Intl.DateTimeFormat(locale,{year:'numeric'}).format(d)
   };
 }
-function eventLandingCopy(){
-  const x={
-    th:{eyebrow:'RESTART · CURATED RACE EXPERIENCES',title:'ค้นหาเส้นชัยครั้งต่อไปของคุณ',desc:'การแข่งขันที่คัดสรรมาเพื่อประสบการณ์ที่มากกว่าการวิ่ง — เลือก Event ที่ใช่ แล้วเริ่มต้นเรื่องราวบทใหม่ของคุณ',featured:'FEATURED EVENT',open:'เปิดรับสมัครแล้ว',published:'เร็ว ๆ นี้',view:'ดูรายละเอียดและสมัคร',events:'UPCOMING EVENTS',empty:'ยังไม่มี Event ที่เปิดให้เข้าชมในขณะนี้'},
-    en:{eyebrow:'RESTART · CURATED RACE EXPERIENCES',title:'Find your next finish line',desc:'Curated race experiences designed to be more than a run. Discover your next event and begin a new chapter.',featured:'FEATURED EVENT',open:'Registration Open',published:'Coming Soon',view:'View event & register',events:'UPCOMING EVENTS',empty:'No events are currently available.'},
-    zh:{eyebrow:'RESTART · CURATED RACE EXPERIENCES',title:'寻找你的下一条终点线',desc:'精心策划的不只是比赛，而是一段值得记住的体验。选择你的下一场活动，开启新的篇章。',featured:'FEATURED EVENT',open:'开放报名',published:'即将开放',view:'查看活动并报名',events:'UPCOMING EVENTS',empty:'目前暂无可查看的活动。'},
-    ja:{eyebrow:'RESTART · CURATED RACE EXPERIENCES',title:'次のフィニッシュラインへ',desc:'走るだけではない、記憶に残るレース体験を。次のイベントを見つけ、新しい物語を始めましょう。',featured:'FEATURED EVENT',open:'受付中',published:'近日公開',view:'イベントを見る・申し込む',events:'UPCOMING EVENTS',empty:'現在公開中のイベントはありません。'},
-    ru:{eyebrow:'RESTART · CURATED RACE EXPERIENCES',title:'Найдите свой следующий финиш',desc:'Отобранные спортивные события — больше, чем просто забег. Выберите следующий старт и начните новую главу.',featured:'FEATURED EVENT',open:'Регистрация открыта',published:'Скоро',view:'О событии и регистрация',events:'UPCOMING EVENTS',empty:'Сейчас нет доступных событий.'}
-  };return x[lang]||x.en;
-}
+function eventLandingCopy(){return {eyebrow:'',title:RestartI18n.t('เลือกงานวิ่ง'),desc:'',featured:RestartI18n.t('งานแข่งขัน'),open:RestartI18n.t('เปิดรับสมัครแล้ว'),published:RestartI18n.t('เร็ว ๆ นี้'),view:RestartI18n.t('ดูรายละเอียดและสมัคร'),events:RestartI18n.t('งานแข่งขัน'),empty:RestartI18n.t('ยังไม่มีงานแข่งขัน')}}
 function eventStatusLabel(status,copy){
   if(status==='OPEN')return copy.open;
   if(status==='PUBLISHED')return copy.published;
-  if(status==='CLOSED')return lang==='th'?'ปิดรับสมัครแล้ว':lang==='zh'?'报名已关闭':lang==='ja'?'受付終了':lang==='ru'?'Регистрация закрыта':'Registration Closed';
+  if(status==='CLOSED')return lang==='th'?RestartI18n.t('ปิดรับสมัครแล้ว'):lang==='zh'?'报名已关闭':lang==='ja'?'受付終了':lang==='ru'?'Регистрация закрыта':'Registration Closed';
   return copy.published;
 }
-function eventLandingLanguages(){
-  const labels={th:'TH',en:'EN',zh:'中文',ja:'日本語',ru:'RU'};
-  langbar.innerHTML=['th','en','zh','ja','ru'].map(l=>'<button type="button" data-landing-lang="'+l+'" class="'+(lang===l?'active':'')+'">'+labels[l]+'</button>').join('');
-  langbar.querySelectorAll('[data-landing-lang]').forEach(b=>b.onclick=()=>{
-    lang=b.dataset.landingLang;localStorage.setItem('restart_lang',lang);listEvents();
-  });
-}
+function eventLandingLanguages(){RestartI18n.mount()}
 function eventVisual(e){
   const banner=e.banner_url?esc(e.banner_url):'';
   const logo=e.logo_url?'<img class="event-card-logo" src="'+esc(e.logo_url)+'" alt="">':'';
@@ -153,24 +139,22 @@ async function listEvents(){
   app.innerHTML=
     '<section class="event-landing-hero">'+
       '<div class="event-landing-orbit orbit-one"></div><div class="event-landing-orbit orbit-two"></div>'+
-      '<div class="event-landing-kicker">'+esc(copy.eyebrow)+'</div>'+
       '<h1>'+esc(copy.title)+'</h1>'+
-      '<p>'+esc(copy.desc)+'</p>'+
       '<div class="event-landing-signature"><span></span><b>RESTART</b><span></span></div>'+
     '</section>'+
     '<section class="event-collection">'+
-      '<div class="event-collection-head"><div><span class="event-section-kicker">RESTART COLLECTION</span><h2>'+esc(copy.events)+'</h2></div><div class="event-count">'+String(events.length).padStart(2,'0')+'</div></div>'+
+      '<div class="event-collection-head"><div><h2>'+esc(copy.events)+'</h2></div><div class="event-count">'+String(events.length).padStart(2,'0')+'</div></div>'+
       (events.length?'<div class="event-showcase-grid">'+events.map((e,i)=>eventCard(e,i,copy)).join('')+'</div>':'<div class="event-premium-empty">'+esc(copy.empty)+'</div>')+
     '</section>'+
-    '<footer class="event-landing-footer"><span>RESTART</span><small>MOVE · DISCOVER · BEGIN AGAIN</small></footer>';
+    '<footer class="event-landing-footer"><span>RESTART</span></footer>';
 }
 function previewCopy(){
   const x={
-    th:{back:'กลับหน้ารวม Event',register:'สมัครการแข่งขัน',coming:'เร็ว ๆ นี้',closed:'ปิดรับสมัครแล้ว',overview:'เกี่ยวกับการแข่งขัน',raceInfo:'ระยะและรุ่นการแข่งขัน',distance:'ระยะ',category:'รุ่น',start:'เวลา Start',cutoff:'Cutoff',duration:'เวลาคาดหมาย',elevation:'Elevation Gain',price:'ค่าสมัคร',age:'อายุ',open:'เปิดรับสมัครแล้ว',kit:'Race Collection',shirt:'เสื้อแข่งขัน',medal:'เหรียญ Finisher',trophy:'ถ้วยรางวัล',map:'แผนที่เส้นทาง',gallery:'บรรยากาศงาน',highlights:'Highlights',inclusions:'สิ่งที่นักวิ่งได้รับ',awards:'รางวัลและถ้วย',course:'รายละเอียดเส้นทาง',rules:'กติกาสำคัญ',venue:'สถานที่และการเดินทาง',packages:'Package',registration:'ช่วงรับสมัคร',categories:'รุ่นการแข่งขัน',from:'เริ่มต้น',contact:'ติดต่อผู้จัด',days:'วันแข่งขัน',gender:'เพศ',capacity:'จำนวนรับ',early:'Early Bird',gender:'เพศ',capacity:'จำนวนรับ',early:'Early Bird'},
+    th:{back:'กลับหน้ารวม Event',register:'สมัครการแข่งขัน',coming:'เร็ว ๆ นี้',closed:'ปิดรับสมัครแล้ว',overview:'เกี่ยวกับการแข่งขัน',raceInfo:'ระยะและรุ่นการแข่งขัน',distance:'ระยะ',category:'รุ่น',start:'เวลา Start',cutoff:'Cutoff',duration:'เวลาคาดหมาย',elevation:'Elevation Gain',price:'ค่าสมัคร',age:'อายุ',open:'เปิดรับสมัครแล้ว',kit:'Race kit',shirt:'เสื้อแข่งขัน',medal:'เหรียญ Finisher',trophy:'ถ้วยรางวัล',map:'แผนที่เส้นทาง',gallery:'บรรยากาศงาน',highlights:'Highlights',inclusions:'สิ่งที่นักวิ่งได้รับ',awards:'รางวัลและถ้วย',course:'รายละเอียดเส้นทาง',rules:'กติกาสำคัญ',venue:'สถานที่และการเดินทาง',packages:'Package',registration:'ช่วงรับสมัคร',categories:'รุ่นการแข่งขัน',from:'เริ่มต้น',contact:'ติดต่อผู้จัด',days:'วันแข่งขัน',gender:'เพศ',capacity:'จำนวนรับ',early:'Early Bird',gender:'เพศ',capacity:'จำนวนรับ',early:'Early Bird'},
     en:{back:'All Events',register:'Register Now',coming:'Coming Soon',closed:'Registration Closed',overview:'About the Event',raceInfo:'Distances & Categories',distance:'Distance',category:'Category',start:'Start Time',cutoff:'Cutoff',duration:'Expected Time',elevation:'Elevation Gain',price:'Entry Fee',age:'Age',open:'Registration Open',kit:'Race Collection',shirt:'Race Shirt',medal:'Finisher Medal',trophy:'Trophy',map:'Course Map',gallery:'Event Gallery',highlights:'Highlights',inclusions:'Runner Entitlements',awards:'Awards & Trophies',course:'Course Details',rules:'Important Rules',venue:'Venue & Travel',packages:'Packages',registration:'Registration Period',categories:'Categories',from:'From',contact:'Contact',days:'Race Day',gender:'Gender',capacity:'Capacity',early:'Early Bird',gender:'Gender',capacity:'Capacity',early:'Early Bird'},
     zh:{back:'返回活动列表',register:'立即报名',coming:'即将开放',closed:'报名已关闭',overview:'赛事介绍',raceInfo:'距离与组别',distance:'距离',category:'组别',start:'起跑时间',cutoff:'关门时间',duration:'预计用时',elevation:'累计爬升',price:'报名费',age:'年龄',open:'开放报名',kit:'赛事纪念品',shirt:'赛事服',medal:'完赛奖牌',trophy:'奖杯',map:'路线图',gallery:'赛事图库',highlights:'亮点',inclusions:'参赛权益',awards:'奖项与奖杯',course:'路线说明',rules:'重要规则',venue:'地点与交通',packages:'套餐',registration:'报名时间',categories:'竞赛组别',from:'起价',contact:'联系方式',days:'比赛日',gender:'性别',capacity:'名额',early:'Early Bird',gender:'性别',capacity:'名额',early:'Early Bird'},
-    ja:{back:'イベント一覧',register:'申し込む',coming:'近日公開',closed:'受付終了',overview:'イベント概要',raceInfo:'距離・カテゴリー',distance:'距離',category:'カテゴリー',start:'スタート',cutoff:'制限時間',duration:'目安時間',elevation:'獲得標高',price:'参加費',age:'年齢',open:'受付中',kit:'Race Collection',shirt:'大会シャツ',medal:'フィニッシャーメダル',trophy:'トロフィー',map:'コースマップ',gallery:'ギャラリー',highlights:'ハイライト',inclusions:'参加特典',awards:'表彰・トロフィー',course:'コース詳細',rules:'重要ルール',venue:'会場・アクセス',packages:'パッケージ',registration:'受付期間',categories:'カテゴリー',from:'〜',contact:'お問い合わせ',days:'開催日',gender:'性別',capacity:'定員',early:'Early Bird',gender:'性別',capacity:'定員',early:'Early Bird'},
-    ru:{back:'Все события',register:'Зарегистрироваться',coming:'Скоро',closed:'Регистрация закрыта',overview:'О событии',raceInfo:'Дистанции и категории',distance:'Дистанция',category:'Категория',start:'Старт',cutoff:'Cutoff',duration:'Ожидаемое время',elevation:'Набор высоты',price:'Взнос',age:'Возраст',open:'Регистрация открыта',kit:'Race Collection',shirt:'Футболка',medal:'Медаль финишера',trophy:'Кубок',map:'Карта трассы',gallery:'Галерея',highlights:'Highlights',inclusions:'Что входит',awards:'Награды',course:'Описание трассы',rules:'Правила',venue:'Место и проезд',packages:'Пакеты',registration:'Период регистрации',categories:'Категории',from:'От',contact:'Контакты',days:'День забега',gender:'Пол',capacity:'Лимит',early:'Early Bird',gender:'Пол',capacity:'Лимит',early:'Early Bird'}
+    ja:{back:'イベント一覧',register:'申し込む',coming:'近日公開',closed:'受付終了',overview:'イベント概要',raceInfo:'距離・カテゴリー',distance:'距離',category:'カテゴリー',start:'スタート',cutoff:'制限時間',duration:'目安時間',elevation:'獲得標高',price:'参加費',age:'年齢',open:'受付中',kit:'参加記念品',shirt:'大会シャツ',medal:'フィニッシャーメダル',trophy:'トロフィー',map:'コースマップ',gallery:'ギャラリー',highlights:'ハイライト',inclusions:'参加特典',awards:'表彰・トロフィー',course:'コース詳細',rules:'重要ルール',venue:'会場・アクセス',packages:'パッケージ',registration:'受付期間',categories:'カテゴリー',from:'〜',contact:'お問い合わせ',days:'開催日',gender:'性別',capacity:'定員',early:'Early Bird',gender:'性別',capacity:'定員',early:'Early Bird'},
+    ru:{back:'Все события',register:'Зарегистрироваться',coming:'Скоро',closed:'Регистрация закрыта',overview:'О событии',raceInfo:'Дистанции и категории',distance:'Дистанция',category:'Категория',start:'Старт',cutoff:'Лимит времени',duration:'Ожидаемое время',elevation:'Набор высоты',price:'Взнос',age:'Возраст',open:'Регистрация открыта',kit:'Комплект участника',shirt:'Футболка',medal:'Медаль финишера',trophy:'Кубок',map:'Карта трассы',gallery:'Галерея',highlights:'Основное',inclusions:'Что входит',awards:'Награды',course:'Описание трассы',rules:'Правила',venue:'Место и проезд',packages:'Пакеты',registration:'Период регистрации',categories:'Категории',from:'От',contact:'Контакты',days:'День забега',gender:'Пол',capacity:'Лимит',early:'Early Bird',gender:'Пол',capacity:'Лимит',early:'Early Bird'}
   };return x[lang]||x.en
 }
 function fmtPreviewDate(v){
@@ -184,7 +168,7 @@ function fmtClock(v){return v?String(v).slice(0,5):'—'}
 function fmtDuration(v){
   const n=Number(v||0);if(!n)return'—';
   const h=Math.floor(n/60),m=n%60;
-  if(lang==='th')return h?(h+' ชม.'+(m?' '+m+' นาที':'')):(m+' นาที');
+  if(lang==='th')return h?(h+RestartI18n.t(' ชม.')+(m?' '+m+RestartI18n.t(' นาที'):'')):(m+RestartI18n.t(' นาที'));
   return h?(h+'h'+(m?' '+m+'m':'')):(m+'m');
 }
 function previewMedia(type){return MEDIA.filter(m=>m.media_type===type)}
@@ -196,14 +180,14 @@ function previewMediaCard(url,label,wide=false){
   return '<article class="preview-media-card '+(wide?'is-wide':'')+'"><img src="'+esc(url)+'" alt="'+esc(label)+'"><div class="preview-media-caption">'+esc(label)+'</div></article>';
 }
 function previewGenderLabel(v){
-  if(v==='MALE')return lang==='th'?'ชาย':lang==='zh'?'男':lang==='ja'?'男性':lang==='ru'?'Мужчины':'Male';
-  if(v==='FEMALE')return lang==='th'?'หญิง':lang==='zh'?'女':lang==='ja'?'女性':lang==='ru'?'Женщины':'Female';
-  return lang==='th'?'ไม่จำกัด':lang==='zh'?'不限':lang==='ja'?'制限なし':lang==='ru'?'Без ограничений':'Any';
+  if(v==='MALE')return lang==='th'?RestartI18n.t('ชาย'):lang==='zh'?'男':lang==='ja'?'男性':lang==='ru'?'Мужчины':'Male';
+  if(v==='FEMALE')return lang==='th'?RestartI18n.t('หญิง'):lang==='zh'?'女':lang==='ja'?'女性':lang==='ru'?'Женщины':'Female';
+  return lang==='th'?RestartI18n.t('ไม่จำกัด'):lang==='zh'?'不限':lang==='ja'?'制限なし':lang==='ru'?'Без ограничений':'Any';
 }
 function previewEarlyBird(c){
   const f=E.feature_flags||{};
   if(!f.early_bird||c.early_bird_price_thb==null)return'';
-  return '฿'+money(c.early_bird_price_thb);
+  return RestartI18n.t('฿')+money(c.early_bird_price_thb);
 }
 function raceCategoryCard(c,p){
   const age=(c.min_age!=null||c.max_age!=null)?((c.min_age??'—')+'–'+(c.max_age??'∞')):'—';
@@ -214,7 +198,7 @@ function raceCategoryCard(c,p){
       '<div><span>'+esc(p.start)+'</span><b>'+esc(fmtClock(c.start_time))+'</b></div>'+
       '<div><span>'+esc(p.cutoff)+'</span><b>'+esc(fmtDuration(c.cutoff_minutes))+'</b></div>'+
       '<div><span>'+esc(p.duration)+'</span><b>'+esc(fmtDuration(c.expected_duration_minutes))+'</b></div>'+
-      '<div><span>'+esc(p.price)+'</span><b>฿'+money(currentCatPrice(c))+'</b></div>'+
+      '<div><span>'+esc(p.price)+RestartI18n.t('</span><b>฿')+money(currentCatPrice(c))+'</b></div>'+
       '<div><span>'+esc(p.age)+'</span><b>'+esc(age)+'</b></div>'+
       '<div><span>'+esc(p.gender)+'</span><b>'+esc(previewGenderLabel(c.gender_rule))+'</b></div>'+
       '<div><span>'+esc(p.capacity)+'</span><b>'+(c.capacity!=null?esc(c.capacity):'—')+'</b></div>'+
@@ -225,15 +209,15 @@ function raceCategoryCard(c,p){
 }
 function infoListSection(title,items,cls=''){
   const arr=previewList(items);if(!arr.length)return'';
-  return '<section class="preview-section '+cls+'"><div class="preview-section-kicker">RESTART</div><h2>'+esc(title)+'</h2><div class="preview-bullet-grid">'+arr.map((x,i)=>'<div class="preview-bullet"><span>'+String(i+1).padStart(2,'0')+'</span><p>'+esc(x)+'</p></div>').join('')+'</div></section>';
+  return '<section class="preview-section '+cls+'"><h2>'+esc(title)+'</h2><div class="preview-bullet-grid">'+arr.map((x,i)=>'<div class="preview-bullet"><span>'+String(i+1).padStart(2,'0')+'</span><p>'+esc(x)+'</p></div>').join('')+'</div></section>';
 }
 function textSection(title,body,cls=''){
   const value=previewText(body);if(!value)return'';
-  return '<section class="preview-section '+cls+'"><div class="preview-section-kicker">RESTART</div><h2>'+esc(title)+'</h2><div class="preview-prose">'+esc(value).replace(/\n/g,'<br>')+'</div></section>';
+  return '<section class="preview-section '+cls+'"><h2>'+esc(title)+'</h2><div class="preview-prose">'+esc(value).replace(/\n/g,'<br>')+'</div></section>';
 }
 function renderRouteAnimationSection(p,flags){
   if(flags.route_animation===false||!ROUTES.length)return'';
-  return '<section class="preview-section preview-route-section" id="routeSection"><div class="preview-section-kicker">GPX · ROUTE EXPERIENCE</div><div class="preview-section-head"><h2>'+(lang==='th'?'เส้นทางการแข่งขัน':lang==='zh'?'比赛路线':lang==='ja'?'コースアニメーション':lang==='ru'?'Анимация маршрута':'Route Animation')+'</h2><span>'+ROUTES.length+' GPX</span></div>'+
+  return '<section class="preview-section preview-route-section" id="routeSection"><div class="preview-section-head"><h2>'+(lang==='th'?RestartI18n.t('เส้นทางการแข่งขัน'):lang==='zh'?'比赛路线':lang==='ja'?'コースアニメーション':lang==='ru'?'Анимация маршрута':'Route Animation')+'</h2><span>'+ROUTES.length+' GPX</span></div>'+
     ROUTES.map(r=>'<div class="rr-route-block" id="route_animation_'+r.id+'"></div>').join('')+
   '</section>';
 }
@@ -308,7 +292,7 @@ function renderEventPreview(){
     previewMediaCard(shirt,p.shirt),previewMediaCard(medal,p.medal),previewMediaCard(trophy,p.trophy),
     previewMediaCard(map,p.map,true),...gallery.map((m,i)=>previewMediaCard(m.url,p.gallery+' '+(i+1)))
   ].filter(Boolean).join('');
-  const packageHtml=P.length?'<section class="preview-section"><div class="preview-section-kicker">OPTIONS</div><h2>'+esc(p.packages)+'</h2><div class="preview-package-grid">'+P.map(x=>'<article class="preview-package"><div><b>'+esc(tr(x.name))+'</b><p>'+esc(tr(x.description)||'')+'</p></div><strong>'+(x.price_mode==='ADD'?'+ ':'')+'฿'+money(x.price_value_thb)+'</strong></article>').join('')+'</div></section>':'';
+  const packageHtml=P.length?'<section class="preview-section"><h2>'+esc(p.packages)+'</h2><div class="preview-package-grid">'+P.map(x=>'<article class="preview-package"><div><b>'+esc(tr(x.name))+'</b><p>'+esc(tr(x.description)||'')+'</p></div><strong>'+(x.price_mode==='ADD'?'+ ':'')+RestartI18n.t('฿')+money(x.price_value_thb)+'</strong></article>').join('')+'</div></section>':'';
   app.innerHTML=
     '<div class="preview-back-row"><a class="preview-back" href="?">← '+esc(p.back)+'</a></div>'+
     '<section class="preview-hero"'+heroStyle+'>'+
@@ -324,7 +308,7 @@ function renderEventPreview(){
           '<div><span>'+esc(p.venue)+'</span><b>'+esc(E.location_name||previewText(SHOW?.venue_details)||'—')+'</b></div>'+
           '<div><span>'+esc(p.categories)+'</span><b>'+C.length+'</b></div>'+
           '<div><span>'+esc(p.distance)+'</span><b>'+(distances.length?distances.join(' / ')+' KM':'—')+'</b></div>'+
-          '<div><span>'+esc(p.price)+'</span><b>'+(prices.length?(minPrice===maxPrice?'฿'+money(minPrice):'฿'+money(minPrice)+' – ฿'+money(maxPrice)):'—')+'</b></div>'+
+          '<div><span>'+esc(p.price)+'</span><b>'+(prices.length?(minPrice===maxPrice?RestartI18n.t('฿')+money(minPrice):RestartI18n.t('฿')+money(minPrice)+RestartI18n.t(' – ฿')+money(maxPrice)):'—')+'</b></div>'+
           (E.capacity!=null?'<div><span>'+esc(p.capacity)+'</span><b>'+esc(E.capacity)+'</b></div>':'')+
         '</div>'+
         '<div class="preview-hero-actions">'+
@@ -333,8 +317,8 @@ function renderEventPreview(){
         '</div>'+
       '</div>'+
     '</section>'+renderRouteAnimationSection(p,flags)+
-    (C.length?'<section class="preview-section"><div class="preview-section-kicker">RACE INFORMATION</div><div class="preview-section-head"><h2>'+esc(p.raceInfo)+'</h2><span>'+C.length+' '+esc(p.categories)+'</span></div><div class="preview-race-cards">'+C.map(c=>raceCategoryCard(c,p)).join('')+'</div></section>':'')+
-    (flags.showcase_media!==false&&mediaCards?'<section class="preview-section preview-collection-section"><div class="preview-section-kicker">COLLECTION</div><h2>'+esc(p.kit)+'</h2><div class="preview-media-grid">'+mediaCards+'</div></section>':'')+
+    (C.length?'<section class="preview-section"><div class="preview-section-head"><h2>'+esc(p.raceInfo)+'</h2><span>'+C.length+' '+esc(p.categories)+'</span></div><div class="preview-race-cards">'+C.map(c=>raceCategoryCard(c,p)).join('')+'</div></section>':'')+
+    (flags.showcase_media!==false&&mediaCards?'<section class="preview-section preview-collection-section"><h2>'+esc(p.kit)+'</h2><div class="preview-media-grid">'+mediaCards+'</div></section>':'')+
     infoListSection(p.highlights,SHOW?.highlights,'preview-highlight-section')+
     infoListSection(p.inclusions,SHOW?.inclusions)+
     textSection(p.awards,SHOW?.awards_text)+
@@ -343,7 +327,7 @@ function renderEventPreview(){
     infoListSection(p.rules,SHOW?.rules)+
     textSection(p.venue,SHOW?.venue_details)+
     packageHtml+
-    '<section class="preview-section preview-registration-window"><div class="preview-section-kicker">REGISTRATION</div><h2>'+esc(p.registration)+'</h2><div class="preview-window-grid"><div><span>OPEN</span><b>'+esc(fmtPreviewDate(E.registration_opens_at||''))+'</b></div><div><span>CLOSE</span><b>'+esc(fmtPreviewDate(E.registration_closes_at||''))+'</b></div></div></section>'+
+    '<section class="preview-section preview-registration-window"><h2>'+esc(p.registration)+'</h2><div class="preview-window-grid"><div><span>'+RestartI18n.t('เปิดรับสมัคร')+'</span><b>'+esc(fmtPreviewDate(E.registration_opens_at||''))+'</b></div><div><span>'+RestartI18n.t('ปิดรับสมัคร')+'</span><b>'+esc(fmtPreviewDate(E.registration_closes_at||''))+'</b></div></div></section>'+
     textSection(p.contact,SHOW?.contact_details)+
     '<div class="preview-final-cta"><div><span>RESTART</span><h2>'+esc(E.name)+'</h2></div>'+(canRegister?'<a class="preview-register-btn" href="?event='+encodeURIComponent(E.slug)+'&register=1">'+esc(p.register)+' <span>↗</span></a>':'<span class="preview-register-btn is-disabled">'+esc(status)+'</span>')+'</div>';
   requestAnimationFrame(()=>mountPreviewRoutes());
@@ -371,39 +355,39 @@ function registrationSetupHTML(flags){
   if(flags.team_registration)types.push('<option value="TEAM">'+g.team+'</option>');
   if(types.length===1)return'<input id="registrationType" type="hidden" value="SINGLE">';
   const teamCount=teamMemberCount();
-  return '<section class="rr-card"><h3>'+esc(g.type)+'</h3><p class="muted">'+esc(g.setup)+'</p><div class="grid2">'+
+  return '<section class="rr-card"><h3>'+esc(g.type)+'</h3><div class="grid2">'+
     '<label>'+esc(g.type)+'<select id="registrationType">'+types.join('')+'</select></label>'+
-    '<label id="teamSizeWrap" style="display:none">'+esc(g.teamSize)+'<input id="teamSize" type="text" value="'+teamCount+' คน" disabled><small class="muted">กำหนดโดยผู้จัดการแข่งขัน</small></label>'+
+    '<label id="teamSizeWrap" style="display:none">'+esc(g.teamSize)+'<input id="teamSize" type="text" value="'+teamCount+RestartI18n.t(' คน" disabled><small class="muted">กำหนดโดยผู้จัดการแข่งขัน</small></label>')+
     '<label id="groupNameWrap" style="display:none">'+esc(g.groupName)+'<input id="groupName" maxlength="120"></label>'+
     '<label id="contactRunnerWrap" style="display:none">'+esc(g.contact)+'<select id="contactRunner"></select></label>'+
     '</div><div id="groupRuleHint" class="muted" style="margin-top:8px"></div></section>'
 }
 function baseFieldsFor(i){const fs=E.field_settings||{};const on=k=>fs[k]?.enabled!==false,req=k=>fs[k]?.required?' required':'';const rows=[];const titleMeta=baseMeta('title','prefix'),shirtMeta={options:Array.isArray(fs.shirt_size?.options)?fs.shirt_size.options:[]},bloodMeta=baseMeta('blood_group');const id=k=>k+'_'+i;
-  if(on('title'))rows.push('<label>คำนำหน้า<select id="'+id('title')+'" data-rf="title"'+req('title')+'><option value="">—</option>'+optionTags(titleMeta,[{value:'mr',label:{th:'นาย',en:'Mr.',zh:'先生',ja:'Mr.',ru:'Г-н'}},{value:'ms',label:{th:'นางสาว',en:'Ms.',zh:'女士',ja:'Ms.',ru:'Г-жа'}},{value:'mrs',label:{th:'นาง',en:'Mrs.',zh:'女士',ja:'Mrs.',ru:'Г-жа'}}])+'</select></label>');
-  if(on('first_name'))rows.push('<label>ชื่อ<input id="'+id('firstName')+'" data-rf="first_name"'+req('first_name')+'></label>');
-  if(on('last_name'))rows.push('<label>นามสกุล<input id="'+id('lastName')+'" data-rf="last_name"'+req('last_name')+'></label>');
-  if(on('birth_date'))rows.push('<label>วันเกิด<input id="'+id('birthDate')+'" data-rf="birth_date" type="date"'+req('birth_date')+'></label>');
-  if(on('age'))rows.push('<label>อายุ<input id="'+id('age')+'" data-rf="age" readonly placeholder="คำนวณอัตโนมัติ"></label>');
-  if(on('gender'))rows.push('<label>เพศ<select id="'+id('gender')+'" data-rf="gender"'+req('gender')+'><option value="">—</option><option value="MALE">ชาย</option><option value="FEMALE">หญิง</option><option value="OTHER">อื่นๆ</option></select></label>');
-  if(on('id_document'))rows.push('<label>เลขบัตรประชาชน / Passport<input id="'+id('idDoc')+'" data-rf="id_document"'+req('id_document')+'></label>');
-  if(on('phone'))rows.push('<label>เบอร์โทรศัพท์<input id="'+id('phone')+'" data-rf="phone" type="tel"'+req('phone')+'></label>');
-  if(on('blood_group'))rows.push('<label>กรุ๊ปเลือด<select id="'+id('blood')+'" data-rf="blood_group"'+req('blood_group')+'><option value="">—</option>'+optionTags(bloodMeta,['A','B','AB','O',{value:'UNKNOWN',label:{th:'ไม่ทราบ',en:'Unknown',zh:'未知',ja:'不明',ru:'Неизвестно'}}])+'</select></label>');
-  if(on('shirt_size')&&(E.feature_flags||{}).shirts!==false){if(shirtMeta?.options?.length)rows.push('<label>ขนาดเสื้อ<select id="'+id('shirt')+'" data-rf="shirt_size"'+req('shirt_size')+'><option value="">—</option>'+optionTags(shirtMeta)+'</select></label>');else rows.push('<label>ขนาดเสื้อ<input id="'+id('shirt')+'" data-rf="shirt_size"'+req('shirt_size')+' placeholder="ผู้จัดยังไม่ได้กำหนดรายการไซส์"></label>')}
-  if(on('address'))rows.push('<label style="grid-column:1/-1">ที่อยู่<textarea id="'+id('address')+'" data-rf="address" rows="3"'+req('address')+'></textarea></label>');
-  if(on('emergency_contact_name'))rows.push('<label>ชื่อ-นามสกุลผู้ติดต่อฉุกเฉิน<input id="'+id('emergencyName')+'" data-rf="emergency_contact_name"'+req('emergency_contact_name')+'></label>');
-  if(on('emergency_phone'))rows.push('<label>เบอร์โทรฉุกเฉิน<input id="'+id('emergencyPhone')+'" data-rf="emergency_phone" type="tel"'+req('emergency_phone')+'></label>');
-  if(on('emergency_relation'))rows.push('<label>ความสัมพันธ์ผู้ติดต่อฉุกเฉิน<input id="'+id('emergencyRelation')+'" data-rf="emergency_relation"'+req('emergency_relation')+'></label>');
+  if(on('title'))rows.push(RestartI18n.t('<label>คำนำหน้า<select id="')+id('title')+'" data-rf="title"'+req('title')+'><option value="">—</option>'+optionTags(titleMeta,[{value:'mr',label:{th:'นาย',en:'Mr.',zh:'先生',ja:'Mr.',ru:'Г-н'}},{value:'ms',label:{th:'นางสาว',en:'Ms.',zh:'女士',ja:'Ms.',ru:'Г-жа'}},{value:'mrs',label:{th:'นาง',en:'Mrs.',zh:'女士',ja:'Mrs.',ru:'Г-жа'}}])+'</select></label>');
+  if(on('first_name'))rows.push(RestartI18n.t('<label>ชื่อ<input id="')+id('firstName')+'" data-rf="first_name"'+req('first_name')+'></label>');
+  if(on('last_name'))rows.push(RestartI18n.t('<label>นามสกุล<input id="')+id('lastName')+'" data-rf="last_name"'+req('last_name')+'></label>');
+  if(on('birth_date'))rows.push(RestartI18n.t('<label>วันเกิด<input id="')+id('birthDate')+'" data-rf="birth_date" type="date"'+req('birth_date')+'></label>');
+  if(on('age'))rows.push(RestartI18n.t('<label>อายุ<input id="')+id('age')+RestartI18n.t('" data-rf="age" readonly placeholder="คำนวณอัตโนมัติ"></label>'));
+  if(on('gender'))rows.push(RestartI18n.t('<label>เพศ<select id="')+id('gender')+'" data-rf="gender"'+req('gender')+RestartI18n.t('><option value="">—</option><option value="MALE">ชาย</option><option value="FEMALE">หญิง</option><option value="OTHER">อื่นๆ</option></select></label>'));
+  if(on('id_document'))rows.push(RestartI18n.t('<label>เลขบัตรประชาชน / Passport<input id="')+id('idDoc')+'" data-rf="id_document"'+req('id_document')+'></label>');
+  if(on('phone'))rows.push(RestartI18n.t('<label>เบอร์โทรศัพท์<input id="')+id('phone')+'" data-rf="phone" type="tel"'+req('phone')+'></label>');
+  if(on('blood_group'))rows.push(RestartI18n.t('<label>กรุ๊ปเลือด<select id="')+id('blood')+'" data-rf="blood_group"'+req('blood_group')+'><option value="">—</option>'+optionTags(bloodMeta,['A','B','AB','O',{value:'UNKNOWN',label:{th:'ไม่ทราบ',en:'Unknown',zh:'未知',ja:'不明',ru:'Неизвестно'}}])+'</select></label>');
+  if(on('shirt_size')&&(E.feature_flags||{}).shirts!==false){if(shirtMeta?.options?.length)rows.push(RestartI18n.t('<label>ขนาดเสื้อ<select id="')+id('shirt')+'" data-rf="shirt_size"'+req('shirt_size')+'><option value="">—</option>'+optionTags(shirtMeta)+'</select></label>');else rows.push(RestartI18n.t('<label>ขนาดเสื้อ<input id="')+id('shirt')+'" data-rf="shirt_size"'+req('shirt_size')+RestartI18n.t(' placeholder="ผู้จัดยังไม่ได้กำหนดรายการไซส์"></label>'))}
+  if(on('address'))rows.push(RestartI18n.t('<label style="grid-column:1/-1">ที่อยู่<textarea id="')+id('address')+'" data-rf="address" rows="3"'+req('address')+'></textarea></label>');
+  if(on('emergency_contact_name'))rows.push(RestartI18n.t('<label>ชื่อ-นามสกุลผู้ติดต่อฉุกเฉิน<input id="')+id('emergencyName')+'" data-rf="emergency_contact_name"'+req('emergency_contact_name')+'></label>');
+  if(on('emergency_phone'))rows.push(RestartI18n.t('<label>เบอร์โทรฉุกเฉิน<input id="')+id('emergencyPhone')+'" data-rf="emergency_phone" type="tel"'+req('emergency_phone')+'></label>');
+  if(on('emergency_relation'))rows.push(RestartI18n.t('<label>ความสัมพันธ์ผู้ติดต่อฉุกเฉิน<input id="')+id('emergencyRelation')+'" data-rf="emergency_relation"'+req('emergency_relation')+'></label>');
   return rows.join('')
 }
 function fieldHTMLFor(f,i){const id='f_'+f.id+'_'+i,req=f.is_required?'required':'',lab=esc(tr(f.label));if(f.field_type==='textarea')return '<label>'+lab+'<textarea id="'+id+'" data-field="'+esc(f.field_key)+'" data-runner-index="'+i+'" '+req+'></textarea></label>';if(f.field_type==='select'||f.field_type==='radio')return '<label>'+lab+'<select id="'+id+'" data-field="'+esc(f.field_key)+'" data-runner-index="'+i+'" '+req+'><option value="">—</option>'+((f.options||[]).map(o=>'<option value="'+esc(typeof o==='object'?o.value:o)+'">'+esc(typeof o==='object'?tr(o.label||o):o)+'</option>').join(''))+'</select></label>';return '<label>'+lab+'<input id="'+id+'" data-field="'+esc(f.field_key)+'" data-runner-index="'+i+'" type="'+(['number','date','tel'].includes(f.field_type)?f.field_type:'text')+'" '+req+'></label>'}
 function customFieldsFor(i){return S.map(s=>{const fs=F.filter(f=>f.section_id===s.id&&!baseFieldAliases.has(String(f.field_key||'').toLowerCase()));if(!fs.length)return'';return '<div style="margin-top:18px"><h4>'+esc(tr(s.label))+'</h4><div class="grid2">'+fs.map(f=>fieldHTMLFor(f,i)).join('')+'</div></div>'}).join('')}
-function insuranceHTMLFor(i){return '<div class="paybox" style="margin-top:16px"><div class="row space"><strong>'+D().insurance+'</strong><button class="btn soft sm" type="button" data-add-bene="'+i+'">'+D().addbene+'</button></div><div id="beneList_'+i+'"></div><div class="row space" style="margin-top:10px"><span class="muted">Total</span><strong id="beneTotal_'+i+'">0%</strong></div></div>'}
+function insuranceHTMLFor(i){return '<div class="paybox" style="margin-top:16px"><div class="row space"><strong>'+D().insurance+'</strong><button class="btn soft sm" type="button" data-add-bene="'+i+'">'+D().addbene+'</button></div><div id="beneList_'+i+RestartI18n.t('"></div><div class="row space" style="margin-top:10px"><span class="muted">Total</span><strong id="beneTotal_')+i+'">0%</strong></div></div>'}
 function runnerCard(i){
   const flags=E.feature_flags||{},g=groupCopy(),type=registrationType(),memberOwner=i===1;
   if(type!=='SINGLE'&&!memberOwner){
-    return '<section class="rr-card runner-card" data-runner-card="'+i+'" data-group-name-only="1"><div class="row space"><h3>'+esc(g.runner)+' '+i+'</h3><span class="badge">สมาชิกทีม</span></div><p class="muted">กรอกชื่อ–นามสกุลเท่านั้น ไม่ต้องมี Member ID</p><div class="grid2"><label>ชื่อ<input id="firstName_'+i+'" data-rf="first_name" required></label><label>นามสกุล<input id="lastName_'+i+'" data-rf="last_name" required></label></div></section>'
+    return '<section class="rr-card runner-card" data-runner-card="'+i+'" data-group-name-only="1"><div class="row space"><h3>'+esc(g.runner)+' '+i+RestartI18n.t('</h3><span class="badge">สมาชิกทีม</span></div><div class="grid2"><label>ชื่อ<input id="firstName_')+i+RestartI18n.t('" data-rf="first_name" required></label><label>นามสกุล<input id="lastName_')+i+'" data-rf="last_name" required></label></div></section>'
   }
-  return '<section class="rr-card runner-card" data-runner-card="'+i+'"><div class="row space"><h3>'+esc(g.runner)+' '+i+'</h3>'+(i===1?'<span class="badge">เจ้าของ Member ID</span>':'')+'</div>'+(flags.basic_info!==false?'<div class="grid2">'+baseFieldsFor(i)+'</div>':'')+customFieldsFor(i)+(flags.insurance?insuranceHTMLFor(i):'')+'</section>'
+  return '<section class="rr-card runner-card" data-runner-card="'+i+'"><div class="row space"><h3>'+esc(g.runner)+' '+i+'</h3>'+(i===1?RestartI18n.t('<span class="badge">ผู้ติดต่อหลัก</span>'):'')+'</div>'+(flags.basic_info!==false?'<div class="grid2">'+baseFieldsFor(i)+'</div>':'')+customFieldsFor(i)+(flags.insurance?insuranceHTMLFor(i):'')+'</section>'
 }
 function renderRunnerForms(){
   const box=byId('runnersBox');if(!box)return;const count=registrationRunnerCount();box.innerHTML=Array.from({length:count},(_,x)=>runnerCard(x+1)).join('');
@@ -418,11 +402,11 @@ function syncGroupSetup(){
   if(nameWrap)nameWrap.style.display=type==='SINGLE'?'none':'block';
   if(contactWrap)contactWrap.style.display='none';
   const groupName=byId('groupName');if(groupName)groupName.required=type==='TEAM'&&flags.team_name_required!==false;
-  if(hint)hint.textContent=type==='PAIR'?(g.pairHelp+' · ผู้แข่งขันคนที่ 1 คือเจ้าของ Member ID และผู้ติดต่อหลัก'):(type==='TEAM'?('ทีมนี้กำหนด '+teamMemberCount()+' คน · คนที่ 1 คือเจ้าของ Member ID/ผู้ติดต่อหลัก · คนอื่นกรอกชื่อ–นามสกุลเท่านั้น'):'');
+  if(hint)hint.textContent=type==='PAIR'?(g.pairHelp+''):(type==='TEAM'?(RestartI18n.t('ทีมนี้กำหนด ')+teamMemberCount()+RestartI18n.t(' คน')):'');
   renderRunnerForms();refreshPackages();refreshPrice()
 }
-function render(){window.RestartRouteAnimation?.destroyAll?.();document.body.classList.remove('event-landing-page','event-preview-page');app.classList.remove('event-landing-wrap','event-preview-wrap');const th=E.theme||{};document.documentElement.style.setProperty('--primary',th.primary||'#6d4aff');const flags=E.feature_flags||{};const catOpts=C.map(c=>'<option value="'+c.id+'">'+esc(tr(c.name))+' · ฿'+money(currentCatPrice(c))+'</option>').join('');const categoryWrap=flags.competition_categories!==false?'<section class="rr-card"><h3>'+D().choose+'</h3><label>'+D().choose+'<select id="categorySel" required><option value="">—</option>'+catOpts+'</select></label></section>':'';const packageWrap=flags.packages?'<section class="rr-card"><h3>'+D().package+'</h3><label>'+D().package+'<select id="packageSel"><option value="">—</option></select></label><small class="muted">Package ที่ระบุจำนวนผู้แข่งขันมากกว่า 1 คน จะใช้ได้เฉพาะคู่/ทีมที่มีจำนวนสมาชิกตรงกัน</small></section>':'';let payModes='';if(flags.full_payment!==false)payModes+='<label style="display:flex;align-items:center;gap:8px"><input style="width:auto" type="radio" name="paymode" value="FULL" '+(!flags.installments?'checked':'')+'> '+D().full+'</label>';if(flags.installments)payModes+='<label style="display:flex;align-items:center;gap:8px"><input style="width:auto" type="radio" name="paymode" value="INSTALLMENT" '+(flags.full_payment===false?'checked':'')+'> '+D().install+'</label>';
-  app.innerHTML='<section class="hero" style="--hero-primary:'+(th.primary||'#6d4aff')+';--hero-secondary:'+(th.secondary||'#e96d96')+';--hero-text:'+(th.text||'#fff')+'">'+(flags.logo!==false&&E.logo_url?'<img class="logo" src="'+esc(E.logo_url)+'">':'')+'<h1>'+esc(E.name)+'</h1><p>'+esc(E.description||'')+'</p><div>'+esc(E.location_name||'')+' · '+esc(E.event_date_start||'')+'</div>'+(flags.banner!==false&&E.banner_url?'<img class="banner" src="'+esc(E.banner_url)+'">':'')+'</section><form id="regForm">'+registrationSetupHTML(flags)+categoryWrap+packageWrap+'<div id="runnersBox"></div><section class="rr-card"><h3>'+D().payment+'</h3><div id="priceBox" class="price">฿0</div><div class="row" style="margin:12px 0">'+payModes+'</div><div id="scheduleBox"></div><div id="methodsBox"></div>'+(flags.slip_upload?'<label style="margin-top:12px">'+D().upload+'<input id="slipFile" type="file" accept="image/*,application/pdf" required></label>':'')+'</section><section class="rr-card"><button class="btn primary" style="width:100%;padding:14px" type="submit">'+D().submit+'</button></section></form>';
+function render(){window.RestartRouteAnimation?.destroyAll?.();document.body.classList.remove('event-landing-page','event-preview-page');app.classList.remove('event-landing-wrap','event-preview-wrap');const th=E.theme||{};document.documentElement.style.setProperty('--primary',th.primary||'#6d4aff');const flags=E.feature_flags||{};const catOpts=C.map(c=>'<option value="'+c.id+'">'+esc(tr(c.name))+RestartI18n.t(' · ฿')+money(currentCatPrice(c))+'</option>').join('');const categoryWrap=flags.competition_categories!==false?'<section class="rr-card"><h3>'+D().choose+'</h3><label>'+D().choose+'<select id="categorySel" required><option value="">—</option>'+catOpts+'</select></label></section>':'';const packageWrap=flags.packages?'<section class="rr-card"><h3>'+D().package+'</h3><label>'+D().package+'<select id="packageSel"><option value="">—</option></select></label></section>':'';let payModes='';if(flags.full_payment!==false)payModes+='<label style="display:flex;align-items:center;gap:8px"><input style="width:auto" type="radio" name="paymode" value="FULL" '+(!flags.installments?'checked':'')+'> '+D().full+'</label>';if(flags.installments)payModes+='<label style="display:flex;align-items:center;gap:8px"><input style="width:auto" type="radio" name="paymode" value="INSTALLMENT" '+(flags.full_payment===false?'checked':'')+'> '+D().install+'</label>';
+  app.innerHTML='<section class="hero" style="--hero-primary:'+(th.primary||'#6d4aff')+';--hero-secondary:'+(th.secondary||'#e96d96')+';--hero-text:'+(th.text||'#fff')+'">'+(flags.logo!==false&&E.logo_url?'<img class="logo" src="'+esc(E.logo_url)+'">':'')+'<h1>'+esc(E.name)+'</h1><p>'+esc(E.description||'')+'</p><div>'+esc(E.location_name||'')+' · '+esc(E.event_date_start||'')+'</div>'+(flags.banner!==false&&E.banner_url?'<img class="banner" src="'+esc(E.banner_url)+'">':'')+'</section><form id="regForm">'+registrationSetupHTML(flags)+categoryWrap+packageWrap+'<div id="runnersBox"></div><section class="rr-card"><h3>'+D().payment+RestartI18n.t('</h3><div id="priceBox" class="price">฿0</div><div class="row" style="margin:12px 0">')+payModes+'</div><div id="scheduleBox"></div><div id="methodsBox"></div>'+(flags.slip_upload?'<label style="margin-top:12px">'+D().upload+'<input id="slipFile" type="file" accept="image/*,application/pdf" required></label>':'')+'</section><section class="rr-card"><button class="btn primary" style="width:100%;padding:14px" type="submit">'+D().submit+'</button></section></form>';
   if(byId('registrationType'))byId('registrationType').onchange=syncGroupSetup;
   if(byId('categorySel'))byId('categorySel').onchange=()=>{refreshPackages();syncPaymentModes();refreshPrice()};
   document.querySelectorAll('[name=paymode]').forEach(x=>x.onchange=refreshPrice);
@@ -430,10 +414,10 @@ function render(){window.RestartRouteAnimation?.destroyAll?.();document.body.cla
   byId('regForm').onsubmit=submit;syncGroupSetup();syncPaymentModes()
 }
 function currentCatPrice(c){const f=E.feature_flags||{};const n=new Date(),a=c.early_bird_starts_at?new Date(c.early_bird_starts_at):null,b=c.early_bird_ends_at?new Date(c.early_bird_ends_at):null;if(f.early_bird&&c.early_bird_price_thb!=null&&(!a||n>=a)&&(!b||n<=b))return Number(c.early_bird_price_thb);return Number(c.base_price_thb||0)}
-function refreshPackages(){const sel=byId('packageSel');if(!sel)return;const cid=byId('categorySel')?.value||'',count=registrationRunnerCount();const old=sel.value;const options=P.filter(p=>(!p.category_id||p.category_id===cid)&&Number(p.runner_count||1)===count);sel.innerHTML='<option value="">—</option>'+options.map(p=>'<option value="'+p.id+'">'+esc(tr(p.name))+' · '+(p.price_mode==='ADD'?'+':'')+'฿'+money(p.price_value_thb)+(Number(p.runner_count||1)>1?' · '+p.runner_count+' คน':'')+'</option>').join('');if(options.some(p=>p.id===old))sel.value=old}
+function refreshPackages(){const sel=byId('packageSel');if(!sel)return;const cid=byId('categorySel')?.value||'',count=registrationRunnerCount();const old=sel.value;const options=P.filter(p=>(!p.category_id||p.category_id===cid)&&Number(p.runner_count||1)===count);sel.innerHTML='<option value="">—</option>'+options.map(p=>'<option value="'+p.id+'">'+esc(tr(p.name))+' · '+(p.price_mode==='ADD'?'+':'')+RestartI18n.t('฿')+money(p.price_value_thb)+(Number(p.runner_count||1)>1?' · '+p.runner_count+RestartI18n.t(' คน'):'')+'</option>').join('');if(options.some(p=>p.id===old))sel.value=old}
 function totalPrice(){const cid=byId('categorySel')?.value||'',c=C.find(x=>x.id===cid),count=registrationRunnerCount();let v=(c?currentCatPrice(c):0)*count;const p=P.find(x=>x.id===(byId('packageSel')?.value||''));if(p)v=p.price_mode==='REPLACE'?Number(p.price_value_thb):v+Number(p.price_value_thb);return v}
-function syncPaymentModes(){const flags=E.feature_flags||{};const cat=C.find(c=>c.id===(byId('categorySel')?.value||''));const fullAllowed=flags.full_payment!==false&&cat?.full_payment_enabled!==false;const installmentAllowed=!!flags.installments&&cat?.installment_enabled!==false;const full=document.querySelector('[name=paymode][value=FULL]');const ins=document.querySelector('[name=paymode][value=INSTALLMENT]');if(full)full.closest('label').style.display=fullAllowed?'flex':'none';if(ins)ins.closest('label').style.display=installmentAllowed?'flex':'none';if(full?.checked&&!fullAllowed)full.checked=false;if(ins?.checked&&!installmentAllowed)ins.checked=false;if(!document.querySelector('[name=paymode]:checked')){if(full&&fullAllowed)full.checked=true;else if(ins&&installmentAllowed)ins.checked=true}if(byId('scheduleBox')&&!fullAllowed&&!installmentAllowed)byId('scheduleBox').innerHTML='<div class="badge warn">รุ่นนี้ยังไม่ได้เปิดรูปแบบการชำระเงิน</div>'}
-function makeSchedule(){const total=totalPrice();const flags=E.feature_flags||{};const cid=byId('categorySel')?.value||'',pid=byId('packageSel')?.value||null;const cat=C.find(c=>c.id===cid);const fallback=(flags.full_payment!==false&&cat?.full_payment_enabled!==false)?'FULL':((flags.installments&&cat?.installment_enabled!==false)?'INSTALLMENT':'FULL');const mode=document.querySelector('[name=paymode]:checked')?.value||fallback;if(mode==='FULL'){if(flags.full_payment===false||cat?.full_payment_enabled===false)throw new Error('รุ่นนี้ไม่เปิดให้ชำระเต็มจำนวน');return[{installment_no:1,amount_due_thb:total,due_at:null}]}if(!flags.installments||cat?.installment_enabled===false)throw new Error('รุ่นนี้ไม่เปิดให้ผ่อนชำระ');let plan=IP.filter(p=>(!p.category_id||p.category_id===cid)&&(!p.package_id||p.package_id===pid)).sort((a,b)=>b.priority-a.priority)[0];if(!plan){const first=Math.min(3000,total),rest=total-first,each=Math.floor((rest/2)*100)/100;return[{installment_no:1,amount_due_thb:first,due_at:null},{installment_no:2,amount_due_thb:each,due_at:null},{installment_no:3,amount_due_thb:Math.round((total-first-each)*100)/100,due_at:null}]}
+function syncPaymentModes(){const flags=E.feature_flags||{};const cat=C.find(c=>c.id===(byId('categorySel')?.value||''));const fullAllowed=flags.full_payment!==false&&cat?.full_payment_enabled!==false;const installmentAllowed=!!flags.installments&&cat?.installment_enabled!==false;const full=document.querySelector('[name=paymode][value=FULL]');const ins=document.querySelector('[name=paymode][value=INSTALLMENT]');if(full)full.closest('label').style.display=fullAllowed?'flex':'none';if(ins)ins.closest('label').style.display=installmentAllowed?'flex':'none';if(full?.checked&&!fullAllowed)full.checked=false;if(ins?.checked&&!installmentAllowed)ins.checked=false;if(!document.querySelector('[name=paymode]:checked')){if(full&&fullAllowed)full.checked=true;else if(ins&&installmentAllowed)ins.checked=true}if(byId('scheduleBox')&&!fullAllowed&&!installmentAllowed)byId('scheduleBox').innerHTML=RestartI18n.t('<div class="badge warn">รุ่นนี้ยังไม่ได้เปิดรูปแบบการชำระเงิน</div>')}
+function makeSchedule(){const total=totalPrice();const flags=E.feature_flags||{};const cid=byId('categorySel')?.value||'',pid=byId('packageSel')?.value||null;const cat=C.find(c=>c.id===cid);const fallback=(flags.full_payment!==false&&cat?.full_payment_enabled!==false)?'FULL':((flags.installments&&cat?.installment_enabled!==false)?'INSTALLMENT':'FULL');const mode=document.querySelector('[name=paymode]:checked')?.value||fallback;if(mode==='FULL'){if(flags.full_payment===false||cat?.full_payment_enabled===false)throw new Error(RestartI18n.t('รุ่นนี้ไม่เปิดให้ชำระเต็มจำนวน'));return[{installment_no:1,amount_due_thb:total,due_at:null}]}if(!flags.installments||cat?.installment_enabled===false)throw new Error(RestartI18n.t('รุ่นนี้ไม่เปิดให้ผ่อนชำระ'));let plan=IP.filter(p=>(!p.category_id||p.category_id===cid)&&(!p.package_id||p.package_id===pid)).sort((a,b)=>b.priority-a.priority)[0];if(!plan){const first=Math.min(3000,total),rest=total-first,each=Math.floor((rest/2)*100)/100;return[{installment_no:1,amount_due_thb:first,due_at:null},{installment_no:2,amount_due_thb:each,due_at:null},{installment_no:3,amount_due_thb:Math.round((total-first-each)*100)/100,due_at:null}]}
 const steps=IS.filter(s=>s.plan_id===plan.id).sort((a,b)=>a.installment_no-b.installment_no);let fixed=steps.reduce((s,x)=>s+(x.amount_mode==='FIXED'?Number(x.amount_value||0):0),0),autos=steps.filter(x=>x.amount_mode!=='FIXED'),remaining=total-fixed,autoBase=autos.length?Math.floor((remaining/autos.length)*100)/100:0,used=0;return steps.map(s=>{let amt;if(s.amount_mode==='FIXED')amt=Number(s.amount_value||0);else{const ai=autos.findIndex(x=>x.id===s.id);amt=ai===autos.length-1?Math.round((remaining-used)*100)/100:autoBase;used+=amt}return{installment_no:s.installment_no,amount_due_thb:amt,due_at:s.due_at||null}})}
 function paymentLabels(){
   const x={
@@ -470,9 +454,9 @@ function paymentMethodHTML(m,i){
     '<div class="payment-copy-row"><button type="button" class="btn sm soft copy" data-copy="'+esc(m.account_number||'')+'">'+D().copy+' '+esc(t.accountNo)+'</button></div>'+
   '</div>';
 }
-function refreshPrice(){if(!byId('priceBox'))return;const flags=E.feature_flags||{};const total=totalPrice();byId('priceBox').textContent='฿'+money(total);let sc=[];try{sc=makeSchedule();byId('scheduleBox').innerHTML=sc.map(x=>'<span class="badge" style="margin:4px">งวด '+x.installment_no+' · ฿'+money(x.amount_due_thb)+'</span>').join('')}catch(e){byId('scheduleBox').innerHTML='<div class="badge warn">'+esc(e.message)+'</div>'}const methods=PM.filter(m=>(m.kind!=='PROMPTPAY'||flags.promptpay!==false)&&(m.kind!=='BANK'||flags.bank_transfer!==false));byId('methodsBox').innerHTML=methods.map(paymentMethodHTML).join('');methods.forEach((m,i)=>{if(m.kind==='PROMPTPAY'&&m.qr_enabled&&flags.payment_qr!==false&&m.promptpay_id&&byId('qr_'+i)){try{new QRCode(byId('qr_'+i),{text:promptpayPayload(m.promptpay_id,sc[0]?.amount_due_thb||total,m.promptpay_type),width:220,height:220})}catch(e){}}});document.querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>{const text=b.dataset.copy;if(!text)return;const ok=()=>Swal.fire({icon:'success',title:D().copy,timer:800,showConfirmButton:false});if(navigator.clipboard?.writeText)navigator.clipboard.writeText(text).then(ok).catch(()=>{fallbackCopy(text);ok()});else{fallbackCopy(text);ok()}})}
+function refreshPrice(){if(!byId('priceBox'))return;const flags=E.feature_flags||{};const total=totalPrice();byId('priceBox').textContent=RestartI18n.t('฿')+money(total);let sc=[];try{sc=makeSchedule();byId('scheduleBox').innerHTML=sc.map(x=>RestartI18n.t('<span class="badge" style="margin:4px">งวด ')+x.installment_no+RestartI18n.t(' · ฿')+money(x.amount_due_thb)+'</span>').join('')}catch(e){byId('scheduleBox').innerHTML='<div class="badge warn">'+esc(e.message)+'</div>'}const methods=PM.filter(m=>(m.kind!=='PROMPTPAY'||flags.promptpay!==false)&&(m.kind!=='BANK'||flags.bank_transfer!==false));byId('methodsBox').innerHTML=methods.map(paymentMethodHTML).join('');methods.forEach((m,i)=>{if(m.kind==='PROMPTPAY'&&m.qr_enabled&&flags.payment_qr!==false&&m.promptpay_id&&byId('qr_'+i)){try{new QRCode(byId('qr_'+i),{text:promptpayPayload(m.promptpay_id,sc[0]?.amount_due_thb||total,m.promptpay_type),width:220,height:220})}catch(e){}}});document.querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>{const text=b.dataset.copy;if(!text)return;const ok=()=>Swal.fire({icon:'success',title:D().copy,timer:800,showConfirmButton:false});if(navigator.clipboard?.writeText)navigator.clipboard.writeText(text).then(ok).catch(()=>{fallbackCopy(text);ok()});else{fallbackCopy(text);ok()}})}
 function fallbackCopy(text){const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy')}catch(e){}ta.remove()}
-function addBene(i){const list=byId('beneList_'+i);if(!list)return;const box=document.createElement('div');box.className='bene';box.dataset.runnerIndex=String(i);box.innerHTML='<div class="grid2"><label>ชื่อผู้รับผลประโยชน์<input data-b="name" required></label><label>เลขบัตรประชาชน / Passport<input data-b="id" required></label><label>เบอร์โทร<input data-b="phone"></label><label>ความสัมพันธ์<input data-b="rel" required></label><label>เปอร์เซ็นต์<input data-b="pct" type="number" min="0.01" max="100" step=".01" required></label><label style="grid-column:1/-1">ที่อยู่<textarea data-b="address"></textarea></label></div><button type="button" class="btn sm danger" data-remove>ลบ</button>';list.append(box);box.querySelector('[data-remove]').onclick=()=>{box.remove();sumBene(i)};box.querySelector('[data-b=pct]').oninput=()=>sumBene(i);sumBene(i)}
+function addBene(i){const list=byId('beneList_'+i);if(!list)return;const box=document.createElement('div');box.className='bene';box.dataset.runnerIndex=String(i);box.innerHTML=RestartI18n.t('<div class="grid2"><label>ชื่อผู้รับผลประโยชน์<input data-b="name" required></label><label>เลขบัตรประชาชน / Passport<input data-b="id" required></label><label>เบอร์โทร<input data-b="phone"></label><label>ความสัมพันธ์<input data-b="rel" required></label><label>เปอร์เซ็นต์<input data-b="pct" type="number" min="0.01" max="100" step=".01" required></label><label style="grid-column:1/-1">ที่อยู่<textarea data-b="address"></textarea></label></div><button type="button" class="btn sm danger" data-remove>ลบ</button>');list.append(box);box.querySelector('[data-remove]').onclick=()=>{box.remove();sumBene(i)};box.querySelector('[data-b=pct]').oninput=()=>sumBene(i);sumBene(i)}
 function sumBene(i){const total=byId('beneTotal_'+i),list=byId('beneList_'+i);if(!total||!list)return 0;const s=[...list.querySelectorAll('[data-b=pct]')].reduce((a,x)=>a+Number(x.value||0),0);total.textContent=(Math.round(s*100)/100)+'%';return s}
 function runnerVal(base,i){return (byId(base+'_'+i)?.value||'').trim()}
 function collectRunner(i){
@@ -484,26 +468,27 @@ function collectRunner(i){
 }
 function registrationErrorMessage(err){
   const s=String(err?.message||err||'');
-  const map={PAIR_REGISTRATION_DISABLED:'Event นี้ไม่ได้เปิดสมัครคู่',PAIR_REQUIRES_TWO_RUNNERS:'สมัครคู่ต้องมีผู้แข่งขัน 2 คน',TEAM_REGISTRATION_DISABLED:'Event นี้ไม่ได้เปิดสมัครทีม',TEAM_SIZE_INVALID:'จำนวนสมาชิกทีมไม่ตรงกับจำนวนที่ Admin กำหนด',TEAM_NAME_REQUIRED:'กรุณาระบุชื่อทีม',PACKAGE_RUNNER_COUNT_MISMATCH:'จำนวนผู้แข่งขันไม่ตรงกับ Package',DUPLICATE_RUNNER_ID:'เลขบัตรประชาชน / Passport ของผู้แข่งขันในใบสมัครซ้ำกัน',RUNNER_ALREADY_REGISTERED:'มีผู้แข่งขันคนนี้สมัคร Event นี้แล้ว',EVENT_CAPACITY_EXCEEDED:'จำนวนผู้สมัครเต็มหรือจำนวนที่เหลือไม่พอสำหรับคู่/ทีมนี้',PRICE_MISMATCH:'ยอดชำระไม่ตรงกับราคาที่ระบบคำนวณ',BENEFICIARY_TOTAL_MUST_BE_100:'ผู้รับผลประโยชน์ของผู้แข่งขันแต่ละคนต้องรวม 100%',BENEFICIARY_ID_SAME_AS_RUNNER:'เลขบัตร/Passport ผู้รับผลประโยชน์ห้ามซ้ำกับผู้แข่งขันในใบสมัคร',DUPLICATE_BENEFICIARY_ID:'เลขบัตร/Passport ผู้รับผลประโยชน์ห้ามซ้ำกันในใบสมัคร',SHIRT_SIZE_INVALID:'ไซส์เสื้อไม่อยู่ในรายการที่ผู้จัดกำหนด'};
+  const map={PAIR_REGISTRATION_DISABLED:RestartI18n.t('Event นี้ไม่ได้เปิดสมัครคู่'),PAIR_REQUIRES_TWO_RUNNERS:RestartI18n.t('สมัครคู่ต้องมีผู้แข่งขัน 2 คน'),TEAM_REGISTRATION_DISABLED:RestartI18n.t('Event นี้ไม่ได้เปิดสมัครทีม'),TEAM_SIZE_INVALID:RestartI18n.t('จำนวนสมาชิกทีมไม่ตรงกับจำนวนที่ Admin กำหนด'),TEAM_NAME_REQUIRED:RestartI18n.t('กรุณาระบุชื่อทีม'),PACKAGE_RUNNER_COUNT_MISMATCH:RestartI18n.t('จำนวนผู้แข่งขันไม่ตรงกับ Package'),DUPLICATE_RUNNER_ID:RestartI18n.t('เลขบัตรประชาชน / Passport ของผู้แข่งขันในใบสมัครซ้ำกัน'),RUNNER_ALREADY_REGISTERED:RestartI18n.t('มีผู้แข่งขันคนนี้สมัคร Event นี้แล้ว'),EVENT_CAPACITY_EXCEEDED:RestartI18n.t('จำนวนผู้สมัครเต็มหรือจำนวนที่เหลือไม่พอสำหรับคู่/ทีมนี้'),PRICE_MISMATCH:RestartI18n.t('ยอดชำระไม่ตรงกับราคาที่ระบบคำนวณ'),BENEFICIARY_TOTAL_MUST_BE_100:RestartI18n.t('ผู้รับผลประโยชน์ของผู้แข่งขันแต่ละคนต้องรวม 100%'),BENEFICIARY_ID_SAME_AS_RUNNER:RestartI18n.t('เลขบัตร/Passport ผู้รับผลประโยชน์ห้ามซ้ำกับผู้แข่งขันในใบสมัคร'),DUPLICATE_BENEFICIARY_ID:RestartI18n.t('เลขบัตร/Passport ผู้รับผลประโยชน์ห้ามซ้ำกันในใบสมัคร'),SHIRT_SIZE_INVALID:RestartI18n.t('ไซส์เสื้อไม่อยู่ในรายการที่ผู้จัดกำหนด')};
   const k=Object.keys(map).find(k=>s.includes(k));return k?map[k]:s
 }
 async function submit(e){e.preventDefault();try{
   const flags=E.feature_flags||{},categoryId=byId('categorySel')?.value||null,type=registrationType(),count=registrationRunnerCount();
-  if(flags.competition_categories!==false&&!categoryId)throw new Error('กรุณาเลือกรุ่นการแข่งขัน');
-  if(type==='PAIR'&&count!==2)throw new Error('สมัครคู่ต้องมีผู้แข่งขัน 2 คน');
-  if(type==='TEAM'){if(count!==teamMemberCount())throw new Error('จำนวนสมาชิกทีมไม่ตรงกับที่ผู้จัดกำหนด');if(flags.team_name_required!==false&&!val('groupName'))throw new Error('กรุณาระบุชื่อทีม')}
-  const pkg=P.find(x=>x.id===(byId('packageSel')?.value||''));if(pkg&&Number(pkg.runner_count||1)>1&&Number(pkg.runner_count)!==count)throw new Error('จำนวนผู้แข่งขันไม่ตรงกับ Package');
+  if(flags.competition_categories!==false&&!categoryId)throw new Error(RestartI18n.t('กรุณาเลือกรุ่นการแข่งขัน'));
+  if(type==='PAIR'&&count!==2)throw new Error(RestartI18n.t('สมัครคู่ต้องมีผู้แข่งขัน 2 คน'));
+  if(type==='TEAM'){if(count!==teamMemberCount())throw new Error(RestartI18n.t('จำนวนสมาชิกทีมไม่ตรงกับที่ผู้จัดกำหนด'));if(flags.team_name_required!==false&&!val('groupName'))throw new Error(RestartI18n.t('กรุณาระบุชื่อทีม'))}
+  const pkg=P.find(x=>x.id===(byId('packageSel')?.value||''));if(pkg&&Number(pkg.runner_count||1)>1&&Number(pkg.runner_count)!==count)throw new Error(RestartI18n.t('จำนวนผู้แข่งขันไม่ตรงกับ Package'));
   const runners=Array.from({length:count},(_,x)=>collectRunner(x+1));
-  const ids=runners.map(r=>r.id_normalized).filter(Boolean);if(new Set(ids).size!==ids.length)throw new Error('เลขบัตรประชาชน / Passport ของผู้แข่งขันห้ามซ้ำกัน');const beneIds=runners.flatMap(r=>(r.beneficiaries||[]).map(b=>String(b.id_document||'').replace(/[^a-z0-9]/gi,'').toUpperCase()).filter(Boolean));if(new Set(beneIds).size!==beneIds.length)throw new Error('เลขบัตรประชาชน / Passport ของผู้รับผลประโยชน์ห้ามซ้ำกันในใบสมัคร');if(beneIds.some(x=>ids.includes(x)))throw new Error('เลขบัตรประชาชน / Passport ผู้รับผลประโยชน์ห้ามซ้ำกับผู้แข่งขันในใบสมัคร');
-  if(flags.insurance){for(let i=1;i<=count;i++){const sum=sumBene(i);if(flags.beneficiary_total_100!==false&&Math.abs(sum-100)>.001)throw new Error('ผู้รับผลประโยชน์ของผู้แข่งขันคนที่ '+i+' ต้องรวม 100%')}}
-  Swal.fire({title:'กำลังส่งใบสมัคร…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
+  const ids=runners.map(r=>r.id_normalized).filter(Boolean);if(new Set(ids).size!==ids.length)throw new Error(RestartI18n.t('เลขบัตรประชาชน / Passport ของผู้แข่งขันห้ามซ้ำกัน'));const beneIds=runners.flatMap(r=>(r.beneficiaries||[]).map(b=>String(b.id_document||'').replace(/[^a-z0-9]/gi,'').toUpperCase()).filter(Boolean));if(new Set(beneIds).size!==beneIds.length)throw new Error(RestartI18n.t('เลขบัตรประชาชน / Passport ของผู้รับผลประโยชน์ห้ามซ้ำกันในใบสมัคร'));if(beneIds.some(x=>ids.includes(x)))throw new Error(RestartI18n.t('เลขบัตรประชาชน / Passport ผู้รับผลประโยชน์ห้ามซ้ำกับผู้แข่งขันในใบสมัคร'));
+  if(flags.insurance){for(let i=1;i<=count;i++){const sum=sumBene(i);if(flags.beneficiary_total_100!==false&&Math.abs(sum-100)>.001)throw new Error(RestartI18n.t('ผู้รับผลประโยชน์ของผู้แข่งขันคนที่ ')+i+RestartI18n.t(' ต้องรวม 100%'))}}
+  Swal.fire({title:RestartI18n.t('กำลังส่งใบสมัคร…'),allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
   const uid=crypto.randomUUID();let slip=null,slipInput=byId('slipFile');
   if(flags.slip_upload&&slipInput?.files?.[0]){const file=slipInput.files[0],ext=(file.name.split('.').pop()||'jpg').toLowerCase();slip=uid+'/slip-'+Date.now()+'.'+ext;const{error}=await db.storage.from('restart-slips').upload(slip,file);if(error)throw error}
   const payload={event_id:E.id,category_id:categoryId,package_id:byId('packageSel')?.value||null,registration_type:type,group_name:val('groupName')||null,contact_runner_index:1,language:lang,payment_mode:document.querySelector('[name=paymode]:checked')?.value||((flags.installments&&flags.full_payment===false)?'INSTALLMENT':'FULL'),total_amount_thb:totalPrice(),slip_path:slip,schedule:makeSchedule(),runners};
   const{data,error}=await db.rpc('restart_create_registration',{p_payload:payload});if(error)throw error;
-  Swal.fire({icon:'success',title:'สมัครสำเร็จ',html:'เลขที่สมัคร <b>'+esc(data.registration_code)+'</b><br>ผู้แข่งขัน <b>'+data.runner_count+'</b> คน<br>ยอด ฿'+money(data.total_amount_thb),confirmButtonText:'ตกลง'}).then(()=>location.reload())
-}catch(err){Swal.fire('สมัครไม่สำเร็จ',registrationErrorMessage(err),'error')}}
+  Swal.fire({icon:'success',title:RestartI18n.t('สมัครสำเร็จ'),html:RestartI18n.t('เลขที่สมัคร <b>')+esc(data.registration_code)+RestartI18n.t('</b><br>ผู้แข่งขัน <b>')+data.runner_count+RestartI18n.t('</b> คน<br>ยอด ฿')+money(data.total_amount_thb),confirmButtonText:RestartI18n.t('ตกลง')}).then(()=>location.reload())
+}catch(err){Swal.fire(RestartI18n.t('สมัครไม่สำเร็จ'),registrationErrorMessage(err),'error')}}
 function promptpayPayload(id,amount,type){const digits=String(id).replace(/\D/g,'');const target=type||((digits.length===13)?'NATIONAL_ID':'PHONE');let aid=digits,tag='01';if(target==='PHONE'){aid=digits.length===10?'0066'+digits.substring(1):digits;tag='01'}else if(target==='NATIONAL_ID'){tag='02'}else if(target==='EWALLET'){tag='03'}const tlv=(i,v)=>i+String(v.length).padStart(2,'0')+v;const merchant=tlv('00','A000000677010111')+tlv(tag,aid);let p=tlv('00','01')+tlv('01','12')+tlv('29',merchant)+tlv('53','764')+(amount?tlv('54',Number(amount).toFixed(2)):'')+tlv('58','TH')+tlv('62',tlv('07','RESTART'))+'6304';const crc=(s)=>{let c=0xffff;for(let i=0;i<s.length;i++){c^=s.charCodeAt(i)<<8;for(let j=0;j<8;j++)c=(c&0x8000)?((c<<1)^0x1021)&0xffff:(c<<1)&0xffff}return c.toString(16).toUpperCase().padStart(4,'0')};return p+crc(p)}
+RestartI18n.onChange(async()=>{lang=RestartI18n.language();const draft=RestartI18n.capture(app);if(!E)await listEvents();else if(registerMode&&E.status==='OPEN')render();else renderEventPreview();RestartI18n.restore(app,draft);if(registerMode&&E?.status==='OPEN')refreshPrice();applyUiTheme()});
 init().catch(e=>app.innerHTML='<section class="rr-card rr-empty">'+esc(e.message)+'</section>');
 document.addEventListener('invalid',e=>{
   if(!e.target.closest||!e.target.closest('#regForm'))return;

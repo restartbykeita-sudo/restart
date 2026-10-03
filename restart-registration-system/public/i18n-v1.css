@@ -1,0 +1,10 @@
+.rr-public-actions{flex-wrap:wrap;gap:8px}
+.langbar{display:flex;flex-wrap:wrap;gap:4px}
+.langbar button{min-height:36px;padding:6px 10px;white-space:nowrap}
+.langbar button[aria-pressed=true]{font-weight:700;outline:2px solid currentColor;outline-offset:-2px}
+.langbar button:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+.rr-top{gap:16px}
+.event-landing-hero{min-height:0;padding:36px 24px}
+.event-landing-hero h1{font-size:clamp(28px,5vw,48px);margin:0}
+.event-landing-signature{display:none}
+@media(max-width:600px){.rr-top{flex-wrap:wrap}.rr-public-actions{width:100%}.langbar{width:100%}.member-login-tabs{flex-wrap:wrap}.member-login-tabs button{flex:1}.member-section-head{flex-wrap:wrap}}

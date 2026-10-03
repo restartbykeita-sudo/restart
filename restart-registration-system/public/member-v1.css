@@ -1,5 +1,5 @@
 .member-wrap{max-width:1120px;margin:0 auto}
-.member-auth-grid{display:grid;grid-template-columns:1fr 1.35fr;gap:18px;align-items:start}
+.member-auth-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start;max-width:720px;margin:24px auto}
 .member-card-hero{position:relative;overflow:hidden;border-radius:28px;padding:28px;min-height:260px;background:linear-gradient(135deg,#17131f,#34203c 55%,#17131f);color:#fff}
 .member-card-hero:before{content:"";position:absolute;width:360px;height:360px;border-radius:50%;right:-130px;top:-180px;background:rgba(233,109,150,.23);filter:blur(6px)}
 .member-card-hero>*{position:relative;z-index:1}

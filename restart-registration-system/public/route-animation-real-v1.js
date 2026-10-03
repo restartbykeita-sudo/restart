@@ -55,9 +55,9 @@ function kmMarker(map,km,coord){
 function cpLabel(pt,t){
  if(pt.point_type==='CP_WATER')return (pt.code||t.checkpoint)+' · '+t.water;
  if(pt.point_type==='WATER')return pt.code||t.water;
- if(pt.point_type==='FOOD')return pt.code||(t===I18N.th?'อาหาร':'FOOD');
- if(pt.point_type==='MEDICAL')return pt.code||(t===I18N.th?'แพทย์':'MEDICAL');
- if(pt.point_type==='VIEWPOINT')return pt.code||(t===I18N.th?'จุดชมวิว':'VIEW');
+ if(pt.point_type==='FOOD')return pt.code||RestartI18n.t('อาหาร');
+ if(pt.point_type==='MEDICAL')return pt.code||RestartI18n.t('แพทย์');
+ if(pt.point_type==='VIEWPOINT')return pt.code||RestartI18n.t('จุดชมวิว');
  if(pt.point_type==='INFO')return pt.code||'INFO';
  if(pt.point_type==='CUSTOM')return pt.code||'POINT';
  return pt.code||t.checkpoint
