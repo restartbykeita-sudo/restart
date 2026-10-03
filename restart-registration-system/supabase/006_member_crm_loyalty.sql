@@ -1592,6 +1592,8 @@ for each row execute function private.restart_refund_store_points();
 -- and points remain atomic with registration creation.
 -- Profile sync uses COALESCE so Event-hidden fields never erase master CRM data.
 -- Waitlist also requires and stores the authenticated Member ID.
+-- Teammate fields are sanitized server-side in participants, registration snapshots,
+-- and Waitlist payloads so runner #2+ retain only runner_index + first_name + last_name.
 CREATE OR REPLACE FUNCTION private.restart_compute_quote(p_event_id uuid, p_category_id uuid, p_package_id uuid, p_registration_type text, p_runner_count integer, p_discount_code text, p_runners jsonb)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -1838,6 +1840,7 @@ declare
   v_package_id uuid := nullif(p_payload->>'package_id','')::uuid;
   v_code text := nullif(trim(coalesce(p_payload->>'registration_code','')),'');
   v_runner jsonb;
+  v_participant_snapshot jsonb := '[]'::jsonb;
   v_bene jsonb;
   v_follower jsonb;
   v_step jsonb;
@@ -2006,6 +2009,17 @@ begin
         end if;
       end if;
     end if;
+
+    v_participant_snapshot:=v_participant_snapshot||jsonb_build_array(
+      case
+        when v_registration_type='SINGLE' or v_runner_index=1 then v_runner
+        else jsonb_build_object(
+          'runner_index',v_runner_index,
+          'first_name',trim(coalesce(v_runner->>'first_name','')),
+          'last_name',trim(coalesce(v_runner->>'last_name',''))
+        )
+      end
+    );
   end loop;
 
   if coalesce((v_flags->>'insurance')::boolean,false) then
@@ -2161,7 +2175,7 @@ begin
     v_event_id,v_category_id,v_package_id,v_code,
     coalesce(nullif(p_payload->>'language',''),v_event.default_language,'th'),
     v_payment_mode,v_expected,'PENDING_PAYMENT',
-    coalesce(p_payload->'runners','[]'::jsonb),
+    v_participant_snapshot,
     v_registration_type,v_group_name,v_contact_runner_index,v_runner_count,
     v_subtotal,v_discount,v_merch_amount,v_promotion_id,v_discount_code_id,
     case when v_pdpa_required then v_now else null end,
@@ -2361,6 +2375,10 @@ declare
   v_event_id uuid:=nullif(p_payload->>'event_id','')::uuid;
   member_user_id uuid:=nullif(p_payload->>'member_user_id','')::uuid;
   runners jsonb:=coalesce(p_payload->'runners','[]'::jsonb);
+  safe_runners jsonb:='[]'::jsonb;
+  safe_payload jsonb;
+  runner_item jsonb;
+  runner_idx integer;
   runner_count integer:=jsonb_array_length(coalesce(p_payload->'runners','[]'::jsonb));
   reg_type text:=upper(coalesce(nullif(p_payload->>'registration_type',''),'SINGLE'));
   contact_idx integer:=coalesce(nullif(p_payload->>'contact_runner_index','')::integer,1);
@@ -2393,6 +2411,24 @@ begin
     raise exception 'RUNNER_NAME_REQUIRED';
   end if;
 
+  for runner_item in select * from jsonb_array_elements(runners)
+  loop
+    runner_idx:=coalesce(nullif(runner_item->>'runner_index','')::integer,0);
+    safe_runners:=safe_runners||jsonb_build_array(
+      case
+        when reg_type='SINGLE' or runner_idx=1 then runner_item
+        else jsonb_build_object(
+          'runner_index',runner_idx,
+          'first_name',trim(coalesce(runner_item->>'first_name','')),
+          'last_name',trim(coalesce(runner_item->>'last_name',''))
+        )
+      end
+    );
+  end loop;
+
+  safe_payload:=(p_payload - array['slip_path','member_user_id']) ||
+    jsonb_build_object('runners',safe_runners,'contact_runner_index',contact_idx);
+
   select value into contact
   from jsonb_array_elements(runners) with ordinality x(value,ord)
   where ord=contact_idx;
@@ -2411,7 +2447,7 @@ begin
     trim(coalesce(contact->>'first_name','')||' '||coalesce(contact->>'last_name','')),
     nullif(trim(coalesce(contact->>'phone','')),''),
     contact_id,
-    p_payload - 'slip_path',
+    safe_payload,
     'WAITING'
   )
   on conflict (event_id,contact_id_normalized) where status in ('WAITING','INVITED')
