@@ -795,8 +795,6 @@ async function fullSystemRpc(req: Request, origin: string, action: string) {
       p_registration_code: text(body.registration_code),
       p_id_document: text(body.id_document),
     });
-  } else if (action === 'member-complete-signup') {
-    return await completeMemberSignup(req, origin);
   } else if (action === 'manage-action') {
     result = await db.rpc('restart_manage_registration_action', {
       p_event_slug: text(body.event_slug),
@@ -964,7 +962,8 @@ Deno.serve(async (req) => {
     if (action === 'lookup' && req.method === 'POST') return await registrationLookup(req, origin);
     if (action === 'submit-payment' && req.method === 'POST') return await submitNextPayment(req, origin);
     if (action === 'notify-registration' && req.method === 'POST') return await notifyRegistrationById(req, origin);
-    if (['price-quote','create-registration','join-waitlist','next-payment-lookup','next-payment-submit','manage-lookup','manage-action','store-quote','store-create-order','store-lookup','store-submit-payment','member-complete-signup'].includes(action) && req.method === 'POST') return await fullSystemRpc(req, origin, action);
+    if (action === 'member-complete-signup' && req.method === 'POST') return await completeMemberSignup(req, origin);
+    if (['price-quote','create-registration','join-waitlist','next-payment-lookup','next-payment-submit','manage-lookup','manage-action','store-quote','store-create-order','store-lookup','store-submit-payment'].includes(action) && req.method === 'POST') return await fullSystemRpc(req, origin, action);
     if (action === 'upload-slip' && req.method === 'POST') return await publicSlipUpload(req, origin);
     if (action === 'telegram-settings' && req.method === 'POST') return await telegramSettingsGet(req, origin);
     if (action === 'telegram-settings-save' && req.method === 'POST') return await telegramSettingsSave(req, origin);
