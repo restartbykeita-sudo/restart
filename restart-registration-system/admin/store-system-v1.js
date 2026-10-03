@@ -165,10 +165,10 @@ async function storeOrderDetail(id){
   if(o.payment_status==='APPROVED'&&!['CANCELLED','FULFILLED','SHIPPED'].includes(o.status)){actions.push('<button class="btn soft" data-store-status="PREPARING">เตรียมสินค้า</button><button class="btn soft" data-store-status="READY">พร้อมรับ</button><button class="btn primary" data-store-status="'+(o.delivery_method==='DELIVERY'?'SHIPPED':'FULFILLED')+'">'+(o.delivery_method==='DELIVERY'?'จัดส่งแล้ว':'มอบสินค้าแล้ว')+'</button>')}
   if(!['CANCELLED','FULFILLED','SHIPPED'].includes(o.status))actions.push('<button id="storeCancelOrder" class="btn danger">ยกเลิกออเดอร์</button>');
   Swal.fire({title:o.order_code,width:850,showConfirmButton:false,showCloseButton:true,html:'<div style="text-align:left"><div class="paybox"><b>'+esc(o.customer_name)+'</b> · '+esc(o.phone)+'<br>'+esc(o.delivery_method==='DELIVERY'?(o.delivery_address||'จัดส่ง'):'รับสินค้าเอง')+'</div><div class="paybox">'+items+'</div><div class="paybox">สินค้า ฿'+money(o.subtotal_amount_thb)+(Number(o.shipping_fee_thb)?' · ค่าส่ง ฿'+money(o.shipping_fee_thb):'')+' · <b>รวม ฿'+money(o.total_amount_thb)+'</b></div>'+(slipUrl?'<a class="btn soft" target="_blank" href="'+esc(slipUrl)+'">เปิดสลิป</a>':'')+'<div class="row" style="margin-top:12px;flex-wrap:wrap">'+actions.join('')+'</div></div>',didOpen:()=>{
-    byId('storeApprovePay')?.addEventListener('click',()=>reviewStorePayment(pending.id,'APPROVE'));
-    byId('storeRejectPay')?.addEventListener('click',()=>reviewStorePayment(pending.id,'REJECT'));
+    document.getElementById('storeApprovePay')?.addEventListener('click',()=>reviewStorePayment(pending.id,'APPROVE'));
+    document.getElementById('storeRejectPay')?.addEventListener('click',()=>reviewStorePayment(pending.id,'REJECT'));
     document.querySelectorAll('[data-store-status]').forEach(b=>b.onclick=()=>updateStoreStatus(o.id,b.dataset.storeStatus));
-    byId('storeCancelOrder')?.addEventListener('click',()=>cancelStoreOrder(o.id))
+    document.getElementById('storeCancelOrder')?.addEventListener('click',()=>cancelStoreOrder(o.id))
   }})
 }
 async function reviewStorePayment(id,decision){
