@@ -1,0 +1,23 @@
+.store-hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center}
+.store-hero h2{margin:0 0 6px;font-size:clamp(24px,5vw,42px)}
+.store-products{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:16px}
+.store-product{overflow:hidden}
+.store-product-image{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:16px;background:rgba(127,127,127,.12)}
+.store-product-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-top:12px}
+.store-price{font-weight:800;white-space:nowrap}
+.store-variant-list{display:grid;gap:8px;margin-top:12px}
+.store-variant{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px solid rgba(127,127,127,.25);border-radius:12px;padding:10px}
+.store-variant.out{opacity:.5}
+.store-option-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}
+.store-option-tag{font-size:12px;border-radius:999px;padding:4px 8px;background:rgba(127,127,127,.14)}
+.store-cart-float{position:sticky;bottom:12px;z-index:20;margin-top:18px}
+.store-cart-bar{display:flex;justify-content:space-between;gap:12px;align-items:center;box-shadow:0 12px 35px rgba(0,0,0,.22)}
+.store-cart-items{display:grid;gap:8px;margin:10px 0}
+.store-cart-row{display:grid;grid-template-columns:1fr auto;gap:12px;padding:10px 0;border-bottom:1px solid rgba(127,127,127,.2)}
+.store-total{font-size:24px;font-weight:900}
+.store-checkout-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;text-align:left}
+.store-pay-method{border:1px solid rgba(127,127,127,.25);border-radius:14px;padding:12px;margin-top:10px}
+.store-pay-method.active{outline:2px solid currentColor}
+.store-qr{display:flex;justify-content:center;margin:12px auto;width:240px;max-width:100%;aspect-ratio:1}
+.store-qr canvas,.store-qr img{width:220px!important;height:220px!important;max-width:100%!important;object-fit:contain}
+@media(max-width:700px){.store-hero{grid-template-columns:1fr}.store-checkout-grid{grid-template-columns:1fr}.store-products{grid-template-columns:1fr}.store-cart-bar{align-items:flex-start;flex-direction:column}}
