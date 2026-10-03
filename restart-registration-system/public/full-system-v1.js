@@ -318,23 +318,24 @@ let quoteTimer=null;
 function debouncedQuote(){clearTimeout(quoteTimer);quoteTimer=setTimeout(()=>refreshPrice(),350)}
 
 function quoteReady(){
-  const f=fullFlags(),count=registrationRunnerCount();
+  const f=fullFlags(),count=registrationRunnerCount(),type=registrationType();
   let runners=[];try{runners=Array.from({length:count},(_,i)=>collectRunner(i+1))}catch(e){return false}
+  const eligibilityRunners=type==='SINGLE'?runners:runners.slice(0,1);
   if(f.competition_categories!==false){
     const cid=byId('categorySel')?.value||'';
     if(cid){
       const cat=C.find(x=>x.id===cid);if(!cat)return false;
-      if((cat.min_age!=null||cat.max_age!=null)&&runners.some(r=>!r.birth_date))return false;
-      if(['MALE','FEMALE'].includes(String(cat.gender_rule||''))&&runners.some(r=>!r.gender))return false;
+      if((cat.min_age!=null||cat.max_age!=null)&&eligibilityRunners.some(r=>!r.birth_date))return false;
+      if(['MALE','FEMALE'].includes(String(cat.gender_rule||''))&&eligibilityRunners.some(r=>!r.gender))return false;
     }else if(f.auto_category){
       const needsBirth=C.some(cat=>cat.min_age!=null||cat.max_age!=null);
       const needsGender=C.some(cat=>['MALE','FEMALE'].includes(String(cat.gender_rule||'')));
-      if(needsBirth&&runners.some(r=>!r.birth_date))return false;
-      if(needsGender&&runners.some(r=>!r.gender))return false;
+      if(needsBirth&&eligibilityRunners.some(r=>!r.birth_date))return false;
+      if(needsGender&&eligibilityRunners.some(r=>!r.gender))return false;
     }else if(f.self_select_category===false&&C.length===1){
       const cat=C[0];
-      if((cat.min_age!=null||cat.max_age!=null)&&runners.some(r=>!r.birth_date))return false;
-      if(['MALE','FEMALE'].includes(String(cat.gender_rule||''))&&runners.some(r=>!r.gender))return false;
+      if((cat.min_age!=null||cat.max_age!=null)&&eligibilityRunners.some(r=>!r.birth_date))return false;
+      if(['MALE','FEMALE'].includes(String(cat.gender_rule||''))&&eligibilityRunners.some(r=>!r.gender))return false;
     }else return false;
   }
   return true
@@ -416,15 +417,21 @@ function fullSchedule(total){
 }
 
 function validateFullClient(runners,followers){
-  const f=fullFlags(),ids=runners.map(r=>r.id_normalized).filter(Boolean),beneIds=runners.flatMap(r=>(r.beneficiaries||[]).map(b=>normalizeId(b.id_document)).filter(Boolean)),fids=followers.map(x=>normalizeId(x.id_document)).filter(Boolean);
+  const f=fullFlags(),type=registrationType(),profileRunners=type==='SINGLE'?runners:runners.slice(0,1);
+  runners.forEach((r,i)=>{
+    if(!String(r.first_name||'').trim()||!String(r.last_name||'').trim())throw new Error('กรุณากรอกชื่อ–นามสกุลผู้แข่งขันคนที่ '+(i+1));
+  });
+  const ids=profileRunners.map(r=>r.id_normalized).filter(Boolean),
+        beneIds=profileRunners.flatMap(r=>(r.beneficiaries||[]).map(b=>normalizeId(b.id_document)).filter(Boolean)),
+        fids=followers.map(x=>normalizeId(x.id_document)).filter(Boolean);
   if(new Set(ids).size!==ids.length)throw new Error('เลขบัตร/Passport ผู้แข่งขันซ้ำกัน');
   if(new Set(beneIds).size!==beneIds.length)throw new Error('เลขบัตร/Passport ผู้รับผลประโยชน์ซ้ำกัน');
   if(beneIds.some(x=>ids.includes(x)))throw new Error('เลขผู้รับผลประโยชน์ห้ามซ้ำกับผู้แข่งขัน');
   if(new Set(fids).size!==fids.length||fids.some(x=>ids.includes(x)))throw new Error('เลขบัตร/Passport ผู้ติดตามซ้ำกับผู้แข่งขันหรือผู้ติดตามคนอื่น');
   if(f.insurance){
-    runners.forEach((r,i)=>{
+    profileRunners.forEach((r,i)=>{
       if(f.beneficiaries_multiple===false&&(r.beneficiaries||[]).length>1)throw new Error('ผู้จัดอนุญาตผู้รับผลประโยชน์ 1 คนต่อผู้แข่งขัน');
-      if(f.beneficiary_total_100!==false&&Math.abs((r.beneficiaries||[]).reduce((s,b)=>s+Number(b.percentage||0),0)-100)>.001)throw new Error('ผู้รับผลประโยชน์ของผู้แข่งขันคนที่ '+(i+1)+' ต้องรวม 100%');
+      if(f.beneficiary_total_100!==false&&Math.abs((r.beneficiaries||[]).reduce((s,b)=>s+Number(b.percentage||0),0)-100)>.001)throw new Error('ผู้รับผลประโยชน์ของเจ้าของ Member ID ต้องรวม 100%');
     });
   }
 }
@@ -464,7 +471,7 @@ submit=async function(e){
 
     const payload={
       event_id:E.id,category_id:categoryId,package_id:byId('packageSel')?.value||null,
-      registration_type:type,group_name:val('groupName')||null,contact_runner_index:Number(byId('contactRunner')?.value||1),member_runner_index:1,
+      registration_type:type,group_name:val('groupName')||null,contact_runner_index:1,member_runner_index:1,
       language:lang,payment_mode:document.querySelector('[name=paymode]:checked')?.value||'FULL',
       total_amount_thb:total,discount_code:byId('discountCode')?.value.trim()||null,
       pdpa_accepted:!f.pdpa||!!byId('pdpaConsent')?.checked,
