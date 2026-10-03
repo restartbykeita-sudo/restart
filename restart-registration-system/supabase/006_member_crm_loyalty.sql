@@ -229,6 +229,107 @@ create policy restart_store_orders_admin_delete
 on public.restart_store_orders for delete to authenticated
 using ((select private.restart_is_admin()));
 
+-- Member-authenticated storefront read policies.
+-- Logged-in members must be able to browse the same open storefront data as anonymous visitors.
+drop policy if exists restart_stores_admin_all on public.restart_stores;
+drop policy if exists restart_stores_authenticated_select on public.restart_stores;
+drop policy if exists restart_stores_admin_insert on public.restart_stores;
+drop policy if exists restart_stores_admin_update on public.restart_stores;
+drop policy if exists restart_stores_admin_delete on public.restart_stores;
+create policy restart_stores_authenticated_select
+on public.restart_stores for select to authenticated
+using (
+  (select private.restart_is_admin())
+  or (
+    is_open=true and exists(
+      select 1 from public.restart_events e
+      where e.id=event_id
+        and coalesce((e.feature_flags->>'storefront')::boolean,false)
+    )
+  )
+);
+create policy restart_stores_admin_insert
+on public.restart_stores for insert to authenticated
+with check ((select private.restart_is_admin()));
+create policy restart_stores_admin_update
+on public.restart_stores for update to authenticated
+using ((select private.restart_is_admin()))
+with check ((select private.restart_is_admin()));
+create policy restart_stores_admin_delete
+on public.restart_stores for delete to authenticated
+using ((select private.restart_is_admin()));
+
+drop policy if exists restart_store_payment_methods_admin_all on public.restart_store_payment_methods;
+drop policy if exists restart_store_payment_methods_authenticated_select on public.restart_store_payment_methods;
+drop policy if exists restart_store_payment_methods_admin_insert on public.restart_store_payment_methods;
+drop policy if exists restart_store_payment_methods_admin_update on public.restart_store_payment_methods;
+drop policy if exists restart_store_payment_methods_admin_delete on public.restart_store_payment_methods;
+create policy restart_store_payment_methods_authenticated_select
+on public.restart_store_payment_methods for select to authenticated
+using (
+  (select private.restart_is_admin())
+  or (
+    is_enabled=true and exists(
+      select 1 from public.restart_stores s
+      join public.restart_events e on e.id=s.event_id
+      where s.id=store_id
+        and s.is_open=true
+        and coalesce((e.feature_flags->>'storefront')::boolean,false)
+    )
+  )
+);
+create policy restart_store_payment_methods_admin_insert
+on public.restart_store_payment_methods for insert to authenticated
+with check ((select private.restart_is_admin()));
+create policy restart_store_payment_methods_admin_update
+on public.restart_store_payment_methods for update to authenticated
+using ((select private.restart_is_admin()))
+with check ((select private.restart_is_admin()));
+create policy restart_store_payment_methods_admin_delete
+on public.restart_store_payment_methods for delete to authenticated
+using ((select private.restart_is_admin()));
+
+drop policy if exists restart_merch_products_admin_select on public.restart_merch_products;
+drop policy if exists restart_merch_products_authenticated_select on public.restart_merch_products;
+create policy restart_merch_products_authenticated_select
+on public.restart_merch_products for select to authenticated
+using (
+  (select private.restart_is_admin())
+  or (
+    is_active=true
+    and (sale_starts_at is null or now()>=sale_starts_at)
+    and (sale_ends_at is null or now()<=sale_ends_at)
+    and exists(
+      select 1 from public.restart_stores s
+      join public.restart_events e on e.id=s.event_id
+      where s.id=store_id
+        and s.is_open=true
+        and coalesce((e.feature_flags->>'storefront')::boolean,false)
+    )
+  )
+);
+
+drop policy if exists restart_merch_variants_admin_select on public.restart_merch_variants;
+drop policy if exists restart_merch_variants_authenticated_select on public.restart_merch_variants;
+create policy restart_merch_variants_authenticated_select
+on public.restart_merch_variants for select to authenticated
+using (
+  (select private.restart_is_admin())
+  or (
+    is_active=true and exists(
+      select 1 from public.restart_merch_products p
+      join public.restart_stores s on s.id=p.store_id
+      join public.restart_events e on e.id=s.event_id
+      where p.id=product_id
+        and p.is_active=true
+        and (p.sale_starts_at is null or now()>=p.sale_starts_at)
+        and (p.sale_ends_at is null or now()<=p.sale_ends_at)
+        and s.is_open=true
+        and coalesce((e.feature_flags->>'storefront')::boolean,false)
+    )
+  )
+);
+
 update public.restart_events
 set field_settings=jsonb_set(
   coalesce(field_settings,'{}'::jsonb),
