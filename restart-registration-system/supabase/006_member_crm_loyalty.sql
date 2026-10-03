@@ -13,6 +13,7 @@ create table if not exists public.restart_member_profiles(
   title text,
   first_name text,
   last_name text,
+  id_document text,
   birth_date date,
   address text,
   phone text,
@@ -26,6 +27,15 @@ create table if not exists public.restart_member_profiles(
   constraint restart_member_profiles_blood_group_check
     check(blood_group is null or blood_group in ('A','B','AB','O','UNKNOWN'))
 );
+
+alter table public.restart_member_profiles add column if not exists id_document text;
+do $id_constraint$
+begin
+  if not exists(select 1 from pg_constraint where conrelid='public.restart_member_profiles'::regclass and conname='restart_member_profiles_document_check') then
+    alter table public.restart_member_profiles add constraint restart_member_profiles_document_check check(id_document is null or id_document ~ '^[0-9A-Z]{6,30}$');
+  end if;
+end;
+$id_constraint$;
 
 create table if not exists public.restart_member_points_ledger(
   id uuid primary key default gen_random_uuid(),
@@ -519,11 +529,11 @@ begin
 
   if found then
     insert into public.restart_member_profiles(
-      user_id,email,title,first_name,last_name,birth_date,address,phone,blood_group,
+      user_id,email,title,first_name,last_name,id_document,birth_date,address,phone,blood_group,
       emergency_contact_name,emergency_phone,emergency_relation,updated_at
     )
     select
-      new.member_user_id,u.email,p.title,p.first_name,p.last_name,p.birth_date,p.address,p.phone,p.blood_group,
+      new.member_user_id,u.email,p.title,p.first_name,p.last_name,case when regexp_replace(upper(coalesce(p.id_document,'')),'[^0-9A-Z]','','g') ~ '^[0-9A-Z]{6,30}$' then regexp_replace(upper(p.id_document),'[^0-9A-Z]','','g') else null end,p.birth_date,p.address,p.phone,p.blood_group,
       p.emergency_contact_name,p.emergency_phone,p.emergency_relation,now()
     from auth.users u where u.id=new.member_user_id
     on conflict(user_id) do update set
@@ -531,6 +541,7 @@ begin
       title=coalesce(excluded.title,restart_member_profiles.title),
       first_name=coalesce(excluded.first_name,restart_member_profiles.first_name),
       last_name=coalesce(excluded.last_name,restart_member_profiles.last_name),
+      id_document=coalesce(excluded.id_document,restart_member_profiles.id_document),
       birth_date=coalesce(excluded.birth_date,restart_member_profiles.birth_date),
       address=coalesce(excluded.address,restart_member_profiles.address),
       phone=coalesce(excluded.phone,restart_member_profiles.phone),
@@ -543,7 +554,8 @@ begin
 
   return new;
 end;
-$function$;
+$function$
+;
 
 CREATE OR REPLACE FUNCTION private.restart_sync_registration_points()
  RETURNS trigger

@@ -37,6 +37,7 @@ function applyMemberProfile(){
   setValue('title_'+i,p.title);
   setValue('firstName_'+i,p.first_name);
   setValue('lastName_'+i,p.last_name);
+  setValue('idDoc_'+i,p.id_document);
   setValue('birthDate_'+i,p.birth_date);
   setValue('phone_'+i,p.phone);
   setValue('blood_'+i,p.blood_group);

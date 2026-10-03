@@ -71,6 +71,10 @@ async function requireMember(req: Request) {
 }
 
 function cleanProfile(input: Record<string, unknown>) {
+  const rawId = text(input.id_document);
+  if (rawId && !/^[0-9A-Za-z\s-]+$/.test(rawId)) fail(400, 'เลขบัตรประชาชน / Passport ใช้ตัวอักษรอังกฤษและตัวเลขเท่านั้น');
+  const idDocument = normalizeId(rawId);
+  if (idDocument && !/^[0-9A-Z]{6,30}$/.test(idDocument)) fail(400, 'เลขบัตรประชาชน / Passport ต้องมี 6–30 ตัวอักษร');
   const blood = text(input.blood_group).toUpperCase();
   if (blood && !['A','B','AB','O','UNKNOWN'].includes(blood)) fail(400, 'กรุ๊ปเลือดไม่ถูกต้อง');
   const birth = text(input.birth_date);
@@ -79,6 +83,7 @@ function cleanProfile(input: Record<string, unknown>) {
     title: text(input.title) || null,
     first_name: text(input.first_name) || null,
     last_name: text(input.last_name) || null,
+    id_document: idDocument || null,
     birth_date: birth || null,
     address: text(input.address) || null,
     phone: text(input.phone) || null,
