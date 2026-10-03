@@ -1556,6 +1556,7 @@ for each row execute function private.restart_refund_store_points();
 -- PAIR/TEAM runner #2+ are intentionally name-only.
 -- Member binding is performed inside restart_create_registration so profile sync
 -- and points remain atomic with registration creation.
+-- Profile sync uses COALESCE so Event-hidden fields never erase master CRM data.
 CREATE OR REPLACE FUNCTION private.restart_compute_quote(p_event_id uuid, p_category_id uuid, p_package_id uuid, p_registration_type text, p_runner_count integer, p_discount_code text, p_runners jsonb)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -1731,6 +1732,58 @@ begin
     'discount_amount_thb',promo_discount+code_discount,
     'total_amount_thb',total
   );
+end;
+$function$;
+
+CREATE OR REPLACE FUNCTION private.restart_sync_registration_member()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'private', 'auth'
+AS $function$
+declare
+  p public.restart_participants%rowtype;
+begin
+  if new.member_user_id is null then return new; end if;
+
+  if new.member_runner_index is null or new.member_runner_index<1 or new.member_runner_index>new.runner_count then
+    new.member_runner_index:=coalesce(new.contact_runner_index,1);
+  end if;
+
+  update public.restart_participants
+  set member_user_id=case when runner_index=new.member_runner_index then new.member_user_id else null end
+  where registration_id=new.id;
+
+  select * into p
+  from public.restart_participants
+  where registration_id=new.id and runner_index=new.member_runner_index
+  limit 1;
+
+  if found then
+    insert into public.restart_member_profiles(
+      user_id,email,title,first_name,last_name,birth_date,address,phone,blood_group,
+      emergency_contact_name,emergency_phone,emergency_relation,updated_at
+    )
+    select
+      new.member_user_id,u.email,p.title,p.first_name,p.last_name,p.birth_date,p.address,p.phone,p.blood_group,
+      p.emergency_contact_name,p.emergency_phone,p.emergency_relation,now()
+    from auth.users u where u.id=new.member_user_id
+    on conflict(user_id) do update set
+      email=excluded.email,
+      title=excluded.title,
+      first_name=excluded.first_name,
+      last_name=excluded.last_name,
+      birth_date=excluded.birth_date,
+      address=excluded.address,
+      phone=excluded.phone,
+      blood_group=excluded.blood_group,
+      emergency_contact_name=excluded.emergency_contact_name,
+      emergency_phone=excluded.emergency_phone,
+      emergency_relation=excluded.emergency_relation,
+      updated_at=now();
+  end if;
+
+  return new;
 end;
 $function$;
 
