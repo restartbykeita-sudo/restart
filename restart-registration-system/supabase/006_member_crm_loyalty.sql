@@ -1735,57 +1735,7 @@ begin
 end;
 $function$;
 
-CREATE OR REPLACE FUNCTION private.restart_sync_registration_member()
- RETURNS trigger
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public', 'private', 'auth'
-AS $function$
-declare
-  p public.restart_participants%rowtype;
-begin
-  if new.member_user_id is null then return new; end if;
-
-  if new.member_runner_index is null or new.member_runner_index<1 or new.member_runner_index>new.runner_count then
-    new.member_runner_index:=coalesce(new.contact_runner_index,1);
-  end if;
-
-  update public.restart_participants
-  set member_user_id=case when runner_index=new.member_runner_index then new.member_user_id else null end
-  where registration_id=new.id;
-
-  select * into p
-  from public.restart_participants
-  where registration_id=new.id and runner_index=new.member_runner_index
-  limit 1;
-
-  if found then
-    insert into public.restart_member_profiles(
-      user_id,email,title,first_name,last_name,birth_date,address,phone,blood_group,
-      emergency_contact_name,emergency_phone,emergency_relation,updated_at
-    )
-    select
-      new.member_user_id,u.email,p.title,p.first_name,p.last_name,p.birth_date,p.address,p.phone,p.blood_group,
-      p.emergency_contact_name,p.emergency_phone,p.emergency_relation,now()
-    from auth.users u where u.id=new.member_user_id
-    on conflict(user_id) do update set
-      email=coalesce(excluded.email,restart_member_profiles.email),
-      title=coalesce(excluded.title,restart_member_profiles.title),
-      first_name=coalesce(excluded.first_name,restart_member_profiles.first_name),
-      last_name=coalesce(excluded.last_name,restart_member_profiles.last_name),
-      birth_date=coalesce(excluded.birth_date,restart_member_profiles.birth_date),
-      address=coalesce(excluded.address,restart_member_profiles.address),
-      phone=coalesce(excluded.phone,restart_member_profiles.phone),
-      blood_group=coalesce(excluded.blood_group,restart_member_profiles.blood_group),
-      emergency_contact_name=coalesce(excluded.emergency_contact_name,restart_member_profiles.emergency_contact_name),
-      emergency_phone=coalesce(excluded.emergency_phone,restart_member_profiles.emergency_phone),
-      emergency_relation=coalesce(excluded.emergency_relation,restart_member_profiles.emergency_relation),
-      updated_at=now();
-  end if;
-
-  return new;
-end;
-$function$;
+-- restart_sync_registration_member already defined above; kept single canonical definition.
 
 CREATE OR REPLACE FUNCTION public.restart_create_registration(p_payload jsonb)
  RETURNS jsonb
