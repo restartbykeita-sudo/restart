@@ -132,6 +132,8 @@ create unique index if not exists restart_store_payment_methods_source_uidx
 create index if not exists restart_merch_products_store_idx on public.restart_merch_products(store_id,sort_order);
 create index if not exists restart_store_orders_store_created_idx on public.restart_store_orders(store_id,created_at desc);
 create index if not exists restart_store_order_items_store_idx on public.restart_store_order_items(store_id);
+create index if not exists restart_store_orders_store_payment_method_idx on public.restart_store_orders(store_payment_method_id);
+create index if not exists restart_store_payment_methods_source_idx on public.restart_store_payment_methods(source_payment_method_id);
 
 alter table public.restart_stores enable row level security;
 alter table public.restart_store_payment_methods enable row level security;
