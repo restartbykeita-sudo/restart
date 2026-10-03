@@ -114,6 +114,36 @@ create policy restart_member_points_admin_select
 on public.restart_member_points_ledger for select to authenticated
 using ((select private.restart_is_admin()));
 
+-- Waitlist CRM access: owner can read only their records; Admin keeps full management.
+drop policy if exists restart_admin_all on public.restart_waitlist;
+drop policy if exists restart_waitlist_member_select on public.restart_waitlist;
+drop policy if exists restart_waitlist_select on public.restart_waitlist;
+drop policy if exists restart_waitlist_admin_insert on public.restart_waitlist;
+drop policy if exists restart_waitlist_admin_update on public.restart_waitlist;
+drop policy if exists restart_waitlist_admin_delete on public.restart_waitlist;
+
+create policy restart_waitlist_select
+on public.restart_waitlist for select to authenticated
+using (
+  (select private.restart_is_admin())
+  or (select auth.uid())=member_user_id
+);
+
+create policy restart_waitlist_admin_insert
+on public.restart_waitlist for insert to authenticated
+with check ((select private.restart_is_admin()));
+
+create policy restart_waitlist_admin_update
+on public.restart_waitlist for update to authenticated
+using ((select private.restart_is_admin()))
+with check ((select private.restart_is_admin()));
+
+create policy restart_waitlist_admin_delete
+on public.restart_waitlist for delete to authenticated
+using ((select private.restart_is_admin()));
+
+grant select on public.restart_waitlist to authenticated;
+
 grant select on public.restart_member_profiles,public.restart_member_points_ledger to authenticated;
 grant insert(user_id,email,title,first_name,last_name,birth_date,address,phone,blood_group,emergency_contact_name,emergency_phone,emergency_relation)
   on public.restart_member_profiles to authenticated;
