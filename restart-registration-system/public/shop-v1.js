@@ -142,13 +142,15 @@ function promptpayPayload(id,amount,type){const digits=String(id).replace(/\D/g,
 async function init(){
   if(!slug)throw new Error('ไม่พบ Event');
   const{data:e,error:ee}=await db.from('restart_events').select('*').eq('slug',slug).maybeSingle();if(ee||!e)throw new Error('ไม่พบ Event');
-  E=e;if(!E.feature_flags?.storefront)throw new Error('Event นี้ยังไม่เปิดร้านค้า');
+  E=e;
   const[{data:s,error:se},{data:p,error:pe},{data:m,error:me}]=await Promise.all([
     db.from('restart_store_settings').select('*').eq('event_id',E.id).maybeSingle(),
     db.from('restart_merch_products').select('*,restart_merch_variants(*)').eq('event_id',E.id).eq('is_active',true).order('sort_order'),
     db.from('restart_payment_methods').select('*').eq('event_id',E.id).eq('is_enabled',true).order('sort_order')
   ]);
   if(se||pe||me)throw (se||pe||me);
+  const storeEnabled=!!E.feature_flags?.storefront||!!s?.is_open;
+  if(!storeEnabled)throw new Error('Event นี้ยังไม่เปิดร้านค้า');
   SETTINGS=s||{is_open:true,pickup_enabled:true,delivery_enabled:false,shipping_fee_thb:0,store_name:{th:(tr(E.name)||'Event')+' Store'}};
   if(SETTINGS.is_open===false)throw new Error('ร้านค้าปิดชั่วคราว');
   PRODUCTS=p||[];VARIANTS=PRODUCTS.flatMap(x=>x.restart_merch_variants||[]);METHODS=m||[];
