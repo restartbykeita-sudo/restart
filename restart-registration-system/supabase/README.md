@@ -48,6 +48,18 @@
    - Cross-store product/order access is rejected server-side
    - Existing single store is migrated to `official-store` automatically
 
+6. `006_member_crm_loyalty.sql`
+   - Supabase Auth member accounts with central Member Profile
+   - Master personal/emergency data reused across Events
+   - Registration links the logged-in owner only; other team runners remain registration participants
+   - Registration-form changes sync back to the owner's Member Profile
+   - Member Card + registration/store history
+   - Event-based RESTART Points with auditable ledger
+   - Points awarded on CONFIRMED registration and reversed on cancellation
+   - Per-store points redemption rate/minimum/maximum
+   - Store cancellation refunds redeemed points automatically
+   - Admin Member CRM and manual points adjustment
+
 3. `003_shirt_sales_system.sql`
    - Optional shirt add-on sales per Event
    - Shirt products, images, sizes, SKU and stock
