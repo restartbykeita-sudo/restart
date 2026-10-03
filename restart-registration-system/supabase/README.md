@@ -39,6 +39,15 @@
    - Public order lookup by SHOP order code + phone
    - Registration RPC explicitly rejects store items
 
+5. `005_multi_store_marketplace.sql`
+   - Multiple stores per Event
+   - Unique store slug and direct link per store
+   - Products, stock, orders and payment methods isolated by `store_id`
+   - Event-level store directory plus store-specific storefronts
+   - Server quote/create/lookup/payment RPCs require `store_slug`
+   - Cross-store product/order access is rejected server-side
+   - Existing single store is migrated to `official-store` automatically
+
 3. `003_shirt_sales_system.sql`
    - Optional shirt add-on sales per Event
    - Shirt products, images, sizes, SKU and stock
