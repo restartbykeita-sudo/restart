@@ -269,3 +269,148 @@ https://restartbykeita-sudo.github.io/restart/restart-registration-system/admin/
 9. CANCELLED ต้อง reverse/refund แต้มอย่าง idempotent
 10. Store points settings แยกต่อร้าน
 11. ต้องรักษา RLS และไม่เชื่อ user_id จาก browser
+
+
+## Continuation update — 2026-10-03 Member CRM round 2
+
+### Completed in this continuation
+
+1. **PAIR/TEAM name-only teammates completed end-to-end**
+   - Runner #1 = Member owner / primary contact.
+   - Runner #2+ require only first_name + last_name.
+   - Server no longer requires ID/phone/birth/blood/address/emergency/insurance for teammates.
+   - Category age/gender eligibility for Pair/Team uses Runner #1 only.
+   - Insurance/beneficiaries applies only to Runner #1 for Pair/Team.
+   - Contact runner locked to #1 for group registrations.
+   - Frontend + Server tests passed.
+
+2. **Team backend test after migration rerun**
+   - create_team_name_only = yes
+   - owner_full_data = yes
+   - insurance_owner_only = yes
+   - teammates_only_names = yes
+
+3. **Member Profile sync now preserves hidden CRM fields**
+   - `private.restart_sync_registration_member()` uses COALESCE.
+   - If an Event omits phone/address/blood/emergency fields, existing master CRM values are preserved.
+   - If user edits a field that Event asks for, new non-null value updates the master profile.
+   - Tests passed:
+     - hidden_fields_preserved = yes
+     - submitted_field_updates = yes
+
+4. **Authenticated member storefront RLS fixed**
+   - Logged-in members can now read open:
+     - restart_stores
+     - restart_store_payment_methods
+     - restart_merch_products
+     - restart_merch_variants
+   - Admin still sees all rows including inactive/closed.
+   - Authenticated test on Bangwad returned:
+     - stores = 1
+     - products = 2
+     - variants = 5
+     - payment_methods = 1
+
+5. **Store order item RLS consolidated**
+   - Removed duplicate permissive SELECT policies.
+   - Member can read own order items; Admin can read all.
+   - Final Security Advisor relevant findings = 0.
+   - Performance relevant warnings = unused_index INFO only.
+
+6. **Points zero-payment flow fully tested**
+   - Redeem points until total = 0.
+   - No payment method/slip required.
+   - Order status = PAID / payment_status = APPROVED.
+   - Points deducted.
+   - Cancel order refunds points.
+   - All tests = yes.
+
+7. **Member Auth UX improved**
+   - Forgot password.
+   - resetPasswordForEmail recovery flow.
+   - PASSWORD_RECOVERY new-password UI.
+   - Resend signup confirmation email.
+   - Login handles unconfirmed email with resend option.
+   - Hosted Supabase email confirmations are normally enabled by default.
+   - Redirect URL still must be allowed in Supabase Auth URL Configuration.
+
+8. **Member Card improved**
+   - Added Store Order history.
+   - Shows redeemed points / discount used per order.
+
+9. **Store Points UX improved**
+   - Button: ใช้แต้มสูงสุด.
+   - Server remains authoritative.
+   - UI normalizes requested points to actual redeemable points based on:
+     - balance
+     - points_per_thb
+     - min points
+     - max per order
+     - item subtotal
+
+10. **Registration integration observer fixed**
+    - Member login gate MutationObserver no longer repeatedly rewrites itself.
+
+11. **Blood group UNKNOWN supported in registration form**
+    - Member Profile already supports UNKNOWN.
+    - Registration UI now includes ไม่ทราบ / Unknown.
+
+12. **Edge production**
+    - restart-registration-api production = v18.
+    - Production source exactly matches GitHub latest.
+    - Waitlist now requires Member session.
+    - Store order no longer performs redundant member_user_id update.
+
+13. **Migration**
+    - `006_member_crm_loyalty.sql` contains:
+      - team name-only behavior
+      - owner-only category eligibility
+      - CRM field preservation
+      - authenticated storefront RLS
+      - consolidated member/admin RLS
+    - Duplicate `restart_sync_registration_member()` definition removed.
+    - Migration rerun succeeds.
+
+14. **GitHub Pages**
+    - Pages build for commit `7cf3d1f59f0e04929d8515d202dc34a0e33feadc` completed success.
+    - Member page cache refreshed after auth/order-history changes.
+
+### Current important commits
+- Final migration cleanup: `7cf3d1f59f0e04929d8515d202dc34a0e33feadc`
+- Member page cache: `1446f597f2f920e17b0b44110a516e9565f9a035`
+- Profile preservation migration: `bd3a27b4ab31dfba3cd6f7e52aa4ce2f3ecaa7e6`
+- Store order-item RLS: `adc674411b3055e09cea06a4893f44bee0f0f19f`
+- Member points storefront: `651b992957b95e19c24b7e420bdefb7f8245f596`
+- Member Card order history: `2b3608e182e02a85dfd7a6e8f1c2438f14d394c1`
+- Member auth recovery: `b00dbe95632198d1101a93e0008dd673b30d2778`
+- Team validation frontend: `53433dc8d711f45893c4d7ac6148a364abb6f277`
+- Team base UI: `575669b3e6ba51b68f473edbcd10b9de01ee947e`
+
+### Remaining work
+
+A. **Live browser test**
+- Browser automation could not start because TinyFish wallet balance is negative.
+- Do not claim UI browser flow was visually tested.
+- When wallet is available, test:
+  1. member.html Login tab
+  2. Signup tab and all required fields
+  3. Forgot password
+  4. Event page Member/Login gate
+  5. Pair/Team runner #2+ name-only UI
+  6. Member autofill Runner #1
+  7. Store points checkout and max-points button
+  8. Member Card Event/Store history
+  9. Admin Member CRM
+
+B. **Supabase Auth URL configuration**
+- Confirm GitHub Pages Member URL is in Auth Redirect URLs:
+  `https://restartbykeita-sudo.github.io/restart/restart-registration-system/public/member.html`
+- If not allowlisted, signup confirmation/password reset links may confirm successfully but not return to Member page.
+
+C. **Optional next CRM enhancements**
+- Member CSV export.
+- CRM tags/segments.
+- Member notes.
+- Membership level/tier based on points or Event count.
+- Expiring points rules if desired.
+- Member merge/deduplicate workflow if legacy runners are later imported into Member accounts.
