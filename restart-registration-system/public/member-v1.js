@@ -33,13 +33,38 @@ function collectProfile(prefix=''){
 }
 function validateProfile(p){for(const [k,v] of Object.entries(p))if(!v)throw new Error('กรุณากรอกข้อมูลสมาชิกให้ครบ');return p}
 function returnUrl(){const q=new URLSearchParams(location.search).get('return');return q&&q.startsWith(location.origin)?q:null}
+function memberPageUrl(){return location.origin+location.pathname}
+async function resendSignupEmail(email){
+  if(!email)return;
+  const{error}=await db.auth.resend({type:'signup',email,options:{emailRedirectTo:memberPageUrl()}});
+  if(error)throw error;
+  await Swal.fire({icon:'success',title:'ส่ง Email ยืนยันอีกครั้งแล้ว',text:'กรุณาตรวจ Inbox และ Junk/Spam'})
+}
+async function forgotPassword(){
+  const initial=document.getElementById('loginEmail')?.value?.trim()||'';
+  const r=await Swal.fire({title:'ลืมรหัสผ่าน',input:'email',inputLabel:'Email สมาชิก',inputValue:initial,inputPlaceholder:'name@example.com',showCancelButton:true,confirmButtonText:'ส่งลิงก์ตั้งรหัสใหม่',preConfirm:v=>v.trim()||Swal.showValidationMessage('กรุณากรอก Email')});
+  if(!r.isConfirmed)return;
+  const redirectTo=memberPageUrl()+'?recovery=1';
+  const{error}=await db.auth.resetPasswordForEmail(r.value.trim(),{redirectTo});
+  if(error)return Swal.fire('ส่ง Email ไม่สำเร็จ',error.message,'error');
+  Swal.fire({icon:'success',title:'ส่ง Email แล้ว',text:'เปิดลิงก์ใน Email เพื่อตั้งรหัสผ่านใหม่'})
+}
+async function promptNewPassword(){
+  const r=await Swal.fire({title:'ตั้งรหัสผ่านใหม่',html:'<div style="text-align:left"><label>รหัสผ่านใหม่<input id="newPassword" type="password" minlength="8" class="swal2-input" style="margin:0" autocomplete="new-password"></label><label>ยืนยันรหัสผ่าน<input id="newPassword2" type="password" minlength="8" class="swal2-input" style="margin:0" autocomplete="new-password"></label></div>',allowOutsideClick:false,allowEscapeKey:false,confirmButtonText:'บันทึกรหัสผ่าน',preConfirm:()=>{const a=newPassword.value,b=newPassword2.value;if(a.length<8)return Swal.showValidationMessage('รหัสผ่านต้องอย่างน้อย 8 ตัวอักษร');if(a!==b)return Swal.showValidationMessage('รหัสผ่านไม่ตรงกัน');return a}});
+  if(!r.isConfirmed)return;
+  const{error}=await db.auth.updateUser({password:r.value});
+  if(error)return Swal.fire('เปลี่ยนรหัสผ่านไม่สำเร็จ',error.message,'error');
+  history.replaceState(null,'',memberPageUrl());
+  await Swal.fire({icon:'success',title:'เปลี่ยนรหัสผ่านแล้ว'});
+  const{data:{session}}=await db.auth.getSession();if(session?.user)renderMember(session.user);else renderAuth()
+}
 async function renderAuth(){
   logoutBtn.hidden=true;
   app.innerHTML='<section class="member-auth-grid">'+
     '<div class="rr-card"><div class="member-login-tabs"><button id="tabLogin" class="btn soft active">เข้าสู่ระบบ</button><button id="tabSignup" class="btn soft">สมัครสมาชิก</button></div><div id="authPanel"></div></div>'+
     '<div class="member-card-hero"><div class="member-card-code">RESTART MEMBER</div><div class="member-card-name">สมัครครั้งเดียว<br>ใช้ข้อมูลได้ทุก Event</div><p>โปรไฟล์กลางจะเติมข้อมูลในฟอร์มสมัครให้อัตโนมัติ แก้ในฟอร์มได้ และบันทึกกลับมาใช้ครั้งต่อไป</p><div class="member-stat-grid"><div><b>CRM</b><div>ประวัติสมาชิก</div></div><div><b>POINTS</b><div>สะสมจาก Event</div></div><div><b>STORE</b><div>ใช้แต้มเป็นส่วนลด</div></div></div></div>'+
   '</section>';
-  const login=()=>{tabLogin.classList.add('active');tabSignup.classList.remove('active');authPanel.innerHTML='<h2>เข้าสู่ระบบสมาชิก</h2><label>Email<input id="loginEmail" type="email" autocomplete="email"></label><label>Password<input id="loginPassword" type="password" autocomplete="current-password"></label><button id="loginBtn" class="btn primary" style="width:100%;margin-top:12px">เข้าสู่ระบบ</button>';loginBtn.onclick=doLogin};
+  const login=()=>{tabLogin.classList.add('active');tabSignup.classList.remove('active');authPanel.innerHTML='<h2>เข้าสู่ระบบสมาชิก</h2><label>Email<input id="loginEmail" type="email" autocomplete="email"></label><label>Password<input id="loginPassword" type="password" autocomplete="current-password"></label><button id="loginBtn" class="btn primary" style="width:100%;margin-top:12px">เข้าสู่ระบบ</button><button id="forgotBtn" class="btn soft" type="button" style="width:100%;margin-top:8px">ลืมรหัสผ่าน</button>';loginBtn.onclick=doLogin;forgotBtn.onclick=forgotPassword};
   const signup=()=>{tabSignup.classList.add('active');tabLogin.classList.remove('active');authPanel.innerHTML='<h2>สมัครสมาชิก RESTART</h2><div class="member-profile-grid"><label class="wide">Email สำหรับ Login<input id="suEmail" type="email" required autocomplete="email"></label><label class="wide">Password <small class="muted">อย่างน้อย 8 ตัวอักษร</small><input id="suPassword" type="password" minlength="8" required autocomplete="new-password"></label></div>'+profileFields('su')+'<div class="member-form-note">Email ใช้สำหรับเข้าสู่ระบบ ส่วนข้อมูลส่วนตัวเก็บใน Member Profile และไม่ใส่ข้อมูลสุขภาพไว้ใน Auth token</div><button id="signupBtn" class="btn primary" style="width:100%;margin-top:14px">สร้างบัญชีสมาชิก</button>';bindAge('su');signupBtn.onclick=doSignup};
   tabLogin.onclick=login;tabSignup.onclick=signup;login()
 }
@@ -48,7 +73,14 @@ async function doLogin(){
   if(!email||!password)return Swal.fire('กรอกข้อมูลไม่ครบ','กรุณากรอก Email และ Password','warning');
   Swal.fire({title:'กำลังเข้าสู่ระบบ…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
   const{data,error}=await db.auth.signInWithPassword({email,password});
-  if(error)return Swal.fire('เข้าสู่ระบบไม่สำเร็จ',error.message,'error');
+  if(error){
+    const msg=String(error.message||'');
+    if(/email.*confirm|confirm.*email/i.test(msg)){
+      const r=await Swal.fire({icon:'warning',title:'Email ยังไม่ได้ยืนยัน',text:'กรุณายืนยัน Email ก่อนเข้าสู่ระบบ',showDenyButton:true,denyButtonText:'ส่ง Email ยืนยันอีกครั้ง',confirmButtonText:'ตกลง'});
+      if(r.isDenied){try{await resendSignupEmail(email)}catch(e){Swal.fire('ส่ง Email ไม่สำเร็จ',e.message||String(e),'error')}}return
+    }
+    return Swal.fire('เข้าสู่ระบบไม่สำเร็จ',msg,'error')
+  }
   const ret=returnUrl();if(ret)return location.href=ret;
   Swal.close();renderMember(data.user)
 }
@@ -67,7 +99,8 @@ async function doSignup(){
       const ret=returnUrl();if(ret)return location.href=ret;
       await Swal.fire({icon:'success',title:'สมัครสมาชิกสำเร็จ',html:'รหัสสมาชิก <b>'+esc(saved.member_code)+'</b>'});return renderMember(data.user)
     }
-    await Swal.fire({icon:'success',title:'สร้างบัญชีแล้ว',text:'กรุณาตรวจ Email เพื่อยืนยันบัญชี แล้วกลับมาเข้าสู่ระบบ'});
+    const confirm=await Swal.fire({icon:'success',title:'สร้างบัญชีแล้ว',html:'กรุณาตรวจ <b>'+esc(email)+'</b> เพื่อยืนยันบัญชี<br><small>หากกดลิงก์แล้วไม่ได้กลับมาหน้านี้ ให้เปิดหน้า Member แล้ว Login ได้ตามปกติ</small>',showDenyButton:true,denyButtonText:'ส่ง Email ยืนยันอีกครั้ง',confirmButtonText:'เข้าใจแล้ว'});
+    if(confirm.isDenied){try{await resendSignupEmail(email)}catch(e){await Swal.fire('ส่ง Email ไม่สำเร็จ',e.message||String(e),'error')}}
     renderAuth()
   }catch(e){Swal.fire('สมัครสมาชิกไม่สำเร็จ',e.message||String(e),'error')}
 }
@@ -103,6 +136,20 @@ async function editProfile(profile,user){
   Swal.fire({icon:'success',title:'บันทึกข้อมูลแล้ว',timer:900,showConfirmButton:false});renderMember(user)
 }
 logoutBtn.onclick=async()=>{await db.auth.signOut();renderAuth()};
-db.auth.onAuthStateChange((_event,session)=>{if(!session?.user)logoutBtn.hidden=true});
-(async()=>{const{data:{session}}=await db.auth.getSession();if(session?.user)renderMember(session.user);else renderAuth()})()
+let recoveryPromptOpen=false;
+db.auth.onAuthStateChange((event,session)=>{
+  if(!session?.user)logoutBtn.hidden=true;
+  if(event==='PASSWORD_RECOVERY'&&!recoveryPromptOpen){
+    recoveryPromptOpen=true;
+    setTimeout(()=>promptNewPassword().finally(()=>{recoveryPromptOpen=false}),0)
+  }
+});
+(async()=>{
+  const{data:{session}}=await db.auth.getSession();
+  if(session?.user){
+    if(new URLSearchParams(location.search).get('recovery')==='1'&&!recoveryPromptOpen){
+      recoveryPromptOpen=true;await promptNewPassword().finally(()=>{recoveryPromptOpen=false})
+    }else renderMember(session.user)
+  }else renderAuth()
+})()
 })();
