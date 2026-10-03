@@ -437,6 +437,184 @@ begin
 end;
 $function$;
 
+CREATE OR REPLACE FUNCTION private.restart_compute_quote(p_event_id uuid, p_category_id uuid, p_package_id uuid, p_registration_type text, p_runner_count integer, p_discount_code text, p_runners jsonb)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'private'
+AS $function$
+declare
+  e public.restart_events%rowtype;
+  c public.restart_race_categories%rowtype;
+  pkg public.restart_packages%rowtype;
+  promo public.restart_promotions%rowtype;
+  dc public.restart_discount_codes%rowtype;
+  flags jsonb;
+  selected_category uuid:=p_category_id;
+  subtotal numeric:=0;
+  promo_discount numeric:=0;
+  code_discount numeric:=0;
+  total numeric:=0;
+  now_ts timestamptz:=now();
+  candidate record;
+  d numeric;
+  team_size integer;
+  eligibility_runners jsonb;
+begin
+  select * into e from public.restart_events where id=p_event_id;
+  if not found then raise exception 'EVENT_NOT_FOUND'; end if;
+  flags:=coalesce(e.feature_flags,'{}'::jsonb);
+  team_size:=greatest(2,least(100,coalesce(
+    nullif(flags->>'team_members_count','')::integer,
+    nullif(flags->>'team_min_members','')::integer,
+    3
+  )));
+  eligibility_runners:=case
+    when upper(coalesce(p_registration_type,'SINGLE'))='SINGLE'
+      then coalesce(p_runners,'[]'::jsonb)
+    when jsonb_array_length(coalesce(p_runners,'[]'::jsonb))>0
+      then jsonb_build_array(coalesce(p_runners,'[]'::jsonb)->0)
+    else '[]'::jsonb
+  end;
+
+  if p_runner_count<1 then raise exception 'RUNNER_REQUIRED'; end if;
+  if upper(coalesce(p_registration_type,'SINGLE'))='SINGLE' and p_runner_count<>1 then raise exception 'SINGLE_REQUIRES_ONE_RUNNER'; end if;
+  if upper(coalesce(p_registration_type,'SINGLE'))='PAIR' and p_runner_count<>2 then raise exception 'PAIR_REQUIRES_TWO_RUNNERS'; end if;
+  if upper(coalesce(p_registration_type,'SINGLE'))='TEAM' and p_runner_count<>team_size then raise exception 'TEAM_SIZE_INVALID'; end if;
+
+  if coalesce((flags->>'competition_categories')::boolean,true) then
+    if selected_category is null then
+      if coalesce((flags->>'auto_category')::boolean,false) then
+        select rc.id into selected_category
+        from public.restart_race_categories rc
+        where rc.event_id=p_event_id and rc.is_active=true
+          and private.restart_category_eligible(rc.id,eligibility_runners,e.event_date_start)
+        order by rc.sort_order,rc.min_age nulls first,rc.id
+        limit 1;
+        if selected_category is null then raise exception 'AUTO_CATEGORY_NOT_FOUND'; end if;
+      elsif not coalesce((flags->>'self_select_category')::boolean,true) then
+        select rc.id into selected_category
+        from public.restart_race_categories rc
+        where rc.event_id=p_event_id and rc.is_active=true
+        order by rc.sort_order,rc.id
+        limit 2;
+        if (select count(*) from public.restart_race_categories rc where rc.event_id=p_event_id and rc.is_active=true)=1 then
+          null;
+        else
+          raise exception 'CATEGORY_REQUIRED';
+        end if;
+      else
+        raise exception 'CATEGORY_REQUIRED';
+      end if;
+    end if;
+
+    select * into c
+    from public.restart_race_categories
+    where id=selected_category and event_id=p_event_id and is_active=true;
+    if not found then raise exception 'CATEGORY_NOT_AVAILABLE'; end if;
+    if jsonb_array_length(coalesce(p_runners,'[]'::jsonb))>0
+       and not private.restart_category_eligible(c.id,eligibility_runners,e.event_date_start) then
+      raise exception 'CATEGORY_NOT_ELIGIBLE';
+    end if;
+
+    if coalesce((flags->>'category_pricing')::boolean,true) then
+      subtotal:=(
+        case
+          when coalesce((flags->>'early_bird')::boolean,false)
+           and c.early_bird_price_thb is not null
+           and (c.early_bird_starts_at is null or now_ts>=c.early_bird_starts_at)
+           and (c.early_bird_ends_at is null or now_ts<=c.early_bird_ends_at)
+          then c.early_bird_price_thb
+          else c.base_price_thb
+        end
+      )*p_runner_count;
+    else
+      subtotal:=coalesce(e.base_registration_price_thb,0)*p_runner_count;
+    end if;
+  else
+    selected_category:=null;
+    subtotal:=coalesce(e.base_registration_price_thb,0)*p_runner_count;
+  end if;
+
+  if coalesce((flags->>'packages')::boolean,true) and p_package_id is not null then
+    select * into pkg
+    from public.restart_packages
+    where id=p_package_id and event_id=p_event_id and is_active=true
+      and (category_id is null or category_id=selected_category);
+    if not found then raise exception 'PACKAGE_NOT_AVAILABLE'; end if;
+    if coalesce(pkg.runner_count,1)<>p_runner_count then raise exception 'PACKAGE_RUNNER_COUNT_MISMATCH'; end if;
+    if pkg.price_mode='REPLACE' then subtotal:=pkg.price_value_thb;
+    else subtotal:=subtotal+pkg.price_value_thb;
+    end if;
+  elsif not coalesce((flags->>'packages')::boolean,true) and p_package_id is not null then
+    raise exception 'PACKAGE_DISABLED';
+  end if;
+
+  subtotal:=greatest(0,round(coalesce(subtotal,0)::numeric,2));
+
+  if coalesce((flags->>'promotions')::boolean,false) then
+    for candidate in
+      select p.*,
+             case when p.discount_type='PERCENT'
+                  then least(subtotal,round(subtotal*least(p.discount_value,100)/100,2))
+                  else least(subtotal,p.discount_value)
+             end as calculated_discount
+      from public.restart_promotions p
+      where p.event_id=p_event_id
+        and p.is_active=true
+        and (p.category_id is null or p.category_id=selected_category)
+        and (p.package_id is null or p.package_id=p_package_id)
+        and (p.starts_at is null or now_ts>=p.starts_at)
+        and (p.ends_at is null or now_ts<=p.ends_at)
+        and subtotal>=p.min_total_thb
+      order by calculated_discount desc,p.priority desc,p.created_at
+      limit 1
+    loop
+      promo.id:=candidate.id;
+      promo.name:=candidate.name;
+      promo_discount:=candidate.calculated_discount;
+    end loop;
+  end if;
+
+  if nullif(trim(coalesce(p_discount_code,'')),'') is not null then
+    if not coalesce((flags->>'discount_codes')::boolean,false) then raise exception 'DISCOUNT_CODES_DISABLED'; end if;
+    select * into dc
+    from public.restart_discount_codes
+    where event_id=p_event_id
+      and upper(code)=upper(trim(p_discount_code))
+      and is_active=true
+      and (category_id is null or category_id=selected_category)
+      and (package_id is null or package_id=p_package_id)
+      and (starts_at is null or now_ts>=starts_at)
+      and (ends_at is null or now_ts<=ends_at)
+      and subtotal>=min_total_thb
+      and (max_uses is null or used_count<max_uses)
+    limit 1;
+    if not found then raise exception 'DISCOUNT_CODE_INVALID'; end if;
+    if dc.discount_type='PERCENT' then
+      code_discount:=least(subtotal-promo_discount,round((subtotal-promo_discount)*least(dc.discount_value,100)/100,2));
+    else
+      code_discount:=least(subtotal-promo_discount,dc.discount_value);
+    end if;
+  end if;
+
+  total:=greatest(0,round(subtotal-promo_discount-code_discount,2));
+
+  return jsonb_build_object(
+    'category_id',selected_category,
+    'subtotal_amount_thb',subtotal,
+    'promotion_id',promo.id,
+    'promotion_name',promo.name,
+    'promotion_discount_thb',promo_discount,
+    'discount_code_id',dc.id,
+    'discount_code',case when dc.id is null then null else upper(dc.code) end,
+    'discount_code_discount_thb',code_discount,
+    'discount_amount_thb',promo_discount+code_discount,
+    'total_amount_thb',total
+  );
+end;
+$function$;
+
 CREATE OR REPLACE FUNCTION public.restart_create_registration(p_payload jsonb)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -549,59 +727,71 @@ begin
     v_runner_index := coalesce(nullif(v_runner->>'runner_index','')::integer,0);
     if v_runner_index < 1 or v_runner_index > v_runner_count then raise exception 'RUNNER_INDEX_INVALID'; end if;
 
-    foreach v_key in array array[
-      'title','first_name','last_name','birth_date','gender','id_document','phone',
-      'blood_group','shirt_size','address','emergency_contact_name','emergency_phone','emergency_relation'
-    ]
-    loop
-      if coalesce((v_flags->>'basic_info')::boolean,true)
-         and not (v_key='shirt_size' and not coalesce((v_flags->>'shirts')::boolean,true))
-         and coalesce((v_fields->v_key->>'enabled')::boolean,true)
-         and coalesce((v_fields->v_key->>'required')::boolean,false) then
-        v_value := nullif(trim(coalesce(v_runner->>v_key,'')),'');
-        if v_value is null then raise exception 'REQUIRED_FIELD_MISSING:%', v_key; end if;
+    -- Pair/Team runners after #1 are lightweight teammates: name only.
+    if v_registration_type<>'SINGLE' and v_runner_index>1 then
+      if nullif(trim(coalesce(v_runner->>'first_name','')),'') is null then
+        raise exception 'REQUIRED_FIELD_MISSING:first_name';
       end if;
-    end loop;
+      if nullif(trim(coalesce(v_runner->>'last_name','')),'') is null then
+        raise exception 'REQUIRED_FIELD_MISSING:last_name';
+      end if;
+      -- Do not require Member ID, personal profile, ID document, emergency or insurance
+      -- for teammates. Only runner #1 belongs to the logged-in Member Profile.
+    else
+      foreach v_key in array array[
+        'title','first_name','last_name','birth_date','gender','id_document','phone',
+        'blood_group','shirt_size','address','emergency_contact_name','emergency_phone','emergency_relation'
+      ]
+      loop
+        if coalesce((v_flags->>'basic_info')::boolean,true)
+           and not (v_key='shirt_size' and not coalesce((v_flags->>'shirts')::boolean,true))
+           and coalesce((v_fields->v_key->>'enabled')::boolean,true)
+           and coalesce((v_fields->v_key->>'required')::boolean,false) then
+          v_value := nullif(trim(coalesce(v_runner->>v_key,'')),'');
+          if v_value is null then raise exception 'REQUIRED_FIELD_MISSING:%', v_key; end if;
+        end if;
+      end loop;
 
-    v_runner_id := private.restart_normalize_id(coalesce(v_runner->>'id_normalized',v_runner->>'id_document'));
-    if v_runner_id is not null then
-      if v_runner_id = any(v_runner_ids) then raise exception 'DUPLICATE_RUNNER_ID'; end if;
-      if exists(
-        select 1 from public.restart_participants p
-        join public.restart_registrations r on r.id=p.registration_id
-        where p.event_id=v_event_id and p.id_normalized=v_runner_id and r.status<>'CANCELLED'
-      ) then raise exception 'RUNNER_ALREADY_REGISTERED'; end if;
-      v_runner_ids := array_append(v_runner_ids,v_runner_id);
-    end if;
-
-    if coalesce((v_flags->>'insurance')::boolean,false) then
-      if not coalesce((v_flags->>'beneficiaries_multiple')::boolean,true)
-         and jsonb_array_length(coalesce(v_runner->'beneficiaries','[]'::jsonb))>1 then
-        raise exception 'MULTIPLE_BENEFICIARIES_DISABLED';
+      v_runner_id := private.restart_normalize_id(coalesce(v_runner->>'id_normalized',v_runner->>'id_document'));
+      if v_runner_id is not null then
+        if v_runner_id = any(v_runner_ids) then raise exception 'DUPLICATE_RUNNER_ID'; end if;
+        if exists(
+          select 1 from public.restart_participants p
+          join public.restart_registrations r on r.id=p.registration_id
+          where p.event_id=v_event_id and p.id_normalized=v_runner_id and r.status<>'CANCELLED'
+        ) then raise exception 'RUNNER_ALREADY_REGISTERED'; end if;
+        v_runner_ids := array_append(v_runner_ids,v_runner_id);
       end if;
 
-      select coalesce(sum((b->>'percentage')::numeric),0),
-             array_agg(private.restart_normalize_id(b->>'id_document'))
-      into v_bene_total, v_bene_ids
-      from jsonb_array_elements(coalesce(v_runner->'beneficiaries','[]'::jsonb)) b;
+      if coalesce((v_flags->>'insurance')::boolean,false) then
+        if not coalesce((v_flags->>'beneficiaries_multiple')::boolean,true)
+           and jsonb_array_length(coalesce(v_runner->'beneficiaries','[]'::jsonb))>1 then
+          raise exception 'MULTIPLE_BENEFICIARIES_DISABLED';
+        end if;
 
-      if coalesce((v_flags->>'beneficiary_total_100')::boolean,true)
-         and abs(coalesce(v_bene_total,0)-100) > 0.001 then
-        raise exception 'BENEFICIARY_TOTAL_MUST_BE_100';
-      end if;
-      if v_runner_id is not null and v_bene_ids is not null and v_runner_id = any(v_bene_ids) then
-        raise exception 'BENEFICIARY_ID_SAME_AS_RUNNER';
-      end if;
-      if v_bene_ids is not null and
-         (select count(*) from unnest(v_bene_ids) x where x is not null) <>
-         (select count(distinct x) from unnest(v_bene_ids) x where x is not null) then
-        raise exception 'DUPLICATE_BENEFICIARY_ID';
-      end if;
-      if v_bene_ids is not null then
-        v_all_bene_ids := v_all_bene_ids || coalesce(
-          array(select x from unnest(v_bene_ids) x where x is not null),
-          array[]::text[]
-        );
+        select coalesce(sum((b->>'percentage')::numeric),0),
+               array_agg(private.restart_normalize_id(b->>'id_document'))
+        into v_bene_total, v_bene_ids
+        from jsonb_array_elements(coalesce(v_runner->'beneficiaries','[]'::jsonb)) b;
+
+        if coalesce((v_flags->>'beneficiary_total_100')::boolean,true)
+           and abs(coalesce(v_bene_total,0)-100) > 0.001 then
+          raise exception 'BENEFICIARY_TOTAL_MUST_BE_100';
+        end if;
+        if v_runner_id is not null and v_bene_ids is not null and v_runner_id = any(v_bene_ids) then
+          raise exception 'BENEFICIARY_ID_SAME_AS_RUNNER';
+        end if;
+        if v_bene_ids is not null and
+           (select count(*) from unnest(v_bene_ids) x where x is not null) <>
+           (select count(distinct x) from unnest(v_bene_ids) x where x is not null) then
+          raise exception 'DUPLICATE_BENEFICIARY_ID';
+        end if;
+        if v_bene_ids is not null then
+          v_all_bene_ids := v_all_bene_ids || coalesce(
+            array(select x from unnest(v_bene_ids) x where x is not null),
+            array[]::text[]
+          );
+        end if;
       end if;
     end if;
   end loop;
@@ -778,18 +968,18 @@ begin
       v_registration_id,v_event_id,v_runner_index,
       nullif(trim(v_runner->>'first_name'),''),
       nullif(trim(v_runner->>'last_name'),''),
-      nullif(trim(v_runner->>'id_document'),''),
-      private.restart_normalize_id(coalesce(v_runner->>'id_normalized',v_runner->>'id_document')),
-      nullif(trim(v_runner->>'phone'),''),
-      nullif(v_runner->>'birth_date','')::date,
-      nullif(v_runner->>'gender',''),
-      nullif(v_runner->>'shirt_size',''),
-      nullif(v_runner->>'blood_group',''),
-      nullif(trim(v_runner->>'title'),''),
-      nullif(trim(v_runner->>'address'),''),
-      nullif(trim(v_runner->>'emergency_contact_name'),''),
-      nullif(trim(v_runner->>'emergency_phone'),''),
-      nullif(trim(v_runner->>'emergency_relation'),'')
+      case when v_registration_type='SINGLE' or v_runner_index=1 then nullif(trim(v_runner->>'id_document'),'') else null end,
+      case when v_registration_type='SINGLE' or v_runner_index=1 then private.restart_normalize_id(coalesce(v_runner->>'id_normalized',v_runner->>'id_document')) else null end,
+      case when v_registration_type='SINGLE' or v_runner_index=1 then nullif(trim(v_runner->>'phone'),'') else null end,
+      case when v_registration_type='SINGLE' or v_runner_index=1 then nullif(v_runner->>'birth_date','')::date else null end,
+      case when v_registration_type='SINGLE' or v_runner_index=1 then nullif(v_runner->>'gender','') else null end,
+      case when v_registration_type='SINGLE' or v_runner_index=1 then nullif(v_runner->>'shirt_size','') else null end,
+      case when v_registration_type='SINGLE' or v_runner_index=1 then nullif(v_runner->>'blood_group','') else null end,
+      case when v_registration_type='SINGLE' or v_runner_index=1 then nullif(trim(v_runner->>'title'),'') else null end,
+      case when v_registration_type='SINGLE' or v_runner_index=1 then nullif(trim(v_runner->>'address'),'') else null end,
+      case when v_registration_type='SINGLE' or v_runner_index=1 then nullif(trim(v_runner->>'emergency_contact_name'),'') else null end,
+      case when v_registration_type='SINGLE' or v_runner_index=1 then nullif(trim(v_runner->>'emergency_phone'),'') else null end,
+      case when v_registration_type='SINGLE' or v_runner_index=1 then nullif(trim(v_runner->>'emergency_relation'),'') else null end
     );
 
     for v_answer in select key,value from jsonb_each(coalesce(v_runner->'answers','{}'::jsonb))
@@ -801,7 +991,8 @@ begin
       limit 1;
     end loop;
 
-    if coalesce((v_flags->>'insurance')::boolean,false) then
+    if coalesce((v_flags->>'insurance')::boolean,false)
+       and not (v_registration_type<>'SINGLE' and v_runner_index>1) then
       for v_bene in select * from jsonb_array_elements(coalesce(v_runner->'beneficiaries','[]'::jsonb))
       loop
         insert into public.restart_beneficiaries(
