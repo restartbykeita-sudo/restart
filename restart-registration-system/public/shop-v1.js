@@ -31,30 +31,67 @@ function productMinPrice(p){
 function render(){
   document.title=(tr(SETTINGS?.store_name)||tr(E?.name)||'RESTART')+' Store';
   byId('backEvent').href='./?event='+encodeURIComponent(E.slug);
+  const productId=new URLSearchParams(location.search).get('product');
+  if(productId){
+    const p=PRODUCTS.find(x=>x.id===productId);
+    if(p)return renderProductDetail(p);
+    history.replaceState(null,'','shop.html?event='+encodeURIComponent(E.slug));
+  }
   const storeName=tr(SETTINGS?.store_name)||((tr(E.name)||'Event')+' Store');
   const cats=[...new Set(PRODUCTS.map(p=>p.category).filter(Boolean))];
   app.innerHTML=
     '<section class="rr-card store-hero"><div><div class="muted">RESTART EVENT STORE</div><h2>'+esc(storeName)+'</h2><div class="muted">'+esc(tr(SETTINGS?.terms)||'เลือกสินค้าและชำระเงินแยกจากการสมัครแข่งขัน')+'</div></div><div><span class="badge ok">ร้านค้าเปิด</span></div></section>'+
     (cats.length?'<section class="rr-card"><div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn sm soft" data-cat="">ทั้งหมด</button>'+cats.map(c=>'<button class="btn sm soft" data-cat="'+esc(c)+'">'+esc(c)+'</button>').join('')+'</div></section>':'')+
-    '<section id="productGrid" class="store-products">'+PRODUCTS.map(productCard).join('')+'</section>'+
+    '<section id="productGrid" class="store-showcase-grid">'+PRODUCTS.map(productCard).join('')+'</section>'+
     '<div class="store-cart-float"><div class="rr-card store-cart-bar"><div><b>ตะกร้า</b><div id="cartMini" class="muted">ยังไม่มีสินค้า</div></div><div class="row"><div id="cartTotal" class="store-total">฿0</div><button id="cartBtn" class="btn primary" type="button">ดูตะกร้า / ชำระเงิน</button></div></div></div>';
   document.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>filterCategory(b.dataset.cat));
+  byId('cartBtn').onclick=openCart;
+  renderCartMini()
+}
+function productCard(p,index){
+  const featured=index===0;
+  const min=productMinPrice(p);
+  const soldOut=!VARIANTS.some(v=>v.product_id===p.id&&v.is_active&&stock(v)>0);
+  const href='shop.html?event='+encodeURIComponent(E.slug)+'&product='+encodeURIComponent(p.id);
+  return '<a class="store-showcase-card '+(featured?'is-featured':'')+'" data-product-cat="'+esc(p.category||'')+'" href="'+href+'">'+
+    '<div class="store-card-media '+(!p.image_url?'store-card-media-fallback':'')+'" '+(p.image_url?'style="background-image:url(\''+esc(p.image_url).replaceAll("'","%27")+'\')"':'')+'><div class="store-card-scrim"></div></div>'+
+    '<div class="store-card-content">'+
+      '<div class="store-card-topline"><span class="store-card-status '+(!soldOut?'is-open':'')+'">'+(soldOut?'หมด':'พร้อมจำหน่าย')+'</span>'+(tr(p.badge)?'<span class="store-card-featured">'+esc(tr(p.badge))+'</span>':'')+'</div>'+
+      '<div class="store-card-copy"><div class="muted" style="color:rgba(255,255,255,.7)">'+esc(p.category||p.product_type||'สินค้า')+'</div><h2>'+esc(tr(p.name)||p.code)+'</h2>'+
+        (tr(p.description)?'<p>'+esc(tr(p.description).slice(0,150))+(tr(p.description).length>150?'…':'')+'</p>':'')+
+        '<div class="store-card-meta"><span>เริ่ม ฿'+money(min)+'</span><span>ดูสินค้า ↗</span></div>'+
+      '</div>'+
+    '</div>'+
+  '</a>'
+}
+function renderProductDetail(p){
+  const vs=VARIANTS.filter(v=>v.product_id===p.id&&v.is_active).sort((a,b)=>a.sort_order-b.sort_order);
+  const back='shop.html?event='+encodeURIComponent(E.slug);
+  app.innerHTML=
+    '<section class="store-detail-shell">'+
+      '<div class="store-detail-head"><a class="btn soft" href="'+back+'">← กลับหน้าร้าน</a><div class="muted">'+esc(p.category||p.product_type||'สินค้า')+'</div></div>'+
+      '<div class="rr-card store-detail-hero">'+
+        '<div class="store-detail-media">'+(p.image_url?'<img src="'+esc(p.image_url)+'" alt="">':'<div class="store-detail-placeholder">🛍️</div>')+'</div>'+
+        '<div class="store-detail-info">'+
+          (tr(p.badge)?'<span class="badge">'+esc(tr(p.badge))+'</span>':'')+
+          '<h1>'+esc(tr(p.name)||p.code)+'</h1>'+
+          '<div class="store-detail-price">เริ่ม ฿'+money(productMinPrice(p))+'</div>'+
+          '<p>'+esc(tr(p.description)||'')+'</p>'+
+          '<div class="store-detail-options"><h3>เลือกตัวเลือก</h3>'+
+            (vs.length?vs.map(v=>variantRow(p,v)).join(''):'<div class="rr-empty">ไม่มีตัวเลือกพร้อมขาย</div>')+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+    '</section>'+
+    '<div class="store-cart-float"><div class="rr-card store-cart-bar"><div><b>ตะกร้า</b><div id="cartMini" class="muted">ยังไม่มีสินค้า</div></div><div class="row"><div id="cartTotal" class="store-total">฿0</div><button id="cartBtn" class="btn primary" type="button">ดูตะกร้า / ชำระเงิน</button></div></div></div>';
   document.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>addVariant(b.dataset.add,b));
   byId('cartBtn').onclick=openCart;
   renderCartMini()
 }
-function productCard(p){
-  const vs=VARIANTS.filter(v=>v.product_id===p.id&&v.is_active).sort((a,b)=>a.sort_order-b.sort_order);
-  return '<article class="rr-card store-product" data-product-cat="'+esc(p.category||'')+'">'+
-    (p.image_url?'<img class="store-product-image" src="'+esc(p.image_url)+'" alt="">':'<div class="store-product-image" style="display:grid;place-items:center;font-size:48px">🛍️</div>')+
-    '<div class="store-product-head"><div><div class="muted">'+esc(p.category||p.product_type||'สินค้า')+'</div><h3 style="margin:2px 0">'+esc(tr(p.name)||p.code)+'</h3><div class="muted">'+esc(tr(p.description))+'</div></div><div class="store-price">เริ่ม ฿'+money(productMinPrice(p))+'</div></div>'+
-    '<div class="store-variant-list">'+(vs.length?vs.map(v=>variantRow(p,v)).join(''):'<div class="rr-empty">ไม่มีตัวเลือกพร้อมขาย</div>')+'</div>'+
-  '</article>'
-}
 function variantRow(p,v){
   const avail=stock(v),price=variantPrice(p,v);
   return '<div class="store-variant '+(!avail?'out':'')+'"><div><b>'+esc(tr(v.variant_name)||optionText(v))+'</b><div class="store-option-tags">'+optionTags(v)+'</div><div class="muted">฿'+money(price)+' · '+(avail?'เหลือ '+avail:'หมด')+'</div></div>'+
-    (avail?'<button class="btn sm primary" data-add="'+esc(v.id)+'">เพิ่ม</button>':'<span class="badge danger">หมด</span>')+'</div>'
+    (avail?'<button class="btn sm primary" data-add="'+esc(v.id)+'">เพิ่มตะกร้า</button>':'<span class="badge danger">หมด</span>')+'</div>'
 }
 function filterCategory(cat){document.querySelectorAll('[data-product-cat]').forEach(el=>el.style.display=!cat||el.dataset.productCat===cat?'':'none')}
 function addVariant(id,btn){
