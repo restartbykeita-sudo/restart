@@ -1,0 +1,18 @@
+<!doctype html><html lang="th"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" type="image/png" href="../assets/restart-logo-correct.png">
+<title>RESTART Member CRM</title>
+<link rel="stylesheet" href="../assets/app.css?v=1.15.0">
+<style>
+.crm-wrap{max-width:1380px;margin:0 auto}.crm-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.crm-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.crm-card{padding:18px;border:1px solid var(--line);border-radius:20px;background:var(--surface);box-shadow:var(--lux-shadow-soft)}
+.crm-code{font-size:11px;letter-spacing:.12em;color:var(--muted)}.crm-name{font-size:22px;font-weight:900;margin:5px 0}.crm-points{font-size:30px;font-weight:900}
+.crm-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;font-size:13px}.crm-toolbar{display:flex;justify-content:space-between;gap:12px;align-items:end;flex-wrap:wrap}.crm-toolbar input{min-width:280px}
+@media(max-width:980px){.crm-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.crm-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.crm-grid,.crm-stats{grid-template-columns:1fr}.crm-toolbar input{min-width:0;width:100%}}
+</style>
+</head><body><div class="rr-shell">
+<header class="rr-top"><a class="rr-brand with-logo" href="./" style="text-decoration:none;color:inherit"><img class="rr-main-logo header" src="../assets/restart-logo-correct.png?v=20261001-10" alt="RESTART"><div><h1>RESTART Member CRM</h1><small>Members · Points · Event History</small></div></a><div class="row"><a class="btn soft" href="./">Admin Event</a><button class="btn dark" id="logoutBtn">ออกจากระบบ</button></div></header>
+<main class="rr-wrap crm-wrap" id="crmApp"><section class="rr-card rr-empty">กำลังโหลด…</section></main></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script><script src="../assets/config.js?v=1.2.0"></script><script src="members-v1.js"></script>
+</body></html>
