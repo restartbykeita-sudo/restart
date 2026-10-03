@@ -24,16 +24,20 @@
    - Direct anonymous slip upload removed
 
 3. `003_shirt_sales.sql`
-   - Optional shirt add-on sales per Event
-   - Product image, code, localized name/description and sale window
-   - Size / SKU / stock / per-size price adjustment
-   - Server-side stock validation and atomic stock reservation
-   - Maximum quantity per registration
-   - Shirt price included in registration total
-   - Installment flow charges shirt add-ons with the first installment
-   - Cancellation returns stock for shirts not yet fulfilled
-   - Fulfillment status / shirt sales CSV / registration export integration
-   - Public catalog read via RLS; all writes remain Admin/Server controlled
+   - Legacy shirt add-on implementation retained only for migration compatibility
+
+4. `004_event_store.sql`
+   - Replaces shirt-only add-ons with a generic Event Store
+   - Store is fully separate from race registration
+   - Generic products: bag, shirt, hat, souvenir, etc.
+   - Arbitrary choices/variants such as color, size, model, Limited edition
+   - Each variant has independent SKU, final price, stock and badge
+   - Separate cart, order, payment, delivery/pickup and order-status workflow
+   - Server-authoritative quote and atomic stock reservation
+   - Admin slip review, preparing/ready/fulfilled/shipped/cancelled states
+   - Cancellation returns reserved stock
+   - Public order lookup by SHOP order code + phone
+   - Registration RPC explicitly rejects store items
 
 3. `003_shirt_sales_system.sql`
    - Optional shirt add-on sales per Event
