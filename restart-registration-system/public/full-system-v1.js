@@ -464,7 +464,7 @@ submit=async function(e){
 
     const payload={
       event_id:E.id,category_id:categoryId,package_id:byId('packageSel')?.value||null,
-      registration_type:type,group_name:val('groupName')||null,contact_runner_index:Number(byId('contactRunner')?.value||1),member_runner_index:Number(byId('contactRunner')?.value||1),
+      registration_type:type,group_name:val('groupName')||null,contact_runner_index:Number(byId('contactRunner')?.value||1),member_runner_index:1,
       language:lang,payment_mode:document.querySelector('[name=paymode]:checked')?.value||'FULL',
       total_amount_thb:total,discount_code:byId('discountCode')?.value.trim()||null,
       pdpa_accepted:!f.pdpa||!!byId('pdpaConsent')?.checked,
