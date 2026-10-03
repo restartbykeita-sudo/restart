@@ -764,18 +764,10 @@ async function fullSystemRpc(req: Request, origin: string, action: string) {
     const member = await requireMember(req);
     const payload = { ...(body.payload || {}) };
     delete payload.member_user_id;
+    payload.member_user_id = member.id;
+    payload.member_runner_index = 1;
+    if (text(payload.registration_type).toUpperCase() !== 'SINGLE') payload.contact_runner_index = 1;
     result = await db.rpc('restart_create_registration', { p_payload: payload });
-    if (!result.error && result.data?.id) {
-      const memberRunnerIndex = Math.max(1, Number(payload.member_runner_index || payload.contact_runner_index || 1));
-      const linked = await db.from('restart_registrations').update({
-        member_user_id: member.id,
-        member_runner_index: memberRunnerIndex,
-        updated_at: new Date().toISOString(),
-      }).eq('id', result.data.id).select('id').maybeSingle();
-      if (linked.error || !linked.data) {
-        fail(503, 'เชื่อมใบสมัครกับสมาชิกไม่สำเร็จ');
-      }
-    }
   } else if (action === 'join-waitlist') {
     result = await db.rpc('restart_join_waitlist', { p_payload: body.payload || {} });
   } else if (action === 'next-payment-lookup') {
