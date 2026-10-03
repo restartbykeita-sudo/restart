@@ -229,6 +229,33 @@ create policy restart_store_orders_admin_delete
 on public.restart_store_orders for delete to authenticated
 using ((select private.restart_is_admin()));
 
+-- Consolidate store order item member/admin SELECT policy.
+drop policy if exists restart_store_order_items_admin_all on public.restart_store_order_items;
+drop policy if exists restart_store_order_items_member_select on public.restart_store_order_items;
+drop policy if exists restart_store_order_items_select on public.restart_store_order_items;
+drop policy if exists restart_store_order_items_admin_insert on public.restart_store_order_items;
+drop policy if exists restart_store_order_items_admin_update on public.restart_store_order_items;
+drop policy if exists restart_store_order_items_admin_delete on public.restart_store_order_items;
+create policy restart_store_order_items_select
+on public.restart_store_order_items for select to authenticated
+using (
+  (select private.restart_is_admin())
+  or exists(
+    select 1 from public.restart_store_orders o
+    where o.id=order_id and o.member_user_id=(select auth.uid())
+  )
+);
+create policy restart_store_order_items_admin_insert
+on public.restart_store_order_items for insert to authenticated
+with check ((select private.restart_is_admin()));
+create policy restart_store_order_items_admin_update
+on public.restart_store_order_items for update to authenticated
+using ((select private.restart_is_admin()))
+with check ((select private.restart_is_admin()));
+create policy restart_store_order_items_admin_delete
+on public.restart_store_order_items for delete to authenticated
+using ((select private.restart_is_admin()));
+
 -- Member-authenticated storefront read policies.
 -- Logged-in members must be able to browse the same open storefront data as anonymous visitors.
 drop policy if exists restart_stores_admin_all on public.restart_stores;
